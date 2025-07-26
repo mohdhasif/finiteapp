@@ -41,6 +41,8 @@ const ProjectListScreen = () => {
     const [activeTab, setActiveTab] = useState<'All' | 'Ongoing' | 'Completed'>('All');
     const [projects, setProjects] = useState<Project[]>([]);
 
+    const [greetingName, setGreetingName] = useState('Guest');
+
     const isMatchingTab = (statusFromDB: string, activeTab: string) => {
         if (activeTab === 'All') return true;
         if (activeTab === 'Ongoing') return ['pending', 'in_progress'].includes(statusFromDB);
@@ -54,11 +56,20 @@ const ProjectListScreen = () => {
         const loadProjects = async () => {
             try {
                 const token = await AsyncStorage.getItem('userToken');
+                const userInfoString = await AsyncStorage.getItem('userInfo');
+                const role = await AsyncStorage.getItem('userRole');
+
                 if (!token) throw new Error('Token tidak dijumpai');
 
                 const data = await getClientProjects(token);
                 console.log('DATA:', data);
+                const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+
                 setProjects(data);
+
+                console.log('company:', userInfo?.client?.company_name); // ✅ Betul
+                console.log('name:', userInfo?.name); // ✅ "Ali Bin Abu"
+                setGreetingName(userInfo?.client?.company_name ?? 'Guest');
             } catch (err: any) {
                 console.log('ERROR loading projects:', err);
                 Alert.alert('Error', err.message || 'Gagal ambil projek');
@@ -82,7 +93,8 @@ const ProjectListScreen = () => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.greeting}>Hello, Smith!</Text>
+                <Text style={styles.greeting}>Hello, {greetingName}!</Text>
+
                 <TouchableOpacity>
                     <Image source={require('../assets/search-icon.png')} style={styles.searchIcon} />
                 </TouchableOpacity>
