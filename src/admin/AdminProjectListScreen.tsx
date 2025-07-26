@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,11 +7,14 @@ import {
     ScrollView,
     TouchableOpacity,
     Dimensions,
+    ActivityIndicator,
+    FlatList
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { getProjects } from '../services/projectApi'; // adjust path jika perlu
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +46,26 @@ const allProjects = [
 ];
 
 const AdminProjectListScreen = () => {
+
+
+    const [projects, setProjects] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const result = await getProjects();
+                setProjects(result); // result mestilah array
+            } catch (err: any) {
+                setError(err.message || 'Something went wrong');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [activeTab, setActiveTab] = useState<'All' | 'Ongoing' | 'Completed'>('All');
     const [showOptions, setShowOptions] = useState(false);
@@ -53,6 +76,17 @@ const AdminProjectListScreen = () => {
             ? allProjects
             : allProjects.filter(project => project.status === activeTab);
 
+    if (loading) {
+        return <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 50 }} />;
+    }
+
+    if (error) {
+        return (
+            <View style={styles.centered}>
+                <Text style={styles.errorText}>❌ {error}</Text>
+            </View>
+        );
+    }
     return (
         <View style={styles.container}>
 
@@ -138,6 +172,20 @@ const AdminProjectListScreen = () => {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+
+
+            <FlatList
+                data={projects}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.container}
+                renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.carddsd}>
+                        <Text style={styles.title}>{item.title}</Text>
+                        <Text style={styles.subtitle}>Client: {item.client_name}</Text>
+                        <Text style={styles.subtitle}>Progress: {item.progress || 0}%</Text>
+                    </TouchableOpacity>
+                )}
+            />
 
             {/* Floating Menu */}
             {showMenu && (
@@ -399,5 +447,34 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#0072B5',
+    },
+
+
+
+    carddsd: {
+        backgroundColor: '#fff',
+        padding: 16,
+        marginBottom: 12,
+        borderRadius: 10,
+        elevation: 3,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: '#555',
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 16,
+        color: 'red',
     },
 });
