@@ -2,8 +2,6 @@ export type RootStackParamList = {
   Splash: undefined;
   HomeScreen: undefined;
   ServiceScreen: undefined;
-  ProjectTaskListScreen: { project: string }; // ✅ betul di sini
-  ProjectListScreen: undefined;
   NotificationsScreen: undefined;
   DiscoveryForm: { selectedServices: string[] }; // ✅ betul di sini
   TaskDetailsScreen: { task: string }; // ✅ betul di sini
@@ -23,11 +21,19 @@ export type RootStackParamList = {
 
 
 
-  AdminProfileScreen:  undefined;
-  AdminChangePasswordScreen:  undefined;
-  AdminMyProfileScreen:  undefined;
-  AdminFAQScreen:  undefined;
+  AdminProfileScreen: undefined;
+  AdminChangePasswordScreen: undefined;
+  AdminMyProfileScreen: undefined;
+  AdminFAQScreen: undefined;
 
   AdminCreateProjectScreen: undefined;
   AdminCreateTaskScreen: undefined;
+
+
+  ProjectListScreen: undefined;
+  ProjectTaskListScreen: {
+    projectId: number;
+    projectTitle: string;
+  };
+  ProjectDetailsScreen: { projectId: number };
 };

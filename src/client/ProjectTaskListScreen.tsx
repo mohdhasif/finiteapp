@@ -17,6 +17,8 @@ const ProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<ProjectTaskListScreenRouteProp>();
 
+    console.log('ROUTE:', route.params);
+    
     const START_TOP = height * 0.25;
     const slideAnim = useRef(new Animated.Value(START_TOP)).current;
     const lastPosition = useRef(START_TOP);
@@ -55,7 +57,7 @@ const ProjectTaskListScreen = () => {
             {/* Top Info */}
             <View style={styles.topCard}>
                 <View style={styles.cardLeft}>
-                    <Text style={styles.title}>{route.params.project}</Text>
+                    <Text style={styles.title}>{route.params.projectTitle}</Text>
                     <Text style={styles.subtitle}>August postings</Text>
                     <Text style={styles.label}>Assigned to</Text>
 

@@ -1,93 +1,70 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
+    StyleSheet,
+    Image,
     ScrollView,
     TouchableOpacity,
-    Image,
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Dimensions
+    Dimensions,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { RouteProp } from '@react-navigation/native';
-
-import { getClientProjects } from '../services/projectService';
 
 const { width } = Dimensions.get('window');
 
-type ProjectListScreeRouteProp = RouteProp<RootStackParamList, 'ProjectListScreen'>;
-
-type Project = {
-    id: number;
-    title: string;
-    description: string;
-    status: 'pending' | 'in_progress' | 'completed';
-    progress: number;
-    created_at: string;
-    task_count?: number;
-};
+const allProjects = [
+    {
+        title: 'Social Media',
+        subtitle: 'August postings',
+        progress: 50,
+        date: 'Jan 13, 2025',
+        tasks: 24,
+        status: 'Ongoing',
+    },
+    {
+        title: 'App Project',
+        subtitle: 'Digital Product Design',
+        progress: 100,
+        date: 'Jan 13, 2025',
+        tasks: 24,
+        status: 'Completed',
+    },
+    {
+        title: 'Marketing Campaign',
+        subtitle: 'Q3 Strategy',
+        progress: 30,
+        date: 'Jan 13, 2025',
+        tasks: 18,
+        status: 'Ongoing',
+    },
+];
 
 const ProjectListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const route = useRoute<ProjectListScreeRouteProp>();
-
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'All' | 'Ongoing' | 'Completed'>('All');
-    const [projects, setProjects] = useState<Project[]>([]);
 
-    const isMatchingTab = (statusFromDB: string, activeTab: string) => {
-        if (activeTab === 'All') return true;
-        if (activeTab === 'Ongoing') return ['pending', 'in_progress'].includes(statusFromDB);
-        if (activeTab === 'Completed') return statusFromDB === 'completed';
-        return false;
-    };
-
-    const filteredProjects = projects.filter(project => isMatchingTab(project.status, activeTab));
-
-    useEffect(() => {
-        const loadProjects = async () => {
-            try {
-                const token = await AsyncStorage.getItem('userToken');
-                if (!token) throw new Error('Token tidak dijumpai');
-
-                const data = await getClientProjects(token);
-                console.log('DATA:', data);
-                setProjects(data);
-            } catch (err: any) {
-                console.log('ERROR loading projects:', err);
-                Alert.alert('Error', err.message || 'Gagal ambil projek');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadProjects();
-    }, []);
-
-    if (loading) {
-        return (
-            <View style={{ marginTop: 50, alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
-                <Text>Loading projek...</Text>
-            </View>
-        );
-    }
+    const filteredProjects =
+        activeTab === 'All'
+            ? allProjects
+            : allProjects.filter(project => project.status === activeTab);
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.greeting}>Hello, Smith!</Text>
                 <TouchableOpacity>
-                    <Image source={require('../assets/search-icon.png')} style={styles.searchIcon} />
+                    <Image
+                        source={require('../assets/search-icon.png')}
+                        style={styles.searchIcon}
+                    />
                 </TouchableOpacity>
             </View>
 
+            {/* Tabs */}
             <View style={styles.tabs}>
                 {['All', 'Ongoing', 'Completed'].map(tab => (
                     <TouchableOpacity
@@ -95,36 +72,37 @@ const ProjectListScreen = () => {
                         style={[styles.tabButton, activeTab === tab && styles.tabActive]}
                         onPress={() => setActiveTab(tab as 'All' | 'Ongoing' | 'Completed')}
                     >
-                        <Text style={activeTab === tab ? styles.tabActiveText : styles.tabText}>{tab}</Text>
+                        <Text style={activeTab === tab ? styles.tabActiveText : styles.tabText}>
+                            {tab}
+                        </Text>
                     </TouchableOpacity>
                 ))}
             </View>
 
+            {/* Projects List */}
             <ScrollView contentContainerStyle={styles.projectList}>
-                {filteredProjects.map(project => (
+                {filteredProjects.map((project, index) => (
                     <TouchableOpacity
-                        key={project.id}
+                        key={index}
                         style={styles.card}
-                        onPress={() =>
-                            navigation.navigate('ProjectTaskListScreen', {
-                                projectId: project.id,
-                                projectTitle: project.title,
-                            })
-                        }
+                        onPress={() => navigation.navigate('ProjectTaskListScreen', { projectId: 1, projectTitle: project.title })}
                         activeOpacity={0.8}
                     >
                         <View style={styles.cardLeft}>
                             <Text style={styles.cardTitle}>{project.title}</Text>
-                            <Text style={styles.cardSubtitle}>{project.description || '-'}</Text>
+                            <Text style={styles.cardSubtitle}>{project.subtitle}</Text>
                             <Text style={styles.cardAssigned}>Assigned to</Text>
                             <View style={styles.avatarRow}>
                                 <View style={styles.avatar} />
                                 <View style={[styles.avatar, { backgroundColor: '#000' }]} />
                                 <View style={[styles.avatar, { backgroundColor: '#007bff' }]} />
+                                {/* <View style={styles.addAvatar}>
+                                    <Text style={styles.plus}>+</Text>
+                                </View> */}
                             </View>
                             <View style={styles.cardFooter}>
-                                <Text style={styles.dateText}>📅 {project.created_at?.split(' ')[0]}</Text>
-                                <Text style={styles.taskText}>✔️ {project.task_count || 0} Tasks</Text>
+                                <Text style={styles.dateText}>📅 {project.date}</Text>
+                                <Text style={styles.taskText}>✔️ {project.tasks} Tasks</Text>
                             </View>
                         </View>
                         <View style={styles.progressRing}>
@@ -134,16 +112,24 @@ const ProjectListScreen = () => {
                 ))}
             </ScrollView>
 
+            {/* Bottom Nav */}
             <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+                <TouchableOpacity
+                    style={styles.navItem}
+                    onPress={() => navigation.navigate('NotificationsScreen')}>
                     <Icon name="notifications-outline" size={26} color="#fff" />
+                    {/* <View style={styles.redDot} /> */}
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity
+                    style={styles.navItem}
+                    onPress={() => navigation.navigate('ProjectListScreen')}>
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
+                <TouchableOpacity
+                    style={styles.navItem}
+                    onPress={() => navigation.navigate('ProfileScreen')}>
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
