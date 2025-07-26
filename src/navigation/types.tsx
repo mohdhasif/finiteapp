@@ -1,0 +1,33 @@
+export type RootStackParamList = {
+  Splash: undefined;
+  HomeScreen: undefined;
+  ServiceScreen: undefined;
+  ProjectTaskListScreen: { project: string }; // ✅ betul di sini
+  ProjectListScreen: undefined;
+  NotificationsScreen: undefined;
+  DiscoveryForm: { selectedServices: string[] }; // ✅ betul di sini
+  TaskDetailsScreen: { task: string }; // ✅ betul di sini
+  ProfileScreen: undefined; // ✅ betul di sini
+  LoginScreen: undefined; // ✅ betul di sini
+  FabMenu: undefined; // ✅ betul di sini
+  AboutUs: undefined; // ✅ betul di sini
+  MyProfileScreen: undefined; // ✅ betul di sini
+  ChangePasswordScreen: undefined; // ✅ betul di sini
+  FAQScreen: undefined; // ✅ betul di sini
+  FreelancerFormScreen: undefined; // ✅ betul di sini
+  LoadingScreen: { role: string }; // ✅ betul di sini
+  AdminHomeScreen: undefined;
+  AdminProjectListScreen: undefined;
+  AdminProjectTaskListScreen: { project: string }; // ✅ betul di sini
+  AdminTaskDetailsScreen: { task: string }; // ✅ betul di sini
+
+
+
+  AdminProfileScreen:  undefined;
+  AdminChangePasswordScreen:  undefined;
+  AdminMyProfileScreen:  undefined;
+  AdminFAQScreen:  undefined;
+
+  AdminCreateProjectScreen: undefined;
+  AdminCreateTaskScreen: undefined;
+};
