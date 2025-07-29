@@ -1,4 +1,4 @@
-const API_BASE = 'https://f57d73d76263.ngrok-free.app';
+const API_BASE = 'https://fd9315becb7e.ngrok-free.app';
 
 export const getTasksByProject = async (token: string, projectId: number) => {
     const res = await fetch(`${API_BASE}/project_tasks.php?project_id=${projectId}`, {

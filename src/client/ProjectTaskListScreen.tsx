@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, Animated, Dimensions, PanResponder
+    ScrollView, Animated, Dimensions, PanResponder, Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -9,6 +9,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+
+import { fetchProjectTasks } from '../services/projectService'; // 👈 import service
 
 const { height, width } = Dimensions.get('window');
 type ProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'ProjectTaskListScreen'>;
@@ -18,7 +20,7 @@ const ProjectTaskListScreen = () => {
     const route = useRoute<ProjectTaskListScreenRouteProp>();
 
     console.log('ROUTE:', route.params);
-    
+
     const START_TOP = height * 0.25;
     const slideAnim = useRef(new Animated.Value(START_TOP)).current;
     const lastPosition = useRef(START_TOP);
@@ -29,9 +31,29 @@ const ProjectTaskListScreen = () => {
     const taskList = ['Content Strategy', 'Design', 'Videoshoot', 'Video Editing'];
     const [checkedStates, setCheckedStates] = useState<boolean[]>(taskList.map(() => false));
 
+    const [tasks, setTasks] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         slideAnim.setValue(START_TOP);
     }, []);
+
+    // Fetch data bila screen buka
+    useEffect(() => {
+        const loadTasks = async () => {
+            try {
+                const result = await fetchProjectTasks(route.params.projectId);
+                setTasks(result.map((task: any) => task.title)); // ubah ikut DB return
+                setCheckedStates(result.map(() => false));
+            } catch (e) {
+                Alert.alert('Error', 'Gagal muat tugas');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadTasks();
+    }, [route.params.projectId]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -384,7 +406,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
 
-    
+
     // Task Cards
     taskCard: {
         backgroundColor: '#0C4E86',

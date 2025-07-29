@@ -57,22 +57,28 @@ const ProjectListScreen = () => {
             try {
                 const token = await AsyncStorage.getItem('userToken');
                 const userInfoString = await AsyncStorage.getItem('userInfo');
-                const role = await AsyncStorage.getItem('userRole');
 
-                if (!token) throw new Error('Token tidak dijumpai');
+                if (!token) {
+                    Alert.alert('Ralat', 'Token tidak dijumpai');
+                    setLoading(false);
+                    return;
+                }
 
+                console.log('token:', token);
+
+                // Fetch projek dari API
                 const data = await getClientProjects(token);
-                console.log('DATA:', data);
-                const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
-
                 setProjects(data);
+                console.log('DATA:', data);
 
-                console.log('company:', userInfo?.client?.company_name); // ✅ Betul
-                console.log('name:', userInfo?.name); // ✅ "Ali Bin Abu"
+                // Set greeting
+                const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
                 setGreetingName(userInfo?.client?.company_name ?? 'Guest');
+                console.log('company:', userInfo?.client?.company_name);
+                console.log('name:', userInfo?.name);
             } catch (err: any) {
                 console.log('ERROR loading projects:', err);
-                Alert.alert('Error', err.message || 'Gagal ambil projek');
+                Alert.alert('Ralat', err.message || 'Gagal ambil projek');
             } finally {
                 setLoading(false);
             }
@@ -80,15 +86,6 @@ const ProjectListScreen = () => {
 
         loadProjects();
     }, []);
-
-    if (loading) {
-        return (
-            <View style={{ marginTop: 50, alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
-                <Text>Loading projek...</Text>
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -112,7 +109,7 @@ const ProjectListScreen = () => {
                 ))}
             </View>
 
-            <ScrollView contentContainerStyle={styles.projectList}>
+            {/* <ScrollView contentContainerStyle={styles.projectList}>
                 {filteredProjects.map(project => (
                     <TouchableOpacity
                         key={project.id}
@@ -144,6 +141,51 @@ const ProjectListScreen = () => {
                         </View>
                     </TouchableOpacity>
                 ))}
+            </ScrollView> */}
+
+            <ScrollView contentContainerStyle={styles.projectList}>
+                {loading ? (
+                    <View style={{ alignItems: 'center', marginTop: 30 }}>
+                        <ActivityIndicator size="large" />
+                        <Text style={{ marginTop: 10 }}>Loading projek...</Text>
+                    </View>
+                ) : filteredProjects.length === 0 ? (
+                    <View style={{ alignItems: 'center', marginTop: 30 }}>
+                        <Text>Tiada projek dijumpai.</Text>
+                    </View>
+                ) : (
+                    filteredProjects.map(project => (
+                        <TouchableOpacity
+                            key={project.id}
+                            style={styles.card}
+                            onPress={() =>
+                                navigation.navigate('ProjectTaskListScreen', {
+                                    projectId: project.id,
+                                    projectTitle: project.title,
+                                })
+                            }
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.cardLeft}>
+                                <Text style={styles.cardTitle}>{project.title}</Text>
+                                <Text style={styles.cardSubtitle}>{project.description || '-'}</Text>
+                                <Text style={styles.cardAssigned}>Assigned to</Text>
+                                <View style={styles.avatarRow}>
+                                    <View style={styles.avatar} />
+                                    <View style={[styles.avatar, { backgroundColor: '#000' }]} />
+                                    <View style={[styles.avatar, { backgroundColor: '#007bff' }]} />
+                                </View>
+                                <View style={styles.cardFooter}>
+                                    <Text style={styles.dateText}>📅 {project.created_at?.split(' ')[0]}</Text>
+                                    <Text style={styles.taskText}>✔️ {project.task_count || 0} Tasks</Text>
+                                </View>
+                            </View>
+                            <View style={styles.progressRing}>
+                                <Text style={styles.progressText}>{project.progress}%</Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))
+                )}
             </ScrollView>
 
             <View style={styles.bottomNav}>

@@ -90,32 +90,51 @@ const LoginScreen = () => {
     //     // Add navigation or next action here
     // };
 
-    const handleLogin = async () => {
-        console.log('Login button pressed');
+    // const handleLogin = async () => {
+    //     console.log('Login button pressed');
 
+    //     if (!username || !password) {
+    //         Alert.alert('Login Failed', 'Please enter both email and password');
+    //         return;
+    //     }
+
+    //     setIsLoading(true); // ✅ Start loading
+
+    //     try {
+    //         // Panggil API login dan update AuthContext
+    //         console.log('Before login');
+    //         await login(username, password);
+    //         console.log('After login');
+
+    //         // Tunjukkan modal success
+    //         setModalVisible(true);
+    //     } catch (error: any) {
+    //         Alert.alert('Login Failed', error.message || 'Something went wrong');
+    //     } finally {
+    //         setIsLoading(false); // ✅ Stop loading
+    //     }
+    // };
+    const handleLogin = async () => {
         if (!username || !password) {
             Alert.alert('Login Failed', 'Please enter both email and password');
             return;
         }
 
-        setIsLoading(true); // ✅ Start loading
-
+        setIsLoading(true); // 🔄 Tunjuk spinner button
         try {
-            // Panggil API login dan update AuthContext
-            await login(username, password);
-
-            // Tunjukkan modal success
-            setModalVisible(true);
+            const role = await login(username, password); // ✅ panggil login dari AuthContext dan dapatkan role
+            setvalidUsers(role);                          // ✅ simpan role untuk dihantar ke LoadingScreen
+            setModalVisible(true);                        // ✅ tunjuk modal "Login Success!"
         } catch (error: any) {
             Alert.alert('Login Failed', error.message || 'Something went wrong');
         } finally {
-            setIsLoading(false); // ✅ Stop loading
+            setIsLoading(false); // ✅ tutup spinner button
         }
     };
 
     const handleNext = () => {
         setModalVisible(false);
-        navigation.navigate('LoadingScreen', { role: '' });
+        navigation.navigate('LoadingScreen', { role: validUsers }); // ⬅️ hantar role ke LoadingScreen
     };
 
     return (

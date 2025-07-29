@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthContextType = {
     userRole: string | null;
-    login: (email: string, password: string) => Promise<void>; // ⬅️ update param
+    login: (email: string, password: string) => Promise<string>;
     logout: () => Promise<void>;
     loading: boolean;
     setUserRoleManual: (role: string | null) => void;
@@ -18,11 +18,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const loadUser = async () => {
             try {
+                const token = await AsyncStorage.getItem('userToken');
                 const storedRole = await AsyncStorage.getItem('userRole');
-                if (storedRole) {
-                    setUserRole(storedRole);
-                } else {
+
+                if (!token || !storedRole) {
+                    await AsyncStorage.clear(); // 🔒 Auto logout if data is incomplete
                     setUserRole(null);
+                } else {
+                    setUserRole(storedRole);
                 }
             } catch (error) {
                 console.error('Failed to load user role:', error);
@@ -33,43 +36,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loadUser();
     }, []);
 
-    // const login = async (role: string) => {
-    //     try {
-    //         await AsyncStorage.setItem('userRole', role);
-    //         await AsyncStorage.setItem('userToken', 'dummy_token');
-    //         setUserRole(role);
-    //     } catch (error) {
-    //         console.error('Login error:', error);
-    //     }
-    // };
-
     const login = async (email: string, password: string) => {
         try {
-            const response = await fetch('https://f57d73d76263.ngrok-free.app/login.php', {
+            const response = await fetch('https://fd9315becb7e.ngrok-free.app/login.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
 
-            const text = await response.text();
-            console.log('RESPONSE TEXT:', text); // tengok apa server reply
+            // 🔍 Logkan versi text (untuk debug) tanpa ganggu json parsing
+            const clonedResponse = response.clone();
+            const rawText = await clonedResponse.text();
+            console.log('RESPONSE TEXT:', rawText);
 
-            const data = JSON.parse(text); // ✅ parse manual sebab ada error sebelum ni
+            // ✅ Parse JSON rasmi
+            const data = await response.json();
 
             if (!response.ok) throw new Error(data.error || 'Login failed');
 
             await AsyncStorage.setItem('userToken', data.token);
             await AsyncStorage.setItem('userRole', data.user.role);
             await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
-            // const data = await response.json();
 
-            // if (!response.ok) throw new Error(data.error || 'Login failed');
+            // setUserRole(data.user.role); // ✅ trigger navigasi ikut role
+            return data.user.role; // ✅ return role tapi JANGAN terus setUserRole
 
-            // // Simpan info dari backend
-            // await AsyncStorage.setItem('userRole', data.user.role);
-            // await AsyncStorage.setItem('userToken', data.token);
-            // await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
-            // setUserRole(data.user.role);
         } catch (error) {
             console.error('Login error:', error);
             throw error;
@@ -92,8 +83,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 login,
                 logout,
                 loading,
-                setUserRoleManual: setUserRole, // expose setter
-            }}>
+                setUserRoleManual: setUserRole,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

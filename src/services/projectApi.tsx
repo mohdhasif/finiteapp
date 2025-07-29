@@ -1,4 +1,4 @@
-const BASE_URL = 'https://f57d73d76263.ngrok-free.app/';
+const BASE_URL = 'https://fd9315becb7e.ngrok-free.app/';
 
 export const getProjects = async () => {
     try {
