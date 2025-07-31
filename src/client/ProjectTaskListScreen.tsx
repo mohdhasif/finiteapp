@@ -158,7 +158,7 @@ const ProjectTaskListScreen = () => {
                 <ScrollView showsVerticalScrollIndicator={false}>
                     {['Content Strategy', 'Design', 'Videoshoot', 'Video Editing'].map((task, idx) => (
                         <TouchableOpacity
-                            key={idx}
+                            key={task} // ⬅️ Ganti dari key={idx}
                             style={styles.taskCard}
                             onPress={() => navigation.push('TaskDetailsScreen', { task })}
                         >
@@ -169,7 +169,6 @@ const ProjectTaskListScreen = () => {
                                 style={styles.taskCardInner}
                             >
                                 <View style={styles.taskRow}>
-
                                     <TouchableOpacity
                                         onPress={() => {
                                             const updated = [...checkedStates];
@@ -192,6 +191,7 @@ const ProjectTaskListScreen = () => {
                                     </View>
                                     <Icon name="chevron-forward" size={20} color="#fff" />
                                 </View>
+
                                 <View style={styles.progressBar}>
                                     <View style={styles.progressFill} />
                                 </View>
@@ -199,6 +199,7 @@ const ProjectTaskListScreen = () => {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
+
             </Animated.View>
 
             {/* Bottom Navigation */}

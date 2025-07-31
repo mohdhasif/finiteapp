@@ -6,8 +6,10 @@ export const submitDiscoveryForm = async (formData: {
     message: string;
     selectedServices: string[];
 }) => {
+    // submit_discovery
     try {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/send_email.php', {
+        // const response = await fetch('https://fd9315becb7e.ngrok-free.app/send_email.php', {
+        const response = await fetch('https://fd9315becb7e.ngrok-free.app/submit_discovery.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

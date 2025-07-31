@@ -78,146 +78,147 @@ const AdminHomeScreen = () => {
 
                     <View style={styles.clientHeader}>
                         <Text style={styles.clientTitle}>FINITE’s Clients</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.addText}>Add Client</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {clients.map((client) => (
-                            <View key={client.id} style={styles.clientCard}>
-                                <View style={styles.clientCircle}>
-                                    <Image source={client.logo} style={styles.clientLogo} />
-                                </View>
-                                <Text style={styles.clientName}>{client.name}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
-                </LinearGradient>
-
-                {/* Projects */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Projects</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('AdminProjectListScreen')}>
-                            <Text style={styles.seeAll}>See all</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectRow}>
-                        {projects.map((proj, index) => (
-                            <TouchableOpacity
-                                key={proj.id}
-                                style={[styles.projectCard, { marginRight: index === projects.length - 1 ? 20 : 16 }]}
-                                onPress={() => navigation.navigate('AdminProjectTaskListScreen', { project: proj.title })}
-                            >
-                                <Text style={styles.projectTitle}>{proj.title}</Text>
-                                <Text style={styles.projectClient}>{proj.client}</Text>
-                                <Text style={styles.projectTasks}>📅 Jan 13, 2025</Text>
-                                <Text style={styles.projectTasks}>✅ 24 Tasks</Text>
-
-                                <View style={styles.avatarGroup}>
-                                    <View style={[styles.avatarMini, { backgroundColor: '#ccc' }]} />
-                                    <View style={[styles.avatarMini, { backgroundColor: '#0af' }]} />
-                                    <View style={[styles.avatarMini, { backgroundColor: '#0072B5' }]}>
-                                        <Text style={{ color: '#fff', fontSize: 12 }}>+</Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.progressBar}>
-                                    <View style={[styles.progressFill, { width: `${proj.progress}%` }]} />
-                                </View>
-                                <Text style={styles.progressPercent}>{proj.progress}%</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* Tasks */}
-                <View style={styles.section}>
-                    <View style={styles.taskHeader}>
-                        <Text style={styles.taskHeaderTitle}>Tasks</Text>
                         <TouchableOpacity
-                            style={styles.filterButton}
-                            onPress={() => setFilterVisible(!filterVisible)}
-                        >
-                            <Text style={styles.filterButtonText}>{selectedFilter}</Text>
-                            <Icon
-                                name={filterVisible ? 'chevron-up-outline' : 'chevron-down-outline'}
-                                size={16} color="#999"
-                            />
-                        </TouchableOpacity>
+                            onPress={() => navigation.navigate('ClientListScreen')}>
+                                < Text style = { styles.addText } > Add Client</Text>
+                </TouchableOpacity>
+            </View>
 
-                        {filterVisible && (
-                            <View style={styles.dropdownMenu}>
-                                {['All Tasks', 'Ongoing', 'Completed'].map((option, i) => (
-                                    <TouchableOpacity
-                                        key={option}
-                                        style={[
-                                            styles.dropdownItem,
-                                            selectedFilter === option && styles.dropdownItemActive,
-                                            i === 0 && styles.dropdownItemFirst,
-                                            i === 2 && styles.dropdownItemLast,
-                                        ]}
-                                        onPress={() => {
-                                            setSelectedFilter(option);
-                                            setFilterVisible(false);
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.dropdownItemText,
-                                            selectedFilter === option && styles.dropdownItemTextActive
-                                        ]}>
-                                            {option}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
+                {clients.map((client) => (
+                    <View key={client.id} style={styles.clientCard}>
+                        <View style={styles.clientCircle}>
+                            <Image source={client.logo} style={styles.clientLogo} />
+                        </View>
+                        <Text style={styles.clientName}>{client.name}</Text>
+                    </View>
+                ))}
+            </ScrollView>
+        </LinearGradient>
+
+                {/* Projects */ }
+    <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Projects</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminProjectListScreen')}>
+                <Text style={styles.seeAll}>See all</Text>
+            </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectRow}>
+            {projects.map((proj, index) => (
+                <TouchableOpacity
+                    key={proj.id}
+                    style={[styles.projectCard, { marginRight: index === projects.length - 1 ? 20 : 16 }]}
+                    onPress={() => navigation.navigate('AdminProjectTaskListScreen', { project: proj.title })}
+                >
+                    <Text style={styles.projectTitle}>{proj.title}</Text>
+                    <Text style={styles.projectClient}>{proj.client}</Text>
+                    <Text style={styles.projectTasks}>📅 Jan 13, 2025</Text>
+                    <Text style={styles.projectTasks}>✅ 24 Tasks</Text>
+
+                    <View style={styles.avatarGroup}>
+                        <View style={[styles.avatarMini, { backgroundColor: '#ccc' }]} />
+                        <View style={[styles.avatarMini, { backgroundColor: '#0af' }]} />
+                        <View style={[styles.avatarMini, { backgroundColor: '#0072B5' }]}>
+                            <Text style={{ color: '#fff', fontSize: 12 }}>+</Text>
+                        </View>
                     </View>
 
+                    <View style={styles.progressBar}>
+                        <View style={[styles.progressFill, { width: `${proj.progress}%` }]} />
+                    </View>
+                    <Text style={styles.progressPercent}>{proj.progress}%</Text>
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+    </View>
 
-                    {tasks.map((task, idx) => (
+    {/* Tasks */ }
+    <View style={styles.section}>
+        <View style={styles.taskHeader}>
+            <Text style={styles.taskHeaderTitle}>Tasks</Text>
+            <TouchableOpacity
+                style={styles.filterButton}
+                onPress={() => setFilterVisible(!filterVisible)}
+            >
+                <Text style={styles.filterButtonText}>{selectedFilter}</Text>
+                <Icon
+                    name={filterVisible ? 'chevron-up-outline' : 'chevron-down-outline'}
+                    size={16} color="#999"
+                />
+            </TouchableOpacity>
+
+            {filterVisible && (
+                <View style={styles.dropdownMenu}>
+                    {['All Tasks', 'Ongoing', 'Completed'].map((option, i) => (
                         <TouchableOpacity
-                            key={idx}
-                            style={styles.taskCard}
-                            onPress={() => navigation.push('AdminTaskDetailsScreen', { task })}
+                            key={option}
+                            style={[
+                                styles.dropdownItem,
+                                selectedFilter === option && styles.dropdownItemActive,
+                                i === 0 && styles.dropdownItemFirst,
+                                i === 2 && styles.dropdownItemLast,
+                            ]}
+                            onPress={() => {
+                                setSelectedFilter(option);
+                                setFilterVisible(false);
+                            }}
                         >
-                            <LinearGradient colors={['#0d87c8', '#002b4f']} style={styles.taskCardInner}>
-                                <View style={styles.taskRow}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            const updated = [...checkedStates];
-                                            updated[idx] = !updated[idx];
-                                            setCheckedStates(updated);
-                                        }}
-                                        style={[
-                                            styles.checkboxWrapper,
-                                            { backgroundColor: checkedStates[idx] ? '#28a745' : '#ccc' },
-                                        ]}
-                                    >
-                                        {checkedStates[idx] && <Icon name="checkmark" size={16} color="#fff" />}
-                                    </TouchableOpacity>
-
-                                    <Text style={styles.taskTitle}>{task}</Text>
-                                    <View style={styles.avatarGroup}>
-                                        <View style={[styles.avatarTask, { backgroundColor: '#0066a2' }]} />
-                                        <View style={[styles.avatarTask, { backgroundColor: '#000' }]} />
-                                        <View style={[styles.avatarTask, { backgroundColor: '#00aaff' }]} />
-                                    </View>
-                                    <Icon name="chevron-forward" size={20} color="#fff" />
-                                </View>
-                                <View style={styles.progressBar}>
-                                    <View style={[styles.progressFill, { width: '50%' }]} />
-                                </View>
-                            </LinearGradient>
+                            <Text style={[
+                                styles.dropdownItemText,
+                                selectedFilter === option && styles.dropdownItemTextActive
+                            ]}>
+                                {option}
+                            </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
-            </ScrollView>
+            )}
+        </View>
 
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
+
+        {tasks.map((task, idx) => (
+            <TouchableOpacity
+                key={idx}
+                style={styles.taskCard}
+                onPress={() => navigation.push('AdminTaskDetailsScreen', { task })}
+            >
+                <LinearGradient colors={['#0d87c8', '#002b4f']} style={styles.taskCardInner}>
+                    <View style={styles.taskRow}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const updated = [...checkedStates];
+                                updated[idx] = !updated[idx];
+                                setCheckedStates(updated);
+                            }}
+                            style={[
+                                styles.checkboxWrapper,
+                                { backgroundColor: checkedStates[idx] ? '#28a745' : '#ccc' },
+                            ]}
+                        >
+                            {checkedStates[idx] && <Icon name="checkmark" size={16} color="#fff" />}
+                        </TouchableOpacity>
+
+                        <Text style={styles.taskTitle}>{task}</Text>
+                        <View style={styles.avatarGroup}>
+                            <View style={[styles.avatarTask, { backgroundColor: '#0066a2' }]} />
+                            <View style={[styles.avatarTask, { backgroundColor: '#000' }]} />
+                            <View style={[styles.avatarTask, { backgroundColor: '#00aaff' }]} />
+                        </View>
+                        <Icon name="chevron-forward" size={20} color="#fff" />
+                    </View>
+                    <View style={styles.progressBar}>
+                        <View style={[styles.progressFill, { width: '50%' }]} />
+                    </View>
+                </LinearGradient>
+            </TouchableOpacity>
+        ))}
+    </View>
+            </ScrollView >
+
+    {/* Bottom Tab */ }
+    < View style = { styles.bottomTab } >
                 <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
                     <Icon name="home" size={26} color="#fff" />
                 </TouchableOpacity>
@@ -236,8 +237,8 @@ const AdminHomeScreen = () => {
                 <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
                     <Icon name="person" size={26} color="#fff" />
                 </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+            </View >
+        </SafeAreaView >
     );
 };
 

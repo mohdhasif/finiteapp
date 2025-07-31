@@ -36,4 +36,9 @@ export type RootStackParamList = {
     projectTitle: string;
   };
   ProjectDetailsScreen: { projectId: number };
+
+
+  ClientListScreen: undefined;
+
+  ClientApprovalScreen: { client: any }; // tukar `any` ke type sebenar kalau ada
 };
