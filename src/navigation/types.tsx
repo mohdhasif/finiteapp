@@ -41,4 +41,6 @@ export type RootStackParamList = {
   ClientListScreen: undefined;
 
   ClientApprovalScreen: { client: any }; // tukar `any` ke type sebenar kalau ada
+
+  FreelancerListScreen: undefined;
 };

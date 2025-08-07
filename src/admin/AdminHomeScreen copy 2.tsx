@@ -161,7 +161,7 @@ const AdminHomeScreen = () => {
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Freelancers</Text>
                         <TouchableOpacity
-                            onPress={() => navigation.navigate('FreelancerListScreen')}
+                        // onPress={() => navigation.navigate('AdminProjectListScreen')}
                         >
                             <Text style={styles.seeAll}>See all</Text>
                         </TouchableOpacity>

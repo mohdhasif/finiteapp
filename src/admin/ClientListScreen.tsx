@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -61,9 +61,16 @@ const ClientListScreen = () => {
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<AdminTaskDetailsScreenRouteProp>();
-    
-    const fetchClients = async () => {
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchClients(); // only when screen focused
+        }, [selectedFilter])
+    );
+
+    const fetchClients = async (isRefreshing = false) => {
         try {
+            if (!isRefreshing) setLoading(true); // jangan tunjuk loading spinner atas kalau refreshing
             const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_clients.php');
             const text = await response.text();
             const data = JSON.parse(text);
@@ -87,7 +94,6 @@ const ClientListScreen = () => {
             : clients.filter(c => c.client_status.toLowerCase() === selectedFilter.toLowerCase());
 
     const handlePress = (client: Client) => {
-        console.log('Client pressed:', client.name);
         navigation.navigate('ClientApprovalScreen', { client: client });
     };
 
@@ -101,6 +107,14 @@ const ClientListScreen = () => {
 
     return (
         <View style={styles.container}>
+
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Icon name="arrow-back" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Clients</Text>
+            </View>
 
             {/* Dropdown Filter */}
             <View style={styles.dropdownContainer}>
@@ -160,7 +174,7 @@ const ClientListScreen = () => {
                         refreshing={refreshing}
                         onRefresh={() => {
                             setRefreshing(true);
-                            fetchClients();
+                            fetchClients(true); // isRefreshing = true
                         }}
                     />
                 }
@@ -177,7 +191,6 @@ const ClientListScreen = () => {
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
-                            {/* Header */}
                             <View style={styles.headerRow}>
                                 {item.logo_url ? (
                                     <Image
@@ -212,7 +225,6 @@ const ClientListScreen = () => {
                                 </View>
                             </View>
 
-                            {/* Progress */}
                             <View style={styles.progressBarContainer}>
                                 <View
                                     style={[
@@ -246,6 +258,29 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#007bff',
+        paddingTop: 50,
+        paddingBottom: 12,
+        paddingHorizontal: 16,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+    },
+    backButton: {
+        marginRight: 10,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#fff',
     },
     listContent: {
         padding: 16,
@@ -328,8 +363,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         alignSelf: 'flex-end',
     },
-
-
     dropdownContainer: {
         position: 'relative',
         zIndex: 10,
