@@ -54,7 +54,8 @@ const FreelancerListScreen = () => {
     }, []);
 
     const handlePress = (freelancer: Freelancer) => {
-        // navigation.navigate('FreelancerDetailsScreen', { freelancer });
+        console.log(freelancer);
+        navigation.navigate('FreelancerApprovalScreen', { freelancer });
     };
 
     if (loading && !refreshing) {
