@@ -33,6 +33,7 @@ type Freelancer = {
     skillset: string;
     avatar: string | null;
     availability: boolean;
+    status: 'pending' | 'approved' | 'rejected' | 'inactive';
 };
 
 const availabilityOptions = [true, false];
@@ -41,6 +42,10 @@ const FreelancerApprovalScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<FreelancerApprovalScreenRouteProp>();
     const { freelancer } = route.params;
+
+    const [status, setStatus] = useState(freelancer.status ?? 'pending');
+    const [statusModalVisible, setStatusModalVisible] = useState(false);
+    const statusOptions = ['pending', 'approved', 'rejected', 'inactive'];
 
     const [name, setName] = useState(freelancer.name ?? '');
     const [email, setEmail] = useState(freelancer.email ?? '');
@@ -59,6 +64,7 @@ const FreelancerApprovalScreen = () => {
             skillset,
             avatar: avatarUrl,
             availability,
+            status,
         });
 
         if (result.success) {
@@ -124,6 +130,11 @@ const FreelancerApprovalScreen = () => {
                             {availability ? 'AVAILABLE' : 'NOT AVAILABLE'}
                         </Button>
 
+                        <Text style={styles.inputLabel}>Status</Text>
+                        <Button mode="outlined" onPress={() => setStatusModalVisible(true)} style={styles.option}>
+                            {status?.toUpperCase()}
+                        </Button>
+
                         {loading ? (
                             <ActivityIndicator color="#fff" style={{ marginVertical: 20 }} />
                         ) : (
@@ -132,9 +143,9 @@ const FreelancerApprovalScreen = () => {
                                     <Text style={styles.buttonText}>Update</Text>
                                 </TouchableOpacity>
 
-                                {!availability && (
+                                {status === 'pending' && (
                                     <TouchableOpacity style={[styles.button, { backgroundColor: '#28a745' }]} onPress={handleApprove}>
-                                        <Text style={styles.buttonText}>Approve Freelancer</Text>
+                                        <Text style={styles.buttonText}>Approve Client</Text>
                                     </TouchableOpacity>
                                 )}
                             </>
@@ -143,6 +154,7 @@ const FreelancerApprovalScreen = () => {
                 </ScrollView>
 
                 <Portal>
+                    {/* Modal Availability */}
                     <Modal visible={availabilityModalVisible} onDismiss={() => setAvailabilityModalVisible(false)} contentContainerStyle={styles.modalContainer}>
                         {availabilityOptions.map((option) => (
                             <List.Item
@@ -151,6 +163,20 @@ const FreelancerApprovalScreen = () => {
                                 onPress={() => {
                                     setAvailability(option);
                                     setAvailabilityModalVisible(false);
+                                }}
+                            />
+                        ))}
+                    </Modal>
+
+                    {/* Modal Status */}
+                    <Modal visible={statusModalVisible} onDismiss={() => setStatusModalVisible(false)} contentContainerStyle={styles.modalContainer}>
+                        {statusOptions.map((option) => (
+                            <List.Item
+                                key={option}
+                                title={option.toUpperCase()}
+                                onPress={() => {
+                                    setStatus(option as any);
+                                    setStatusModalVisible(false);
                                 }}
                             />
                         ))}

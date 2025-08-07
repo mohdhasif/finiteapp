@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -26,28 +26,28 @@ const { width } = Dimensions.get('window');
 
 type ClientApprovalScreenRouteProp = RouteProp<RootStackParamList, 'ClientApprovalScreen'>;
 
+type Client = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  company_name: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'active' | 'non-active';
+  logo_url: string | null;
+  client_type: 'individual' | 'company';
+};
+
 const statusOptions = ['pending', 'approved', 'rejected', 'active', 'non-active'];
 const typeOptions = ['individual', 'company'];
-
 
 const ClientApprovalScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ClientApprovalScreenRouteProp>();
   const { client } = route.params;
 
-  // console.log('client:', client);
-
-  useEffect(() => {
-    if (client.logo_url) {
-      setLogoUrl(client.logo_url); // string URL
-    }
-  }, [client]);
-
   const [companyName, setCompanyName] = useState(client.company_name ?? '');
   const [phone, setPhone] = useState(client.phone ?? '');
-
-  const [logoUrl, setLogoUrl] = useState<{ uri: string; fileName?: string; type?: string } | string | null>(null);
-
+  const [logoUrl, setLogoUrl] = useState(client.logo_url);
   const [loading, setLoading] = useState(false);
 
   const [statusModalVisible, setStatusModalVisible] = useState(false);
@@ -56,8 +56,32 @@ const ClientApprovalScreen = () => {
   const [typeModalVisible, setTypeModalVisible] = useState(false);
   const [clientType, setClientType] = useState(client.client_type ?? 'company');
 
+  const handleUpdate = async () => {
+
+    console.log('client:', client);
+
+    setLoading(true);
+    const result = await updateClient({
+      client_id: client.client_id,
+      company_name: companyName,
+      phone,
+      status: statusValue,
+      client_type: clientType,
+      logo_url: logoUrl,
+    });
+
+    if (result.success) {
+      Alert.alert('Success', 'Client updated successfully');
+    } else {
+      Alert.alert('Error', result.error || 'Update failed');
+    }
+
+    setLoading(false);
+  };
+
   const handleApprove = async () => {
     setLoading(true);
+    console.log('client:', client);
     const result = await approveClient(client.client_id);
 
     if (result.success) {
@@ -74,68 +98,10 @@ const ClientApprovalScreen = () => {
     launchImageLibrary({ mediaType: 'photo' }, (response) => {
       if (response.assets && response.assets.length > 0) {
         const selected = response.assets[0];
-        if (selected.uri) {
-          setLogoUrl({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
-        }
+        setLogoUrl(selected.uri || null);
       }
     });
   };
-
-  const handleUpdate = async () => {
-    setLoading(true);
-
-    const formData = new FormData();
-
-    formData.append('client_id', client.client_id);
-    formData.append('company_name', companyName);
-    formData.append('phone', phone);
-    formData.append('status', statusValue);
-    formData.append('client_type', clientType);
-
-    console.log('logoUrl:', logoUrl);
-
-    if (logoUrl && typeof logoUrl === 'object' && logoUrl.uri) {
-      const fileName = logoUrl.fileName || `logo_${client.id}.jpg`;
-      const fileType = logoUrl.type || 'image/jpeg';
-
-      formData.append('logo', {
-        uri: logoUrl.uri,
-        name: fileName,
-        type: fileType,
-      });
-    } else if (typeof logoUrl === 'string') {
-      // Hantar URL lama supaya backend kekalkan
-      formData.append('logo_url', logoUrl);
-    }
-
-    try {
-      const response = await fetch('https://fd9315becb7e.ngrok-free.app/update_client.php', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      const text = await response.text();
-      console.log('Server response:', text);
-
-      if (response.ok) {
-        Alert.alert('Success', 'Client updated successfully');
-      } else {
-        Alert.alert('Error', 'Failed to update client');
-      }
-    } catch (error) {
-      console.error('Error updating client:', error);
-      Alert.alert('Error', 'Failed to update client');
-    } finally {
-      console.log('Client updated successfully');
-
-      setLoading(false);
-    };
-  };
-
-  console.log(logoUrl);
 
   return (
     <PaperProvider>
@@ -152,17 +118,7 @@ const ClientApprovalScreen = () => {
             <Text style={styles.title}>{client.name}</Text>
             <Text style={styles.label}>Email: {client.email}</Text>
 
-            {logoUrl &&
-              <Image
-                source={
-                  logoUrl
-                    ? typeof logoUrl === 'string'
-                      ? { uri: logoUrl }
-                      : logoUrl // { uri: ... }
-                    : require('../assets/user.png')
-                }
-                style={styles.logo} resizeMode="contain"
-              />}
+            {logoUrl && <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />}
             <TouchableOpacity style={styles.uploadBtn} onPress={pickLogo}>
               <Text style={styles.uploadText}>Upload Logo</Text>
             </TouchableOpacity>

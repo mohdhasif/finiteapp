@@ -26,6 +26,7 @@ export const updateFreelancer = async ({
     skillset,
     avatar,
     availability,
+    status,
 }: {
     freelancer_id: number;
     name: string;
@@ -33,6 +34,7 @@ export const updateFreelancer = async ({
     skillset: string;
     avatar: string | null;
     availability: boolean;
+    status: 'pending' | 'approved' | 'rejected' | 'inactive';
 }) => {
     try {
         const response = await fetch('https://fd9315becb7e.ngrok-free.app/update_freelancer.php', {
@@ -45,6 +47,7 @@ export const updateFreelancer = async ({
                 skillset,
                 avatar_url: avatar,
                 availability: availability ? 1 : 0,
+                status, // ✅ new field
             }),
         });
 

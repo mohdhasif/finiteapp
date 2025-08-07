@@ -26,6 +26,7 @@ type Freelancer = {
     skillset: string;
     availability: number;
     avatar_url: string | null;
+    status: 'pending' | 'approved' | 'rejected' | 'inactive';
 };
 
 const FreelancerListScreen = () => {
@@ -128,11 +129,20 @@ const FreelancerListScreen = () => {
                                         },
                                     ]}
                                 >
-                                    <Text style={styles.availabilityText}>
+                                    {/* <Text style={styles.availabilityText}>
                                         {freelancer.availability ? 'Available' : 'Unavailable'}
+                                    </Text> */}
+                                    <Text style={{ fontSize: 12, color: '#fff' }}>
+                                        {freelancer.status?.toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
+
+                            {/* <View style={{ marginTop: 6 }}>
+                                <Text style={{ fontSize: 12, color: '#fff' }}>
+                                    Status: {freelancer.status?.toUpperCase()}
+                                </Text>
+                            </View> */}
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
