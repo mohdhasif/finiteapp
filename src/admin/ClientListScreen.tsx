@@ -225,7 +225,7 @@ const ClientListScreen = () => {
                                 </View>
                             </View>
 
-                            <View style={styles.progressBarContainer}>
+                            {/* <View style={styles.progressBarContainer}>
                                 <View
                                     style={[
                                         styles.progressBar,
@@ -235,10 +235,12 @@ const ClientListScreen = () => {
                                         },
                                     ]}
                                 />
-                            </View>
-                            <Text style={styles.progressText}>
+                            </View> */}
+
+                            {/* <Text style={styles.progressText}>
                                 {item.progress ? `${item.progress}%` : '0%'}
-                            </Text>
+                            </Text> */}
+
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
