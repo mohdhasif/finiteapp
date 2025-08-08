@@ -313,9 +313,6 @@ const AdminHomeScreen = () => {
                                     </View>
                                     <Icon name="chevron-forward" size={20} color="#fff" />
                                 </View>
-                                <View style={styles.progressBar}>
-                                    <View style={[styles.progressFill, { width: '50%' }]} />
-                                </View>
                             </LinearGradient>
                         </TouchableOpacity>
                     ))}
