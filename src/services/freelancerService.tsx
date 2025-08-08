@@ -67,21 +67,40 @@ export const approveFreelancer = async (freelancer_id: number) => {
     try {
         const response = await fetch(API_ENDPOINTS.approveFreelancer, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({ freelancer_id }),
         });
 
         const text = await response.text();
         console.log('Server response:', text);
 
+        if (!response.ok) {
+            return {
+                success: false,
+                error: `Server returned status ${response.status}`,
+                raw: text,
+            };
+        }
+
         try {
-            return JSON.parse(text);
+            const data = JSON.parse(text);
+            return data;
         } catch (parseError) {
             console.error('JSON Parse Error:', parseError);
-            return { success: false, error: 'Invalid server response (not JSON)' };
+            return {
+                success: false,
+                error: 'Invalid server response (not valid JSON)',
+                raw: text,
+            };
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Approve Freelancer Error:', error);
-        return { success: false, error: 'Server error' };
+        return {
+            success: false,
+            error: error.message || 'Server error',
+        };
     }
 };
+

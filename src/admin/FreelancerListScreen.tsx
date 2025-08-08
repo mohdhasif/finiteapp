@@ -27,7 +27,7 @@ type Freelancer = {
     email: string;
     skillset: string;
     availability: number;
-    avatar_url: string | null;
+    avatar: string | null;
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
 };
 
@@ -56,6 +56,8 @@ const FreelancerListScreen = () => {
         try {
             const response = await fetch(API_ENDPOINTS.getFreelancers);
             const text = await response.text();
+
+            console.log('text:', text);
 
             let data;
             try {
@@ -132,9 +134,6 @@ const FreelancerListScreen = () => {
                             <TouchableOpacity
                                 key={status}
                                 onPress={() => {
-                                    console.log('Selected status:', status);
-                                    console.log(freelancers);
-
                                     setSelectedFilter(status);
                                     setDropdownVisible(false);
                                 }}
@@ -187,9 +186,9 @@ const FreelancerListScreen = () => {
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={styles.headerRow}>
-                                {freelancer.avatar_url ? (
+                                {freelancer.avatar ? (
                                     <Image
-                                        source={{ uri: freelancer.avatar_url }}
+                                        source={{ uri: freelancer.avatar }}
                                         style={styles.avatarImage}
                                         resizeMode="cover"
                                     />

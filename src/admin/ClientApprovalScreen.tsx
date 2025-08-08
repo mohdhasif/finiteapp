@@ -30,7 +30,6 @@ type ClientApprovalScreenRouteProp = RouteProp<RootStackParamList, 'ClientApprov
 const statusOptions = ['pending', 'approved', 'rejected', 'active', 'non-active'];
 const typeOptions = ['individual', 'company'];
 
-
 const ClientApprovalScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ClientApprovalScreenRouteProp>();

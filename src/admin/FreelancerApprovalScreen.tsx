@@ -62,6 +62,9 @@ const FreelancerApprovalScreen = () => {
         }
     }, [freelancer]);
 
+    console.log('Avatar URL:', avatarUrl);
+    
+
     const [availability, setAvailability] = useState(freelancer.availability);
     const [loading, setLoading] = useState(false);
     const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
@@ -124,18 +127,28 @@ const FreelancerApprovalScreen = () => {
     };
 
     const handleApprove = async () => {
-        setLoading(true);
-
-        const result = await approveFreelancer(freelancer.id);
-
-        if (result.success) {
-            setAvailability(true);
-            Alert.alert('Approved', 'Freelancer is now active');
-        } else {
-            Alert.alert('Error', result.error || 'Approval failed');
+        if (!freelancer?.id) {
+            Alert.alert('Error', 'Freelancer ID is missing.');
+            return;
         }
 
-        setLoading(false);
+        setLoading(true);
+
+        try {
+            const result = await approveFreelancer(freelancer.id);
+
+            if (result.success) {
+                setAvailability(true);
+                Alert.alert('Approved', 'Freelancer is now active.');
+            } else {
+                Alert.alert('Error', result.error || 'Approval failed.');
+            }
+        } catch (error) {
+            console.error('Approval error:', error);
+            Alert.alert('Error', 'Something went wrong.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const pickAvatar = () => {
@@ -185,7 +198,7 @@ const FreelancerApprovalScreen = () => {
                             value={name}
                             onChangeText={setName}
                             style={styles.input}
-                            editable={false}
+                            editable={true}
                             selectTextOnFocus={false}
                         />
 
@@ -212,7 +225,7 @@ const FreelancerApprovalScreen = () => {
 
                                 {status === 'pending' && (
                                     <TouchableOpacity style={[styles.button, { backgroundColor: '#28a745' }]} onPress={handleApprove}>
-                                        <Text style={styles.buttonText}>Approve Client</Text>
+                                        <Text style={styles.buttonText}>Approve Freelancer</Text>
                                     </TouchableOpacity>
                                 )}
                             </>

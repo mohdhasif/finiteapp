@@ -235,22 +235,6 @@ const ClientListScreen = () => {
                                 </View>
                             </View>
 
-                            {/* <View style={styles.progressBarContainer}>
-                                <View
-                                    style={[
-                                        styles.progressBar,
-                                        {
-                                            width: `${item.progress || 0}%`,
-                                            backgroundColor: getProgressColor(item.progress || 0),
-                                        },
-                                    ]}
-                                />
-                            </View> */}
-
-                            {/* <Text style={styles.progressText}>
-                                {item.progress ? `${item.progress}%` : '0%'}
-                            </Text> */}
-
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
