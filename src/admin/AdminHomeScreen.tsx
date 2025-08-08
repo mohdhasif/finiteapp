@@ -33,6 +33,8 @@ export type Freelancer = {
     email: string; // from users.email
     skillset: string;
     availability: boolean;
+    avatar: string | null;
+    status: 'pending' | 'approved' | 'rejected' | 'inactive';
 };
 
 const AdminHomeScreen = () => {
@@ -74,7 +76,7 @@ const AdminHomeScreen = () => {
             setFreelancers(freelancerData);
 
             // console.log('CLIENTS:', clientData);
-            // console.log('FREELANCERS:', freelancerData);
+            console.log('FREELANCERS:', freelancerData);
 
         };
 
@@ -150,7 +152,13 @@ const AdminHomeScreen = () => {
                                     </View>
 
                                 </View>
-                                <Text style={styles.clientName}>{client.name}</Text>
+                                <Text
+                                    style={styles.clientName}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
+                                    {client.name}
+                                </Text>
                             </View>
                         ))}
                     </ScrollView>
@@ -171,9 +179,23 @@ const AdminHomeScreen = () => {
                         {freelancers.map((freelancer) => (
                             <View key={freelancer.id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
-                                    <Image source={require('../assets/user.png')} style={styles.avatar} />
+                                    <Image
+                                        source={
+                                            typeof freelancer.avatar === 'string' && freelancer.avatar.startsWith('http')
+                                                ? { uri: freelancer.avatar }
+                                                : require('../assets/user.png')
+                                        }
+                                        style={styles.clientLogo}
+                                    />
                                 </View>
-                                <Text style={styles.freelancersName}>{freelancer.name}</Text>
+                                <Text
+                                    style={styles.freelancersName}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
+                                    {freelancer.name}
+                                </Text>
+
                             </View>
                         ))}
                     </ScrollView>
@@ -410,11 +432,17 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 12,
         marginTop: 6,
+        maxWidth: 80, // adjust ikut lebar card
+        textAlign: 'center',
+        alignSelf: 'center',
     },
     freelancersName: {
         color: 'black',
         fontSize: 12,
         marginTop: 6,
+        maxWidth: 80, // adjust ikut lebar card
+        textAlign: 'center',
+        alignSelf: 'center',
     },
     section: {
         padding: 20,
