@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+
 import {
     View,
     Text,
@@ -12,9 +13,10 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { API_ENDPOINTS } from '../constants/apiConfig'; // sesuaikan path
 
 const { width } = Dimensions.get('window');
 
@@ -29,17 +31,40 @@ type Freelancer = {
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
 };
 
+const statusOptions = ['all', 'pending', 'approved', 'rejected', 'inactive'];
+
 const FreelancerListScreen = () => {
     const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [selectedFilter, setSelectedFilter] = useState('all');
+    const [dropdownVisible, setDropdownVisible] = useState(false);
 
-    const fetchFreelancers = async () => {
+    useFocusEffect(
+        useCallback(() => {
+            fetchFreelancers(setFreelancers, setLoading, setRefreshing);
+            // only when screen focused
+        }, [selectedFilter])
+    );
+
+    const fetchFreelancers = async (
+        setFreelancers: (data: any) => void,
+        setLoading: (val: boolean) => void,
+        setRefreshing: (val: boolean) => void
+    ) => {
         try {
-            const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_freelancers.php');
+            const response = await fetch(API_ENDPOINTS.getFreelancers);
             const text = await response.text();
-            const data = JSON.parse(text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                console.error('JSON parse error:', err);
+                return;
+            }
+
             setFreelancers(data);
         } catch (error) {
             console.error('Fetch error:', error);
@@ -51,11 +76,16 @@ const FreelancerListScreen = () => {
 
     useEffect(() => {
         setLoading(true);
-        fetchFreelancers();
+        fetchFreelancers(setFreelancers, setLoading, setRefreshing);
+
     }, []);
 
+    const filteredFreelancers =
+        selectedFilter === 'all'
+            ? freelancers
+            : freelancers.filter(f => f.status === selectedFilter);
+
     const handlePress = (freelancer: Freelancer) => {
-        console.log(freelancer);
         navigation.navigate('FreelancerApprovalScreen', { freelancer });
     };
 
@@ -77,6 +107,60 @@ const FreelancerListScreen = () => {
                 <Text style={styles.headerTitle}>Freelancers</Text>
             </View>
 
+            {/* Dropdown Filter */}
+            <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                    onPress={() => setDropdownVisible(!dropdownVisible)}
+                    style={styles.dropdownButton}
+                >
+                    <Text style={styles.dropdownButtonText}>
+                        {selectedFilter === 'all'
+                            ? 'All Freelancers'
+                            : selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)}
+                    </Text>
+                    <Icon
+                        name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color="#999"
+                        style={{ marginLeft: 6 }}
+                    />
+                </TouchableOpacity>
+
+                {dropdownVisible && (
+                    <View style={styles.dropdownList}>
+                        {statusOptions.map((status, index) => (
+                            <TouchableOpacity
+                                key={status}
+                                onPress={() => {
+                                    console.log('Selected status:', status);
+                                    console.log(freelancers);
+
+                                    setSelectedFilter(status);
+                                    setDropdownVisible(false);
+                                }}
+                                style={[
+                                    styles.dropdownItem,
+                                    index === 0 && styles.dropdownFirstItem,
+                                    index === statusOptions.length - 1 && styles.dropdownLastItem,
+                                    selectedFilter === status && styles.dropdownActiveItem,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.dropdownItemText,
+                                        selectedFilter === status && styles.dropdownItemTextActive,
+                                    ]}
+                                >
+                                    {status === 'all'
+                                        ? 'All Clients'
+                                        : status.charAt(0).toUpperCase() + status.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+            </View>
+
             <ScrollView
                 contentContainerStyle={styles.listContent}
                 refreshControl={
@@ -84,12 +168,13 @@ const FreelancerListScreen = () => {
                         refreshing={refreshing}
                         onRefresh={() => {
                             setRefreshing(true);
-                            fetchFreelancers();
+                            fetchFreelancers(setFreelancers, setLoading, setRefreshing);
+
                         }}
                     />
                 }
             >
-                {freelancers.map((freelancer, index) => (
+                {filteredFreelancers.map((freelancer, index) => (
                     <TouchableOpacity
                         key={freelancer.id}
                         style={styles.cardWrapper}
@@ -125,24 +210,15 @@ const FreelancerListScreen = () => {
                                     style={[
                                         styles.availabilityBadge,
                                         {
-                                            backgroundColor: freelancer.availability ? '#28a745' : '#dc3545',
+                                            backgroundColor: freelancer.status === 'approved' ? '#28a745' : '#dc3545',
                                         },
                                     ]}
                                 >
-                                    {/* <Text style={styles.availabilityText}>
-                                        {freelancer.availability ? 'Available' : 'Unavailable'}
-                                    </Text> */}
                                     <Text style={{ fontSize: 12, color: '#fff' }}>
                                         {freelancer.status?.toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
-
-                            {/* <View style={{ marginTop: 6 }}>
-                                <Text style={{ fontSize: 12, color: '#fff' }}>
-                                    Status: {freelancer.status?.toUpperCase()}
-                                </Text>
-                            </View> */}
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
@@ -243,5 +319,60 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 'bold',
         color: '#fff',
+    },
+
+
+
+    dropdownContainer: {
+        position: 'relative',
+        zIndex: 10,
+        alignItems: 'flex-end',
+        padding: 16,
+        marginTop: 8,
+    },
+    dropdownButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    dropdownButtonText: {
+        fontSize: 16,
+        color: '#999',
+    },
+    dropdownList: {
+        position: 'absolute',
+        top: 40,
+        right: 16,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 14,
+        paddingVertical: 4,
+        width: 160,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    dropdownItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    dropdownFirstItem: {
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 14,
+    },
+    dropdownLastItem: {
+        borderBottomLeftRadius: 14,
+        borderBottomRightRadius: 14,
+    },
+    dropdownItemText: {
+        fontSize: 15,
+        color: '#007bff',
+    },
+    dropdownItemTextActive: {
+        fontWeight: 'bold',
+        color: '#fff',
+    },
+    dropdownActiveItem: {
+        backgroundColor: '#007bff',
     },
 });

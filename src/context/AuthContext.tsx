@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 type AuthContextType = {
     userRole: string | null;
@@ -38,29 +39,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await fetch('https://fd9315becb7e.ngrok-free.app/login.php', {
+            const response = await fetch(API_ENDPOINTS.login, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
 
-            // 🔍 Logkan versi text (untuk debug) tanpa ganggu json parsing
+            // 🔍 Log untuk debug
             const clonedResponse = response.clone();
             const rawText = await clonedResponse.text();
             console.log('RESPONSE TEXT:', rawText);
 
-            // ✅ Parse JSON rasmi
+            // ✅ Cuba parse JSON
             const data = await response.json();
 
-            if (!response.ok) throw new Error(data.error || 'Login failed');
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
+            }
 
+            // ✅ Simpan dalam AsyncStorage
             await AsyncStorage.setItem('userToken', data.token);
             await AsyncStorage.setItem('userRole', data.user.role);
             await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
 
-            // setUserRole(data.user.role); // ✅ trigger navigasi ikut role
-            return data.user.role; // ✅ return role tapi JANGAN terus setUserRole
-
+            return data.user.role; // Biarkan caller handle navigation
         } catch (error) {
             console.error('Login error:', error);
             throw error;

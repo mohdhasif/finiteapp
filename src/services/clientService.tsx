@@ -1,9 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// src/services/clientService.ts
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from '../constants/apiConfig';
+
+// ✅ Get clients
 export const getClients = async () => {
     const token = await AsyncStorage.getItem('userToken');
 
-    const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_clients.php', {
+    const response = await fetch(API_ENDPOINTS.getClients, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -15,12 +19,10 @@ export const getClients = async () => {
         throw new Error(errorData.error || 'Failed to fetch clients');
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
 };
 
-// services/clientService.tsx
-
+// ✅ Update client
 export const updateClient = async ({
     client_id,
     company_name,
@@ -37,7 +39,7 @@ export const updateClient = async ({
     logo_url: string | null;
 }) => {
     try {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/update_client.php', {
+        const response = await fetch(API_ENDPOINTS.updateClient, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -50,26 +52,33 @@ export const updateClient = async ({
             }),
         });
 
-        const data = await response.json();
-        return data; // data.success / data.error
+        return await response.json(); // { success: true/false, error: "" }
     } catch (error) {
-        console.log('Error:', error);
+        console.error('Update Client Error:', error);
         return { success: false, error: 'Server error' };
     }
 };
 
+// ✅ Approve client
 export const approveClient = async (client_id: number) => {
     try {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/approve_client.php', {
+        const response = await fetch(API_ENDPOINTS.approveClient, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ client_id }),
         });
 
-        const data = await response.json();
-        return data;
+        const resText = await response.text();
+        console.log('Server response:', resText);
+
+        try {
+            return JSON.parse(resText);
+        } catch (error) {
+            console.error('JSON Parse Error:', error);
+            return { success: false, error: 'Invalid server response (not JSON)' };
+        }
     } catch (error) {
-        console.log('Error:', error);
+        console.error('Approve Client Error:', error);
         return { success: false, error: 'Server error' };
     }
 };

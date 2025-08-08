@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -21,6 +21,7 @@ import { Modal, Portal, Button, Provider as PaperProvider, List } from 'react-na
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { updateFreelancer, approveFreelancer } from '../services/freelancerService';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +44,8 @@ const FreelancerApprovalScreen = () => {
     const route = useRoute<FreelancerApprovalScreenRouteProp>();
     const { freelancer } = route.params;
 
+    console.log(freelancer);
+
     const [status, setStatus] = useState(freelancer.status ?? 'pending');
     const [statusModalVisible, setStatusModalVisible] = useState(false);
     const statusOptions = ['pending', 'approved', 'rejected', 'inactive'];
@@ -50,34 +53,79 @@ const FreelancerApprovalScreen = () => {
     const [name, setName] = useState(freelancer.name ?? '');
     const [email, setEmail] = useState(freelancer.email ?? '');
     const [skillset, setSkillset] = useState(freelancer.skillset ?? '');
+
     const [avatarUrl, setAvatarUrl] = useState(freelancer.avatar);
+
+    useEffect(() => {
+        if (freelancer.avatar) {
+            setAvatarUrl(freelancer.avatar); // string URL
+        }
+    }, [freelancer]);
+
     const [availability, setAvailability] = useState(freelancer.availability);
     const [loading, setLoading] = useState(false);
     const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
 
     const handleUpdate = async () => {
         setLoading(true);
-        const result = await updateFreelancer({
-            freelancer_id: freelancer.id,
-            name,
-            email,
-            skillset,
-            avatar: avatarUrl,
-            availability,
-            status,
-        });
 
-        if (result.success) {
-            Alert.alert('Success', 'Freelancer updated successfully');
-        } else {
-            Alert.alert('Error', result.error || 'Update failed');
+        const formData = new FormData();
+
+        formData.append('freelancer_id', String(freelancer.id));
+        formData.append('name', name);
+        formData.append('email', email);
+        formData.append('skillset', skillset);
+        formData.append('availability', availability ? '1' : '0');
+        formData.append('status', status);
+
+        if (avatarUrl && typeof avatarUrl === 'object' && avatarUrl.uri) {
+            const fileName = avatarUrl.fileName || `avatar_${freelancer.id}.jpg`;
+            const fileType = avatarUrl.type || 'image/jpeg';
+
+            formData.append('logo', {
+                uri: avatarUrl.uri,
+                name: fileName,
+                type: fileType,
+            } as any); // 👈 TypeScript workaround
+        } else if (typeof avatarUrl === 'string') {
+            // If using old avatar URL
+            formData.append('avatar', avatarUrl);
         }
 
-        setLoading(false);
+        try {
+            const response = await fetch(API_ENDPOINTS.updateFreelancer, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            const text = await response.text();
+            console.log('Server response:', text);
+
+            try {
+                const result = JSON.parse(text);
+
+                if (response.ok && result.success) {
+                    Alert.alert('Success', result.message || 'Freelancer updated successfully');
+                } else {
+                    Alert.alert('Error', result.error || 'Update failed');
+                }
+            } catch (parseError) {
+                Alert.alert('Error', 'Invalid server response');
+            }
+        } catch (error) {
+            console.error('Error updating freelancer:', error);
+            Alert.alert('Error', 'Failed to update freelancer');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleApprove = async () => {
         setLoading(true);
+
         const result = await approveFreelancer(freelancer.id);
 
         if (result.success) {
@@ -94,7 +142,9 @@ const FreelancerApprovalScreen = () => {
         launchImageLibrary({ mediaType: 'photo' }, (response) => {
             if (response.assets && response.assets.length > 0) {
                 const selected = response.assets[0];
-                setAvatarUrl(selected.uri || null);
+                if (selected.uri) {
+                    setAvatarUrl({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
+                }
             }
         });
     };
@@ -114,13 +164,30 @@ const FreelancerApprovalScreen = () => {
                         <Text style={styles.title}>{name}</Text>
                         <Text style={styles.label}>Email: {email}</Text>
 
-                        {avatarUrl && <Image source={{ uri: avatarUrl }} style={styles.logo} resizeMode="contain" />}
+                        {avatarUrl &&
+                            <Image
+                                source={
+                                    avatarUrl
+                                        ? typeof avatarUrl === 'string'
+                                            ? { uri: avatarUrl }
+                                            : avatarUrl // { uri: ... }
+                                        : require('../assets/user.png')
+                                }
+                                style={styles.logo}
+                                resizeMode="contain"
+                            />}
                         <TouchableOpacity style={styles.uploadBtn} onPress={pickAvatar}>
                             <Text style={styles.uploadText}>Upload Avatar</Text>
                         </TouchableOpacity>
 
                         <Text style={styles.inputLabel}>Name</Text>
-                        <TextInput value={name} onChangeText={setName} style={styles.input} />
+                        <TextInput
+                            value={name}
+                            onChangeText={setName}
+                            style={styles.input}
+                            editable={false}
+                            selectTextOnFocus={false}
+                        />
 
                         <Text style={styles.inputLabel}>Skillset</Text>
                         <TextInput value={skillset} onChangeText={setSkillset} style={styles.input} />

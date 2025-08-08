@@ -1,9 +1,10 @@
-const BASE_URL = 'https://fd9315becb7e.ngrok-free.app'; // Gantikan dengan URL sebenar
+// src/services/adminService.ts (or wherever appropriate)
+
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 export const fetchClients = async () => {
-    
     try {
-        const response = await fetch(`${BASE_URL}/get_clients.php`);
+        const response = await fetch(API_ENDPOINTS.getClients);
         if (!response.ok) throw new Error('Gagal fetch clients');
         return await response.json();
     } catch (error) {
@@ -14,7 +15,7 @@ export const fetchClients = async () => {
 
 export const fetchFreelancers = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/get_freelancers.php`);
+        const response = await fetch(API_ENDPOINTS.getFreelancers);
         if (!response.ok) throw new Error('Gagal fetch freelancers');
         return await response.json();
     } catch (error) {

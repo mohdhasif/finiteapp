@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 const UploadLogoScreen = () => {
   const [logo, setLogo] = useState<any>(null);
@@ -23,7 +24,14 @@ const UploadLogoScreen = () => {
     });
   };
 
-  const uploadLogo = async () => {
+  const uploadLogo = async (
+    logo: {
+      uri: string;
+      fileName?: string;
+      type?: string;
+    } | null,
+    setUploading: (val: boolean) => void
+  ) => {
     if (!logo) {
       Alert.alert('Please select a logo');
       return;
@@ -34,11 +42,12 @@ const UploadLogoScreen = () => {
       uri: logo.uri,
       name: logo.fileName || 'logo.jpg',
       type: logo.type || 'image/jpeg',
-    });
+    } as any); // 👈 cast as any to satisfy TS
 
     try {
       setUploading(true);
-      const res = await fetch('https://fd9315becb7e.ngrok-free.app/upload_logo.php', {
+
+      const res = await fetch(API_ENDPOINTS.uploadLogo, {
         method: 'POST',
         body: formData,
         headers: {
@@ -56,8 +65,8 @@ const UploadLogoScreen = () => {
       }
     } catch (error) {
       setUploading(false);
+      console.error('Upload error:', error);
       Alert.alert('Error', 'Upload failed');
-      console.error(error);
     }
   };
 
@@ -66,7 +75,7 @@ const UploadLogoScreen = () => {
       <Text style={styles.title}>Upload Logo</Text>
       <Button title="Choose Logo" onPress={pickImage} />
       {logo && <Image source={{ uri: logo.uri }} style={styles.preview} />}
-      <Button title="Upload Logo" onPress={uploadLogo} />
+      <Button title="Upload Logo" onPress={() => uploadLogo(logo, setUploading)} />
       {uploading && <ActivityIndicator size="large" style={{ marginTop: 10 }} />}
     </View>
   );

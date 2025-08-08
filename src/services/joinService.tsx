@@ -1,5 +1,7 @@
 // src/services/joinService.ts
 
+import { API_ENDPOINTS } from '../constants/apiConfig';
+
 export interface JoinFormPayload {
     name: string;
     email: string;
@@ -9,18 +11,23 @@ export interface JoinFormPayload {
 }
 
 export const submitJoinForm = async (payload: JoinFormPayload) => {
-    const response = await fetch('https://fd9315becb7e.ngrok-free.app/freelancers.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-    });
+    try {
+        const response = await fetch(API_ENDPOINTS.submitJoinForm, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Submission failed');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Submission failed');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Submit Join Form Error:', error);
+        throw error;
     }
-
-    return await response.json();
 };

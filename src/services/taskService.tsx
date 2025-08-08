@@ -1,7 +1,7 @@
-const API_BASE = 'https://fd9315becb7e.ngrok-free.app';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 export const getTasksByProject = async (token: string, projectId: number) => {
-    const res = await fetch(`${API_BASE}/project_tasks.php?project_id=${projectId}`, {
+    const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
         headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Gagal ambil tugasan');
@@ -9,7 +9,7 @@ export const getTasksByProject = async (token: string, projectId: number) => {
 };
 
 export const getTaskDetails = async (token: string, taskId: number) => {
-    const res = await fetch(`${API_BASE}/task_details.php?task_id=${taskId}`, {
+    const res = await fetch(API_ENDPOINTS.taskDetails(taskId), {
         headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Gagal ambil detail task');

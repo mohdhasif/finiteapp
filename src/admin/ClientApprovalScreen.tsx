@@ -21,6 +21,7 @@ import { Modal, Portal, Button, Provider as PaperProvider, List } from 'react-na
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { updateClient, approveClient } from '../services/clientService';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -35,14 +36,6 @@ const ClientApprovalScreen = () => {
   const route = useRoute<ClientApprovalScreenRouteProp>();
   const { client } = route.params;
 
-  // console.log('client:', client);
-
-  useEffect(() => {
-    if (client.logo_url) {
-      setLogoUrl(client.logo_url); // string URL
-    }
-  }, [client]);
-
   const [companyName, setCompanyName] = useState(client.company_name ?? '');
   const [phone, setPhone] = useState(client.phone ?? '');
 
@@ -55,6 +48,12 @@ const ClientApprovalScreen = () => {
 
   const [typeModalVisible, setTypeModalVisible] = useState(false);
   const [clientType, setClientType] = useState(client.client_type ?? 'company');
+
+  useEffect(() => {
+    if (client.logo_url) {
+      setLogoUrl(client.logo_url); // string URL
+    }
+  }, [client]);
 
   const handleApprove = async () => {
     setLoading(true);
@@ -86,7 +85,7 @@ const ClientApprovalScreen = () => {
 
     const formData = new FormData();
 
-    formData.append('client_id', client.client_id);
+    formData.append('client_id', String(client.client_id));
     formData.append('company_name', companyName);
     formData.append('phone', phone);
     formData.append('status', statusValue);
@@ -95,21 +94,21 @@ const ClientApprovalScreen = () => {
     console.log('logoUrl:', logoUrl);
 
     if (logoUrl && typeof logoUrl === 'object' && logoUrl.uri) {
-      const fileName = logoUrl.fileName || `logo_${client.id}.jpg`;
+      const fileName = logoUrl.fileName || `logo_${client.client_id}.jpg`;
       const fileType = logoUrl.type || 'image/jpeg';
 
       formData.append('logo', {
         uri: logoUrl.uri,
         name: fileName,
         type: fileType,
-      });
+      } as any); // TypeScript workaround for FormData file
     } else if (typeof logoUrl === 'string') {
-      // Hantar URL lama supaya backend kekalkan
+      // Send previous URL so backend retains it
       formData.append('logo_url', logoUrl);
     }
 
     try {
-      const response = await fetch('https://fd9315becb7e.ngrok-free.app/update_client.php', {
+      const response = await fetch(API_ENDPOINTS.updateClient, {
         method: 'POST',
         body: formData,
         headers: {
@@ -120,19 +119,23 @@ const ClientApprovalScreen = () => {
       const text = await response.text();
       console.log('Server response:', text);
 
-      if (response.ok) {
-        Alert.alert('Success', 'Client updated successfully');
-      } else {
-        Alert.alert('Error', 'Failed to update client');
+      try {
+        const result = JSON.parse(text);
+
+        if (response.ok && result.success) {
+          Alert.alert('Success', result.message || 'Client updated successfully');
+        } else {
+          Alert.alert('Error', result.error || 'Failed to update client');
+        }
+      } catch (parseError) {
+        Alert.alert('Error', 'Invalid server response');
       }
     } catch (error) {
       console.error('Error updating client:', error);
       Alert.alert('Error', 'Failed to update client');
     } finally {
-      console.log('Client updated successfully');
-
       setLoading(false);
-    };
+    }
   };
 
   console.log(logoUrl);

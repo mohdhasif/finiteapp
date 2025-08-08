@@ -1,15 +1,17 @@
+// src/services/discoveryService.ts
+
+import { API_ENDPOINTS } from '../constants/apiConfig';
+
 export const submitDiscoveryForm = async (formData: {
-    clientType: string
+    clientType: string;
     name: string;
     email: string;
     phone: string;
     message: string;
     selectedServices: string[];
 }) => {
-    // submit_discovery
     try {
-        // const response = await fetch('https://fd9315becb7e.ngrok-free.app/send_email.php', {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/submit_discovery.php', {
+        const response = await fetch(API_ENDPOINTS.submitDiscoveryForm, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -18,18 +20,15 @@ export const submitDiscoveryForm = async (formData: {
         });
 
         const text = await response.text();
-        console.log('RAW RESPONSE:', text); // ✅ Tengok sama ada JSON atau HTML
+        console.log('RAW RESPONSE:', text); // Debug log
 
-        // Cuba parse sebagai JSON
         let json: any = null;
         try {
             json = JSON.parse(text);
         } catch (err) {
-            // Kalau bukan JSON, stop dan tunjuk error kepada user
             throw new Error('Server replied with invalid JSON: ' + text);
         }
 
-        // Semak status HTTP
         if (!response.ok) {
             throw new Error(json.message || 'Something went wrong');
         }

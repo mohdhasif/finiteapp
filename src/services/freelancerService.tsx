@@ -1,9 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// src/services/freelancerService.ts
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from '../constants/apiConfig';
+
+// ✅ Get freelancers
 export const getFreelancers = async () => {
     const token = await AsyncStorage.getItem('userToken');
 
-    const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_freelancers.php', {
+    const response = await fetch(API_ENDPOINTS.getFreelancers, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -15,10 +19,10 @@ export const getFreelancers = async () => {
         throw new Error(errorData.error || 'Failed to fetch freelancers');
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
 };
 
+// ✅ Update freelancer
 export const updateFreelancer = async ({
     freelancer_id,
     name,
@@ -37,7 +41,7 @@ export const updateFreelancer = async ({
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
 }) => {
     try {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/update_freelancer.php', {
+        const response = await fetch(API_ENDPOINTS.updateFreelancer, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -47,30 +51,37 @@ export const updateFreelancer = async ({
                 skillset,
                 avatar_url: avatar,
                 availability: availability ? 1 : 0,
-                status, // ✅ new field
+                status,
             }),
         });
 
-        const data = await response.json();
-        return data; // { success: true/false, error: "" }
+        return await response.json(); // Expected format: { success: true/false, error: "" }
     } catch (error) {
-        console.log('Error:', error);
+        console.error('Update Freelancer Error:', error);
         return { success: false, error: 'Server error' };
     }
 };
 
+// ✅ Approve freelancer
 export const approveFreelancer = async (freelancer_id: number) => {
     try {
-        const response = await fetch('https://fd9315becb7e.ngrok-free.app/approve_freelancer.php', {
+        const response = await fetch(API_ENDPOINTS.approveFreelancer, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ freelancer_id }),
         });
 
-        const data = await response.json();
-        return data; // { success: true/false, error: "" }
+        const text = await response.text();
+        console.log('Server response:', text);
+
+        try {
+            return JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            return { success: false, error: 'Invalid server response (not JSON)' };
+        }
     } catch (error) {
-        console.log('Error:', error);
+        console.error('Approve Freelancer Error:', error);
         return { success: false, error: 'Server error' };
     }
 };

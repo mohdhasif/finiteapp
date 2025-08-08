@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 type AdminTaskDetailsScreenRouteProp = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
 
@@ -70,10 +71,19 @@ const ClientListScreen = () => {
 
     const fetchClients = async (isRefreshing = false) => {
         try {
-            if (!isRefreshing) setLoading(true); // jangan tunjuk loading spinner atas kalau refreshing
-            const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_clients.php');
+            if (!isRefreshing) setLoading(true); // Elak tunjuk spinner atas kalau pull-to-refresh
+
+            const response = await fetch(API_ENDPOINTS.getClients);
             const text = await response.text();
-            const data = JSON.parse(text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                console.error('JSON parse error:', err);
+                return;
+            }
+
             setClients(data);
         } catch (error) {
             console.error('Fetch error:', error);
