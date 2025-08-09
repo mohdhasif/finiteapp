@@ -69,7 +69,6 @@ export const approveClient = async (client_id: number) => {
         });
 
         const resText = await response.text();
-        console.log('Server response:', resText);
 
         try {
             return JSON.parse(resText);

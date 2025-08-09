@@ -24,7 +24,7 @@ const ChangePasswordScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const handleSave = () => {
-        console.log('Saving password...');
+        ('Saving password...');
         setModalVisible(true);
     };
 

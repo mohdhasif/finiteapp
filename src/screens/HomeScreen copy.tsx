@@ -43,7 +43,7 @@ const HomeScreen = () => {
 
             {/* About & Services */}
             <View style={styles.bottomCards}>
-                <TouchableOpacity onPress={() => console.log('About Us Pressed')}>
+                <TouchableOpacity onPress={() => ('About Us Pressed')}>
                     <ImageBackground
                         source={require('../assets/card-bottom-left.png')}
                         style={styles.subCard}

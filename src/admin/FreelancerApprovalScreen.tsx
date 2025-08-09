@@ -44,7 +44,7 @@ const FreelancerApprovalScreen = () => {
     const route = useRoute<FreelancerApprovalScreenRouteProp>();
     const { freelancer } = route.params;
 
-    console.log(freelancer);
+    (freelancer);
 
     const [status, setStatus] = useState(freelancer.status ?? 'pending');
     const [statusModalVisible, setStatusModalVisible] = useState(false);
@@ -61,9 +61,6 @@ const FreelancerApprovalScreen = () => {
             setAvatarUrl(freelancer.avatar); // string URL
         }
     }, [freelancer]);
-
-    console.log('Avatar URL:', avatarUrl);
-    
 
     const [availability, setAvailability] = useState(freelancer.availability);
     const [loading, setLoading] = useState(false);
@@ -105,7 +102,6 @@ const FreelancerApprovalScreen = () => {
             });
 
             const text = await response.text();
-            console.log('Server response:', text);
 
             try {
                 const result = JSON.parse(text);

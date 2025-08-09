@@ -25,7 +25,6 @@ const AdminTaskDetailsScreen = () => {
     const [showMenu, setShowMenu] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
 
-    console.log(`ProjectTaskListScreen loaded with project: ${route.params.task}`);
     return (
         <View style={styles.container}>
 

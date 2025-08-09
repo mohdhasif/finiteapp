@@ -57,8 +57,6 @@ const FreelancerListScreen = () => {
             const response = await fetch(API_ENDPOINTS.getFreelancers);
             const text = await response.text();
 
-            console.log('text:', text);
-
             let data;
             try {
                 data = JSON.parse(text);

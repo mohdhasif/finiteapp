@@ -14,11 +14,12 @@ export const API_ENDPOINTS = {
     clientProjects: `${BASE_URL}/client_projects.php`,
     projectDetails: (projectId: number) => `${BASE_URL}/project_details.php?project_id=${projectId}`,
 
-    projects: `${BASE_URL}/projects`,
+    projects: `${BASE_URL}/get_projects.php`,
     projectById: (id: number) => `${BASE_URL}/projects/${id}`,
     // Tambah lagi bila perlu
 
     projectTasks: (projectId: number) => `${BASE_URL}/project_tasks.php?project_id=${projectId}`,
+    projectTasksPublic: (projectId: number) => `${BASE_URL}/project_tasks_public.php?project_id=${projectId}`,
     taskDetails: (taskId: number) => `${BASE_URL}/task_details.php?task_id=${taskId}`,
     getTasksByProjectId: (projectId: number) => `${BASE_URL}/projects/${projectId}/tasks`,
     updateTaskStatus: (taskId: number) => `${BASE_URL}/tasks/${taskId}`,
@@ -32,5 +33,13 @@ export const API_ENDPOINTS = {
 
     login: `${BASE_URL}/login.php`,
     uploadLogo: `${BASE_URL}/upload_logo.php`,
+
+
+
+
+
+
+
+    allTasks: `${BASE_URL}/tasks_all.php`,
 
 };

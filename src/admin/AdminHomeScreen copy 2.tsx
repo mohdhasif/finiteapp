@@ -72,10 +72,6 @@ const AdminHomeScreen = () => {
             const freelancerData = await fetchFreelancers();
             setClients(clientData);
             setFreelancers(freelancerData);
-
-            // console.log('CLIENTS:', clientData);
-            // console.log('FREELANCERS:', freelancerData);
-
         };
 
         loadData();

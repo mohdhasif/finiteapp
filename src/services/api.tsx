@@ -20,7 +20,6 @@ export const submitDiscoveryForm = async (formData: {
         });
 
         const text = await response.text();
-        console.log('RAW RESPONSE:', text); // Debug log
 
         let json: any = null;
         try {

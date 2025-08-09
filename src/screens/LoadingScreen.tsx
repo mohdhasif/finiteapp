@@ -44,8 +44,6 @@ const LoadingScreen = () => {
     const redirectAfterDelay = async () => {
       const role = await AsyncStorage.getItem('userRole');
 
-      console.log('ROLE:', role);
-
       setTimeout(() => {
         if (role) {
           setUserRoleManual(role); // ✅ trigger AppNavigator

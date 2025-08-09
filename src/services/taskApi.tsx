@@ -13,6 +13,31 @@ export const getTasksByProjectId = async (projectId: number) => {
     }
 };
 
+export const getTasksByProject = async (token: string, projectId: number) => {
+    const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // Baca sebagai text dulu
+    const raw = await res.text();
+    console.log('RAW RESPONSE from server:', raw);
+
+    let data;
+    try {
+        data = JSON.parse(raw);
+    } catch (err) {
+        console.error('JSON parse error:', err);
+        throw new Error('Server tidak mengembalikan JSON yang sah');
+    }
+
+    if (!res.ok) {
+        throw new Error(data?.error || `Gagal ambil tugasan (HTTP ${res.status})`);
+    }
+
+    return data;
+};
+
+
 export const updateTaskStatus = async (taskId: number, status: string) => {
     try {
         const response = await fetch(API_ENDPOINTS.updateTaskStatus(taskId), {

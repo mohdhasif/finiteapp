@@ -65,7 +65,7 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const handlePress = () => {
-        console.log(`${label} pressed`);
+        (`${label} pressed`);
 
         if (label === 'Logout') {
             // navigation.navigate('LoginScreen');

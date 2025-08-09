@@ -22,7 +22,7 @@ const TaskDetailsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<TaskDetailsScreenRouteProp>();
 
-    console.log(`ProjectTaskListScreen loaded with project: ${route.params.task}`);
+    (`ProjectTaskListScreen loaded with project: ${route.params.task}`);
     return (
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>

@@ -89,9 +89,6 @@ const ClientApprovalScreen = () => {
     formData.append('phone', phone);
     formData.append('status', statusValue);
     formData.append('client_type', clientType);
-
-    console.log('logoUrl:', logoUrl);
-
     if (logoUrl && typeof logoUrl === 'object' && logoUrl.uri) {
       const fileName = logoUrl.fileName || `logo_${client.client_id}.jpg`;
       const fileType = logoUrl.type || 'image/jpeg';
@@ -116,8 +113,6 @@ const ClientApprovalScreen = () => {
       });
 
       const text = await response.text();
-      console.log('Server response:', text);
-
       try {
         const result = JSON.parse(text);
 
@@ -136,8 +131,6 @@ const ClientApprovalScreen = () => {
       setLoading(false);
     }
   };
-
-  console.log(logoUrl);
 
   return (
     <PaperProvider>

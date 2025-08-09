@@ -16,8 +16,8 @@ export type RootStackParamList = {
   LoadingScreen: { role: string }; // ✅ betul di sini
   AdminHomeScreen: undefined;
   AdminProjectListScreen: undefined;
-  AdminProjectTaskListScreen: { project: string }; // ✅ betul di sini
-  AdminTaskDetailsScreen: { task: string }; // ✅ betul di sini
+  AdminProjectTaskListScreen: { project_title: string, project_id: number }; // ✅ betul di sini
+  AdminTaskDetailsScreen: { task_title: string, task_id: number }; // ✅ betul di sini
 
 
 

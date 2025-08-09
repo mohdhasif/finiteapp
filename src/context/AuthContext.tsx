@@ -48,7 +48,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // 🔍 Log untuk debug
             const clonedResponse = response.clone();
             const rawText = await clonedResponse.text();
-            console.log('RESPONSE TEXT:', rawText);
 
             // ✅ Cuba parse JSON
             const data = await response.json();

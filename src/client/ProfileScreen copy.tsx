@@ -48,7 +48,7 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
             navigation.navigate('LoginScreen')
         } else {
             // Tambah navigasi lain jika perlu
-            console.log(`${label} pressed`);
+            (`${label} pressed`);
         }
     };
 

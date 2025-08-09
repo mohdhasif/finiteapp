@@ -143,11 +143,11 @@ const AboutUs = () => {
 
             {/* Button condition */}
             {activeIndex === slides.length - 1 ? (
-                <TouchableOpacity style={styles.button} onPress={() => console.log('Start')}>
+                <TouchableOpacity style={styles.button} onPress={() => ('Start')}>
                     <Text style={styles.buttonText}>Get Started</Text>
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity style={styles.button} onPress={() => console.log('Back')}>
+                <TouchableOpacity style={styles.button} onPress={() => ('Back')}>
                     <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
             )}

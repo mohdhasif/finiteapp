@@ -64,20 +64,14 @@ const ProjectListScreen = () => {
                     return;
                 }
 
-                console.log('token:', token);
-
                 // Fetch projek dari API
                 const data = await getClientProjects(token);
                 setProjects(data);
-                console.log('DATA:', data);
 
                 // Set greeting
                 const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
                 setGreetingName(userInfo?.client?.company_name ?? 'Guest');
-                console.log('company:', userInfo?.client?.company_name);
-                console.log('name:', userInfo?.name);
             } catch (err: any) {
-                console.log('ERROR loading projects:', err);
                 Alert.alert('Ralat', err.message || 'Gagal ambil projek');
             } finally {
                 setLoading(false);

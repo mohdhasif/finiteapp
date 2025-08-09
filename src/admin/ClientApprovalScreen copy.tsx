@@ -57,9 +57,6 @@ const ClientApprovalScreen = () => {
   const [clientType, setClientType] = useState(client.client_type ?? 'company');
 
   const handleUpdate = async () => {
-
-    console.log('client:', client);
-
     setLoading(true);
     const result = await updateClient({
       client_id: client.client_id,
@@ -81,7 +78,6 @@ const ClientApprovalScreen = () => {
 
   const handleApprove = async () => {
     setLoading(true);
-    console.log('client:', client);
     const result = await approveClient(client.client_id);
 
     if (result.success) {

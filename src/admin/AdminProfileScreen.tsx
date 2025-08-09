@@ -65,8 +65,6 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const handlePress = () => {
-        console.log(`${label} pressed`);
-
         if (label === 'Logout') {
             navigation.navigate('LoginScreen');
         } else {
@@ -77,8 +75,6 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
             } else if (label === 'FAQ') {
                 navigation.navigate('AdminFAQScreen'); // Assuming you have a FAQScreen
             }
-            // Add other navigation actions here
-            console.log(`${label} action not defined`);
         }
         // Tambah navigasi jika perlu
     };

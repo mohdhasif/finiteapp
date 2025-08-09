@@ -60,7 +60,6 @@ const ClientListScreen = () => {
             const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_clients.php');
             const text = await response.text();
             const data = JSON.parse(text);
-            console.log('data:', data);
             setClients(data);
         } catch (error) {
             console.error('Fetch error:', error);
@@ -81,7 +80,6 @@ const ClientListScreen = () => {
             : clients.filter(c => c.client_status.toLowerCase() === selectedFilter.toLowerCase());
 
     const handlePress = (client: Client) => {
-        console.log('Client pressed:', client.name);
     };
 
     if (loading && !refreshing) {

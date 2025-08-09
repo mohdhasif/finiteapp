@@ -11,8 +11,6 @@ export const getClientProjects = async (token: string) => {
             },
         });
 
-        console.log('dapat token:', token);
-
         if (!response.ok) {
             throw new Error('Gagal ambil senarai projek');
         }

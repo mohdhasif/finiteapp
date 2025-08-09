@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -14,8 +14,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { black } from 'react-native-paper/lib/typescript/styles/themes/v2/colors';
 import { fetchClients, fetchFreelancers } from '../services/adminService';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import AdminTaskCard from '../component/AdminTaskCard';
+import { getAllTasks, type Task } from '../services/taskService';
 
 const { width } = Dimensions.get('window');
 
@@ -23,14 +26,13 @@ type Client = {
     client_id: string;
     name: string;
     logo_url: string | null;
-    // Tambah jika kau nak pakai field lain juga
 };
 
 export type Freelancer = {
-    id: number; // from freelancers.id
-    user_id: number; // from users.id
-    name: string; // from users.name
-    email: string; // from users.email
+    id: number;
+    user_id: number;
+    name: string;
+    email: string;
     skillset: string;
     availability: boolean;
     avatar: string | null;
@@ -39,34 +41,22 @@ export type Freelancer = {
 
 const AdminHomeScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const [checkedStates, setCheckedStates] = useState([false, false, false, false]);
+
     const [showDropdown, setShowDropdown] = useState(false);
     const [filterVisible, setFilterVisible] = useState(false);
-    const [selectedFilter, setSelectedFilter] = useState('All Tasks');
-    // const [clients, setClients] = useState([]);
-    // const [freelancers, setFreelancers] = useState([]);
+    const [selectedFilter, setSelectedFilter] = useState<'All Tasks' | 'Ongoing' | 'Completed'>('All Tasks');
+
     const [clients, setClients] = useState<Client[]>([]);
     const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
 
-    // const clients = [
-    //     { id: 1, name: 'Client 1', logo: require('../assets/user.png') },
-    //     { id: 2, name: 'Client 2', logo: require('../assets/user.png') },
-    //     { id: 3, name: 'Client 3', logo: require('../assets/user.png') },
-    //     { id: 4, name: 'Client 4', logo: require('../assets/user.png') },
-    // ];
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loadingTasks, setLoadingTasks] = useState(false);
+    const [checkedStates, setCheckedStates] = useState<boolean[]>([]);
 
     const projects = [
         { id: 1, title: 'Social Media', client: 'Client A', progress: 60 },
         { id: 2, title: 'Website Redesign', client: 'Client B', progress: 35 },
     ];
-
-    // const freelancers = [
-    //     { id: 1, name: 'Ali', avatar: require('../assets/user.png') },
-    //     { id: 2, name: 'Mira', avatar: require('../assets/user.png') },
-    //     { id: 3, name: 'John', avatar: require('../assets/user.png') },
-    //     { id: 4, name: 'Lina', avatar: require('../assets/user.png') },
-    //     { id: 4, name: 'Lina', avatar: require('../assets/user.png') },
-    // ];
 
     useEffect(() => {
         const loadData = async () => {
@@ -74,22 +64,40 @@ const AdminHomeScreen = () => {
             const freelancerData = await fetchFreelancers();
             setClients(clientData);
             setFreelancers(freelancerData);
-
-            // console.log('CLIENTS:', clientData);
-            console.log('FREELANCERS:', freelancerData);
-
         };
-
         loadData();
     }, []);
 
-    const tasks = ['Content Strategy', 'Design', 'Videoshoot', 'Video Editing'];
-    const defaultLogo = require('../assets/user.png');
+    const resolveStatus = (f: typeof selectedFilter) => {
+        if (f === 'Ongoing') return 'in_progress' as const;
+        if (f === 'Completed') return 'completed' as const;
+        return undefined;
+    };
+
+    const loadTasks = useCallback(async () => {
+        setLoadingTasks(true);
+        try {
+            // get your token (swap to AuthContext if you already have it there)
+            const token = (await AsyncStorage.getItem('userToken')) || '';
+            const status = resolveStatus(selectedFilter);
+            const data = await getAllTasks(token, status ? { status } : {});
+            setTasks(data);
+            setCheckedStates(Array(data.length).fill(false));
+        } catch (e) {
+            console.log('Failed to load tasks:', e);
+            setTasks([]);
+            setCheckedStates([]);
+        } finally {
+            setLoadingTasks(false);
+        }
+    }, [selectedFilter]);
+
+    useEffect(() => {
+        loadTasks();
+    }, [loadTasks]);
 
     return (
         <SafeAreaView style={styles.safeArea}>
-
-            {/* Floating Dropdown Menu */}
             {showDropdown && (
                 <View style={styles.dropdown}>
                     <TouchableOpacity
@@ -126,9 +134,8 @@ const AdminHomeScreen = () => {
 
                     <View style={styles.clientHeader}>
                         <Text style={styles.clientTitle}>FINITE’s Clients</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('ClientListScreen')}>
-                            < Text style={styles.addText} > Add Client</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('ClientListScreen')}>
+                            <Text style={styles.addText}>Add Client</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -136,27 +143,17 @@ const AdminHomeScreen = () => {
                         {clients.map((client) => (
                             <View key={client.client_id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
-                                    {/* <Image source={require('../assets/user.png')} style={styles.avatar} /> */}
-                                    {/* <Image source={{ uri: client.logo_url }} style={styles.avatar} /> */}
-                                    <View style={styles.clientCircle}>
-                                        <Image
-                                            source={
-                                                typeof client.logo_url === 'string' && client.logo_url.startsWith('http')
-                                                    ? { uri: client.logo_url }
-                                                    : require('../assets/user.png')
-                                            }
-                                            style={styles.clientLogo}
-                                            resizeMode="contain"
-
-                                        />
-                                    </View>
-
+                                    <Image
+                                        source={
+                                            typeof client.logo_url === 'string' && client.logo_url.startsWith('http')
+                                                ? { uri: client.logo_url }
+                                                : require('../assets/user.png')
+                                        }
+                                        style={styles.clientLogo}
+                                        resizeMode="contain"
+                                    />
                                 </View>
-                                <Text
-                                    style={styles.clientName}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                >
+                                <Text style={styles.clientName} numberOfLines={1} ellipsizeMode="tail">
                                     {client.name}
                                 </Text>
                             </View>
@@ -168,9 +165,7 @@ const AdminHomeScreen = () => {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Freelancers</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('FreelancerListScreen')}
-                        >
+                        <TouchableOpacity onPress={() => navigation.navigate('FreelancerListScreen')}>
                             <Text style={styles.seeAll}>See all</Text>
                         </TouchableOpacity>
                     </View>
@@ -188,14 +183,9 @@ const AdminHomeScreen = () => {
                                         style={styles.clientLogo}
                                     />
                                 </View>
-                                <Text
-                                    style={styles.freelancersName}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                >
+                                <Text style={styles.freelancersName} numberOfLines={1} ellipsizeMode="tail">
                                     {freelancer.name}
                                 </Text>
-
                             </View>
                         ))}
                     </ScrollView>
@@ -215,7 +205,7 @@ const AdminHomeScreen = () => {
                             <TouchableOpacity
                                 key={proj.id}
                                 style={[styles.projectCard, { marginRight: index === projects.length - 1 ? 20 : 16 }]}
-                                onPress={() => navigation.navigate('AdminProjectTaskListScreen', { project: proj.title })}
+                                onPress={() => navigation.navigate('AdminProjectTaskListScreen', { project_title: proj.title, project_id: proj.id })}
                             >
                                 <Text style={styles.projectTitle}>{proj.title}</Text>
                                 <Text style={styles.projectClient}>{proj.client}</Text>
@@ -243,6 +233,7 @@ const AdminHomeScreen = () => {
                 <View style={styles.section}>
                     <View style={styles.taskHeader}>
                         <Text style={styles.taskHeaderTitle}>Tasks</Text>
+
                         <TouchableOpacity
                             style={styles.filterButton}
                             onPress={() => setFilterVisible(!filterVisible)}
@@ -250,13 +241,14 @@ const AdminHomeScreen = () => {
                             <Text style={styles.filterButtonText}>{selectedFilter}</Text>
                             <Icon
                                 name={filterVisible ? 'chevron-up-outline' : 'chevron-down-outline'}
-                                size={16} color="#999"
+                                size={16}
+                                color="#999"
                             />
                         </TouchableOpacity>
 
                         {filterVisible && (
                             <View style={styles.dropdownMenu}>
-                                {['All Tasks', 'Ongoing', 'Completed'].map((option, i) => (
+                                {(['All Tasks', 'Ongoing', 'Completed'] as const).map((option, i) => (
                                     <TouchableOpacity
                                         key={option}
                                         style={[
@@ -270,10 +262,12 @@ const AdminHomeScreen = () => {
                                             setFilterVisible(false);
                                         }}
                                     >
-                                        <Text style={[
-                                            styles.dropdownItemText,
-                                            selectedFilter === option && styles.dropdownItemTextActive
-                                        ]}>
+                                        <Text
+                                            style={[
+                                                styles.dropdownItemText,
+                                                selectedFilter === option && styles.dropdownItemTextActive,
+                                            ]}
+                                        >
                                             {option}
                                         </Text>
                                     </TouchableOpacity>
@@ -282,55 +276,41 @@ const AdminHomeScreen = () => {
                         )}
                     </View>
 
-
+                    {/* Render fetched tasks using AdminTaskCard */}
                     {tasks.map((task, idx) => (
-                        <TouchableOpacity
-                            key={idx}
-                            style={styles.taskCard}
-                            onPress={() => navigation.push('AdminTaskDetailsScreen', { task })}
-                        >
-                            <LinearGradient colors={['#0d87c8', '#002b4f']} style={styles.taskCardInner}>
-                                <View style={styles.taskRow}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            const updated = [...checkedStates];
-                                            updated[idx] = !updated[idx];
-                                            setCheckedStates(updated);
-                                        }}
-                                        style={[
-                                            styles.checkboxWrapper,
-                                            { backgroundColor: checkedStates[idx] ? '#28a745' : '#ccc' },
-                                        ]}
-                                    >
-                                        {checkedStates[idx] && <Icon name="checkmark" size={16} color="#fff" />}
-                                    </TouchableOpacity>
-
-                                    <Text style={styles.taskTitle}>{task}</Text>
-                                    <View style={styles.avatarGroup}>
-                                        <View style={[styles.avatarTask, { backgroundColor: '#0066a2' }]} />
-                                        <View style={[styles.avatarTask, { backgroundColor: '#000' }]} />
-                                        <View style={[styles.avatarTask, { backgroundColor: '#00aaff' }]} />
-                                    </View>
-                                    <Icon name="chevron-forward" size={20} color="#fff" />
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                        <AdminTaskCard
+                            key={task.id ?? idx}
+                            task={task}
+                            checked={!!checkedStates[idx]}
+                            onToggleCheck={() => {
+                                const updated = [...checkedStates];
+                                updated[idx] = !updated[idx];
+                                setCheckedStates(updated);
+                            }}
+                            onPress={() =>
+                                navigation.push('AdminTaskDetailsScreen', {
+                                    task_title: task.title ?? 'Task',
+                                    task_id: task.id,
+                                })
+                            }
+                        />
                     ))}
+
+                    {(!loadingTasks && tasks.length === 0) && (
+                        <Text style={{ color: '#666' }}>No tasks found.</Text>
+                    )}
                 </View>
-            </ScrollView >
+            </ScrollView>
 
             {/* Bottom Tab */}
-            < View style={styles.bottomTab} >
+            <View style={styles.bottomTab}>
                 <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
                     <Icon name="home" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity>
                     <Icon name="calendar" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.fab}
-                    onPress={() => setShowDropdown(!showDropdown)}
-                >
+                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(!showDropdown)}>
                     <Icon name="add" size={32} color="#0072B5" />
                 </TouchableOpacity>
                 <TouchableOpacity>
@@ -339,8 +319,8 @@ const AdminHomeScreen = () => {
                 <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
                     <Icon name="person" size={26} color="#fff" />
                 </TouchableOpacity>
-            </View >
-        </SafeAreaView >
+            </View>
+        </SafeAreaView>
     );
 };
 
@@ -409,7 +389,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
-
         borderWidth: 1,
         borderColor: '#ccc',
         shadowColor: '#000',
@@ -422,14 +401,13 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        resizeMode: 'cover', // boleh juga cuba 'contain'
+        resizeMode: 'cover',
     },
-
     clientName: {
         color: '#fff',
         fontSize: 12,
         marginTop: 6,
-        maxWidth: 80, // adjust ikut lebar card
+        maxWidth: 80,
         textAlign: 'center',
         alignSelf: 'center',
     },
@@ -437,7 +415,7 @@ const styles = StyleSheet.create({
         color: 'black',
         fontSize: 12,
         marginTop: 6,
-        maxWidth: 80, // adjust ikut lebar card
+        maxWidth: 80,
         textAlign: 'center',
         alignSelf: 'center',
     },
@@ -514,47 +492,8 @@ const styles = StyleSheet.create({
         marginTop: 2,
         fontWeight: 'bold',
     },
-    taskCard: {
-        backgroundColor: '#0C4E86',
-        flexDirection: 'row',
-        padding: 3,
-        alignItems: 'center',
-        marginBottom: 18,
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    taskCardInner: {
-        padding: 16,
-        borderRadius: 20,
-        width: '100%',
-    },
-    taskRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-    },
-    checkboxWrapper: {
-        width: 26,
-        height: 26,
-        borderRadius: 6,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    taskTitle: {
-        color: '#fff',
-        fontSize: 16,
-        flex: 1,
-        marginLeft: 10,
-        fontWeight: 'bold',
-    },
-    avatarTask: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        marginLeft: 4,
-    },
+
+    /* ---- AdminTaskCard shared styling kept in component ---- */
     bottomTab: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -603,20 +542,17 @@ const styles = StyleSheet.create({
         color: '#0072B5',
     },
 
-
     taskHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 20,
     },
-
     taskHeaderTitle: {
         fontSize: 22,
         fontWeight: 'bold',
         color: '#073B61',
     },
-
     filterButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -625,13 +561,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         borderRadius: 8,
     },
-
     filterButtonText: {
         color: '#999',
         fontSize: 14,
         marginRight: 6,
     },
-
     dropdownMenu: {
         position: 'absolute',
         top: 45,
@@ -647,38 +581,28 @@ const styles = StyleSheet.create({
         width: 160,
         zIndex: 10,
     },
-
     dropdownItem: {
         paddingVertical: 10,
         paddingHorizontal: 16,
         backgroundColor: 'transparent',
     },
-
     dropdownItemFirst: {
         borderTopLeftRadius: 12,
         borderTopRightRadius: 12,
     },
-
     dropdownItemLast: {
         borderBottomLeftRadius: 12,
         borderBottomRightRadius: 12,
     },
-
     dropdownItemActive: {
         backgroundColor: '#0072B5',
     },
-
     dropdownItemText: {
         fontSize: 14,
         color: '#0072B5',
     },
-
     dropdownItemTextActive: {
         color: '#fff',
     },
-
-    freelancerSection: {
-        marginTop: 20,
-    },
-
 });
+

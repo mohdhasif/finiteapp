@@ -74,7 +74,6 @@ export const approveFreelancer = async (freelancer_id: number) => {
         });
 
         const text = await response.text();
-        console.log('Server response:', text);
 
         if (!response.ok) {
             return {
