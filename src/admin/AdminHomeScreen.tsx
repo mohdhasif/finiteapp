@@ -277,24 +277,31 @@ const AdminHomeScreen = () => {
                     </View>
 
                     {/* Render fetched tasks using AdminTaskCard */}
-                    {tasks.map((task, idx) => (
-                        <AdminTaskCard
-                            key={task.id ?? idx}
-                            task={task}
-                            checked={!!checkedStates[idx]}
-                            onToggleCheck={() => {
-                                const updated = [...checkedStates];
-                                updated[idx] = !updated[idx];
-                                setCheckedStates(updated);
-                            }}
-                            onPress={() =>
-                                navigation.push('AdminTaskDetailsScreen', {
-                                    task_title: task.title ?? 'Task',
-                                    task_id: task.id,
-                                })
-                            }
-                        />
-                    ))}
+                    {tasks.map((task, idx) => {
+                        const isCompleted = (task.status || '').toLowerCase() === 'completed';
+
+                        return (
+                            <AdminTaskCard
+                                key={task.id ?? idx}
+                                task={task}
+                                checked={isCompleted ? true : !!checkedStates[idx]} // completed auto checked
+                                onToggleCheck={() => {
+                                    // Kalau dah completed, tak perlu toggle
+                                    if (isCompleted) return;
+                                    const updated = [...checkedStates];
+                                    updated[idx] = !updated[idx];
+                                    setCheckedStates(updated);
+                                }}
+                                onPress={() =>
+                                    navigation.push('AdminTaskDetailsScreen', {
+                                        task_title: task.title ?? 'Task',
+                                        task_id: task.id,
+                                    })
+                                }
+                            />
+                        );
+                    })}
+
 
                     {(!loadingTasks && tasks.length === 0) && (
                         <Text style={{ color: '#666' }}>No tasks found.</Text>

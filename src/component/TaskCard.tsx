@@ -1,155 +1,132 @@
-import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-
-export type Task = {
-    id: number;
-    title?: string | null;
-    name?: string | null;          // fallback
-    status?: string | null;        // 'completed' | 'in_progress' | 'pending' | etc
-    progress?: number | string | null; // 0..100
-};
+import type { Task } from '../services/taskService';
 
 type Props = {
     task: Task;
     checked: boolean;
-    onToggle: () => void;   // toggle checkbox
-    onPress: () => void;    // open details
+    onToggleCheck: () => void;
+    onPress: () => void;
 };
 
-const TaskCard = memo(({ task, checked, onToggle, onPress }: Props) => {
-    const title = task.title || task.name || 'Untitled Task';
-    const progress = Math.max(0, Math.min(100, Number(task.progress ?? 0)));
+const statusStyles = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'completed') return { bg: '#18B968', text: '#fff' };
+    if (s === 'in_progress') return { bg: '#7E8AA0', text: '#fff' };
+    return { bg: '#FFB800', text: '#1F2D3D' }; // pending / default
+};
+
+const TaskCard: React.FC<Props> = ({ task, checked, onToggleCheck, onPress }) => {
+    const title = task.title || 'Untitled Task';
+    const clientName = task.client?.company_name || 'No Client';
+    const projTitle = task.project?.title || 'No Project';
+    const pill = statusStyles(task.status);
 
     return (
-        <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={onPress}
-            style={styles.taskCard}
-        >
+        <TouchableOpacity style={styles.cardWrap} onPress={onPress} activeOpacity={0.9}>
             <LinearGradient
-                colors={['#0072B5', '#002B4F']}
+                colors={['#0580C7', '#004A84']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.taskCardInner}
+                end={{ x: 1, y: 1 }}
+                style={styles.card}
             >
-                <View style={styles.rowWrapper}>
-                    <View style={styles.row}>
-                        {/* Checkbox (live) */}
-                        <View style={styles.leftColumn}>
-                            <TouchableOpacity
-                                onPress={(e) => {
-                                    e.stopPropagation(); // jangan trigger onPress kad
-                                    onToggle();
-                                }}
-                                style={[
-                                    styles.checkboxWrapper,
-                                    { backgroundColor: checked ? '#28a745' : '#ccc' },
-                                ]}
-                            >
-                                {checked && <Icon name="checkmark" size={16} color="#fff" />}
-                            </TouchableOpacity>
-                        </View>
+                {/* LEFT: centered checkbox */}
+                <TouchableOpacity
+                    onPress={onToggleCheck}
+                    style={[
+                        styles.checkbox,
+                        { backgroundColor: checked ? '#28a745' : '#E3E8EF' },
+                    ]}
+                    activeOpacity={0.8}
+                >
+                    {checked && <Icon name="checkmark" size={16} color="#fff" />}
+                </TouchableOpacity>
 
-                        {/* Title + (placeholder) assignees + Progress */}
-                        <View style={styles.rightColumn}>
-                            <View style={styles.titleRow}>
-                                <Text style={styles.taskTitle} numberOfLines={1}>
-                                    {title}
-                                </Text>
+                {/* MIDDLE: titles (vertically centered with checkbox) */}
+                <View style={styles.middleCol}>
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                    <Text style={styles.sub} numberOfLines={1}>{clientName}</Text>
+                    <Text style={styles.subDim} numberOfLines={1}>{projTitle}</Text>
+                </View>
 
-                                {/* avatars placeholder — bindkan ikut assignees kalau ada */}
-                                <View style={styles.avatarGroup}>
-                                    <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
-                                    <View style={[styles.avatar, { backgroundColor: '#000' }]} />
-                                    <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} />
-                                </View>
-                            </View>
-
-                            <View style={styles.progressBar}>
-                                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                            </View>
-                        </View>
-
-                        <View style={styles.leftColumn}>
-                            <Icon name="chevron-forward" size={16} color="#fff" />
-                        </View>
+                {/* RIGHT: status pill + chevron */}
+                <View style={styles.rightCol}>
+                    <View style={[styles.pill, { backgroundColor: pill.bg }]}>
+                        <Text style={[styles.pillText, { color: pill.text }]}>
+                            {(task.status || '').replace('_', ' ').toUpperCase() || 'PENDING'}
+                        </Text>
                     </View>
+                    <Icon name="chevron-forward" size={22} color="#ffffff" style={{ marginTop: 10 }} />
                 </View>
             </LinearGradient>
         </TouchableOpacity>
     );
-});
+};
 
 export default TaskCard;
 
 const styles = StyleSheet.create({
-    taskCard: {
-        marginBottom: 14,
-        borderRadius: 16,
+    cardWrap: {
+        marginBottom: 18,
+        borderRadius: 20,
         overflow: 'hidden',
     },
-    taskCardInner: {
-        padding: 12,
-        borderRadius: 16,
-        height: 100,
+    card: {
+        flexDirection: 'row',
+        padding: 16,
+        borderRadius: 20,
+        alignItems: 'center',            // <-- center everything vertically
     },
-    rowWrapper: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    row: { flexDirection: 'row' },
-    leftColumn: {
+
+    checkbox: {
+        width: 26,
+        height: 26,
+        borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
+        alignSelf: 'center',             // <-- ensure the box itself is centered
     },
-    checkboxWrapper: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        backgroundColor: '#007bff',
+
+    middleCol: {
+        flex: 1,
+        justifyContent: 'center',        // <-- center titles vertically to checkbox
+        paddingRight: 10,
+    },
+    title: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 0.2,
+    },
+    sub: {
+        color: '#E6F2FF',
+        fontSize: 13,
+        marginTop: 2,
+    },
+    subDim: {
+        color: '#BFD9F2',
+        fontSize: 12,
+        marginTop: 2,
+    },
+
+    rightCol: {
+        alignItems: 'flex-end',
         justifyContent: 'center',
+        marginLeft: 12,
+    },
+    pill: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        minWidth: 110,
         alignItems: 'center',
     },
-    rightColumn: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    taskTitle: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: 'bold',
-        flex: 1,
-        marginRight: 8,
-    },
-    avatarGroup: { flexDirection: 'row' },
-    avatar: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        marginLeft: -3,
-        borderWidth: 1,
-        borderColor: '#fff',
-    },
-    progressBar: {
-        marginTop: 8,
-        height: 5,
-        backgroundColor: '#ccc',
-        borderRadius: 3,
-        overflow: 'hidden',
-        width: '70%',
-    },
-    progressFill: {
-        width: '60%',
-        height: '100%',
-        backgroundColor: '#4aa9ff',
+    pillText: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
 });

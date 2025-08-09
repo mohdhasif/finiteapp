@@ -229,7 +229,7 @@ const AdminProjectTaskListScreen = () => {
                                 key={task.id}
                                 task={task}
                                 checked={!!checkedById[task.id]}
-                                onToggle={() => {
+                                onToggleCheck={() => {
                                     setCheckedById(curr => ({ ...curr, [task.id]: !curr[task.id] }));
                                 }}
                                 onPress={() =>
