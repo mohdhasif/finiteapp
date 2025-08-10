@@ -60,7 +60,7 @@ const AdminProjectTaskListScreen = () => {
 
                 const arr = await getTasksByProject(token, route.params.project_id);
                 const list = Array.isArray(arr) ? arr : [];
-                console.log('TASKS ARRAY (normalized):', list);
+                // console.log('TASKS ARRAY (normalized):', list);
                 setTasksAll(list);
 
                 // init checkbox mengikut id (preserve bila re-fetch)

@@ -42,4 +42,23 @@ export const API_ENDPOINTS = {
 
     allTasks: `${BASE_URL}/tasks_all.php`,
 
+
+
+
+
+
+
+
+
+
+    // tasks details features
+    listAttachments: `${BASE_URL}list_attachments.php`,
+    uploadAttachment: `${BASE_URL}upload_attachment.php`,
+    deleteAttachment: `${BASE_URL}delete_attachment.php`,
+
+    getTaskLink: `${BASE_URL}get_task_link.php`,
+    setTaskLink: `${BASE_URL}set_task_link.php`,
+
+    listNotes: `${BASE_URL}list_notes.php`,
+    addNote: `${BASE_URL}add_note.php`,
 };

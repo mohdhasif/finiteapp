@@ -54,7 +54,7 @@ const AdminProjectListScreen = () => {
             const result = await getProjects(); // pastikan return array of Project
             setProjects(Array.isArray(result) ? result : []);
         } catch (err: any) {
-            console.log('getProjects error:', err?.message || err);
+            // console.log('getProjects error:', err?.message || err);
         } finally {
             setLoading(false);
             setRefreshing(false);

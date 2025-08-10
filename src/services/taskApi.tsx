@@ -20,7 +20,6 @@ export const getTasksByProject = async (token: string, projectId: number) => {
 
     // Baca sebagai text dulu
     const raw = await res.text();
-    console.log('RAW RESPONSE from server:', raw);
 
     let data;
     try {

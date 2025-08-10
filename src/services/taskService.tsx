@@ -6,7 +6,6 @@ export const getTasksByProject = async (token: string, projectId: number) => {
     });
 
     const raw = await res.text();
-    console.log('RAW RESPONSE (projectTasks):', raw);
 
     let json: any;
     try {
@@ -41,7 +40,6 @@ export const getTasksByProjectPublic = async (
     try {
         json = JSON.parse(raw);
     } catch {
-        console.log('RAW RESPONSE (not JSON):', raw);
         throw new Error('Server did not return valid JSON');
     }
 
@@ -136,7 +134,9 @@ export const getAllTasks = async (
 
     const raw = await res.text();
     let json: any;
-    try { json = JSON.parse(raw); } catch { console.log('RAW RESPONSE (not JSON):', raw); throw new Error('Server did not return valid JSON'); }
+    try { json = JSON.parse(raw); } catch {
+        // console.log('RAW RESPONSE (not JSON):', raw); throw new Error('Server did not return valid JSON');
+    }
 
     // API-level error
     if (json && json.success === false) {

@@ -84,7 +84,7 @@ const AdminHomeScreen = () => {
             setTasks(data);
             setCheckedStates(Array(data.length).fill(false));
         } catch (e) {
-            console.log('Failed to load tasks:', e);
+            // console.log('Failed to load tasks:', e);
             setTasks([]);
             setCheckedStates([]);
         } finally {

@@ -55,7 +55,7 @@ const AdminTaskDetailsScreen = () => {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <Text style={styles.header}>Task Details</Text>
-                <Text style={styles.title}>{route.params.task}</Text>
+                <Text style={styles.title}>{route.params.task_title}</Text>
 
                 {/* Description */}
                 <View style={styles.section}>
