@@ -16,6 +16,20 @@ import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navig
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type ProjectSummary = {
+    project_id: number;
+    project_title: string;
+    client_name: string;
+    due_date: string | null;
+    total_tasks: number;
+    completed_tasks: number;
+    progress_percent: number;
+    freelancer_count: number;
+    freelancer_avatars: string[];
+    extra_freelancers: number;
+};
 
 type AdminTaskDetailsScreenRouteProp = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
 
@@ -114,6 +128,40 @@ const ClientListScreen = () => {
             </View>
         );
     }
+
+
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const [err, setErr] = useState<string | null>(null);
+
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+                if (!token) return;
+
+                const res = await fetch(API_ENDPOINTS.projectSummaries, {
+                    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+                });
+
+                const text = await res.text();
+                console.log(text);
+                
+                let json: any;
+                try { json = JSON.parse(text); } catch { json = []; }
+
+                if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+                if (!alive) return;
+                setProjects(Array.isArray(json) ? json : (json ? [json] : []));
+            } catch (e) {
+                if (!alive) return;
+                setProjects([]);
+            }
+        })();
+        return () => { alive = false; };
+    }, []);
+
 
     return (
         <View style={styles.container}>

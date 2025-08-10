@@ -1,64 +1,65 @@
 // src/constants/apiConfig.ts
 
-export const BASE_URL = 'https://fd9315becb7e.ngrok-free.app/';
+// 1) Buang trailing slash untuk elak `//`
+export const BASE_URL = 'https://fd9315becb7e.ngrok-free.app';
+
+// 2) Helper untuk build URL + query params dengan selamat
+export const buildUrl = (
+    path: string,
+    params?: Record<string, string | number | boolean | undefined | null>
+) => {
+    const cleanPath = String(path).replace(/^\/+/, ''); // buang leading /
+    const url = new URL(`${BASE_URL}/${cleanPath}`);
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && String(v) !== '') {
+                url.searchParams.set(k, String(v));
+            }
+        });
+    }
+    return url.toString();
+};
 
 export const API_ENDPOINTS = {
+    // ---- Clients / Freelancers
+    approveClient: buildUrl('approve_client.php'),
+    approveFreelancer: buildUrl('approve_freelancer.php'),
+    getFreelancers: buildUrl('get_freelancers.php'),
+    getClients: buildUrl('get_clients.php'),
+    updateClient: buildUrl('update_client.php'),
+    updateFreelancer: buildUrl('update_freelancer.php'),
 
-    approveClient: `${BASE_URL}approve_client.php`,
-    approveFreelancer: `${BASE_URL}approve_freelancer.php`,
-    getFreelancers: `${BASE_URL}get_freelancers.php`,
-    getClients: `${BASE_URL}get_clients.php`,
-    updateClient: `${BASE_URL}update_client.php`,
-    updateFreelancer: `${BASE_URL}update_freelancer.php`,
+    // ---- Projects
+    clientProjects: buildUrl('client_projects.php'),
+    projectDetails: (projectId: number) => buildUrl('project_details.php', { project_id: projectId }),
 
-    clientProjects: `${BASE_URL}/client_projects.php`,
-    projectDetails: (projectId: number) => `${BASE_URL}/project_details.php?project_id=${projectId}`,
+    projects: buildUrl('get_projects.php'),
+    projectById: (id: number) => buildUrl(`projects/${id}`), // jika endpoint wujud
 
-    projects: `${BASE_URL}/get_projects.php`,
-    projectById: (id: number) => `${BASE_URL}/projects/${id}`,
-    // Tambah lagi bila perlu
+    projectTasks: (projectId: number) => buildUrl('project_tasks.php', { project_id: projectId }),
+    projectTasksPublic: (projectId: number) => buildUrl('project_tasks_public.php', { project_id: projectId }),
+    taskDetails: (taskId: number) => buildUrl('task_details.php', { task_id: taskId }),
+    getTasksByProjectId: (projectId: number) => buildUrl(`projects/${projectId}/tasks`), // jika endpoint wujud
+    updateTaskStatus: (taskId: number) => buildUrl(`tasks/${taskId}`), // jika endpoint wujud
 
-    projectTasks: (projectId: number) => `${BASE_URL}/project_tasks.php?project_id=${projectId}`,
-    projectTasksPublic: (projectId: number) => `${BASE_URL}/project_tasks_public.php?project_id=${projectId}`,
-    taskDetails: (taskId: number) => `${BASE_URL}/task_details.php?task_id=${taskId}`,
-    getTasksByProjectId: (projectId: number) => `${BASE_URL}/projects/${projectId}/tasks`,
-    updateTaskStatus: (taskId: number) => `${BASE_URL}/tasks/${taskId}`,
+    // ---- Forms / Auth / Uploads
+    submitJoinForm: buildUrl('freelancers.php'),
+    submitDiscoveryForm: buildUrl('submit_discovery.php'),
+    login: buildUrl('login.php'),
+    uploadLogo: buildUrl('upload_logo.php'),
 
+    // ---- Tasks list (admin/client)
+    allTasks: buildUrl('tasks_all.php'),
 
+    // ---- Task details features
+    listAttachments: buildUrl('list_attachments.php'),
+    uploadAttachment: buildUrl('upload_attachment.php'),
+    deleteAttachment: buildUrl('delete_attachment.php'),
+    getTaskLink: buildUrl('get_task_link.php'),
+    setTaskLink: buildUrl('set_task_link.php'),
+    listNotes: buildUrl('list_notes.php'),
+    addNote: buildUrl('add_note.php'),
 
-    submitJoinForm: `${BASE_URL}/freelancers.php`,
-
-    submitDiscoveryForm: `${BASE_URL}/submit_discovery.php`,
-
-
-    login: `${BASE_URL}/login.php`,
-    uploadLogo: `${BASE_URL}/upload_logo.php`,
-
-
-
-
-
-
-
-    allTasks: `${BASE_URL}/tasks_all.php`,
-
-
-
-
-
-
-
-
-
-
-    // tasks details features
-    listAttachments: `${BASE_URL}list_attachments.php`,
-    uploadAttachment: `${BASE_URL}upload_attachment.php`,
-    deleteAttachment: `${BASE_URL}delete_attachment.php`,
-
-    getTaskLink: `${BASE_URL}get_task_link.php`,
-    setTaskLink: `${BASE_URL}set_task_link.php`,
-
-    listNotes: `${BASE_URL}list_notes.php`,
-    addNote: `${BASE_URL}add_note.php`,
+    projectSummaries: buildUrl('get_project_summaries.php'),
+    projectSummary: (projectId: number) => buildUrl(` get_project_summaries.php?project_id=${projectId}`),
 };

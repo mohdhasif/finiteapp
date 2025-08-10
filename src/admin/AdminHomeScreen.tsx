@@ -20,7 +20,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminTaskCard from '../component/AdminTaskCard';
 import { getAllTasks, type Task } from '../services/taskService';
 
+
+
+
+import ProjectCard from '../component/ProjectCard';
+import { getProjectSummaries, type ProjectSummary } from '../services/projectService';
+
+
 const { width } = Dimensions.get('window');
+
+// nampak >1 kad (1 penuh + 0.4 kad seterusnya)
+const CARD = Math.round(width * 0.62);  // ~62% skrin
+const GAP = 12;
+const SIDE = 20;
+
 
 type Client = {
     client_id: string;
@@ -53,10 +66,17 @@ const AdminHomeScreen = () => {
     const [loadingTasks, setLoadingTasks] = useState(false);
     const [checkedStates, setCheckedStates] = useState<boolean[]>([]);
 
-    const projects = [
-        { id: 1, title: 'Social Media', client: 'Client A', progress: 60 },
-        { id: 2, title: 'Website Redesign', client: 'Client B', progress: 35 },
-    ];
+    const CARD = Math.round(width * 0.55);
+    const GAP = 16;
+    const SIDE = 20;
+
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const [loadingProjects, setLoadingProjects] = useState(false);
+    const [projError, setProjError] = useState<string | null>(null);
+
+    const formatDate = (d?: string | null) =>
+        !d ? 'No due date' : new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
 
     useEffect(() => {
         const loadData = async () => {
@@ -95,6 +115,33 @@ const AdminHomeScreen = () => {
     useEffect(() => {
         loadTasks();
     }, [loadTasks]);
+
+
+
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                setLoadingProjects(true);
+                setProjError(null);
+
+                const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+                if (!token) throw new Error('No userToken');
+
+                const data = await getProjectSummaries(token);   // 👈 guna service
+                if (!alive) return;
+                setProjects(Array.isArray(data) ? data : []);
+            } catch (e: any) {
+                if (!alive) return;
+                setProjError(e?.message || 'Failed to load projects');
+                setProjects([]);
+            } finally {
+                if (alive) setLoadingProjects(false);
+            }
+        })();
+        return () => { alive = false; };
+    }, []);
+
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -200,33 +247,30 @@ const AdminHomeScreen = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectRow}>
-                        {projects.map((proj, index) => (
-                            <TouchableOpacity
-                                key={proj.id}
-                                style={[styles.projectCard, { marginRight: index === projects.length - 1 ? 20 : 16 }]}
-                                onPress={() => navigation.navigate('AdminProjectTaskListScreen', { project_title: proj.title, project_id: proj.id })}
-                            >
-                                <Text style={styles.projectTitle}>{proj.title}</Text>
-                                <Text style={styles.projectClient}>{proj.client}</Text>
-                                <Text style={styles.projectTasks}>📅 Jan 13, 2025</Text>
-                                <Text style={styles.projectTasks}>✅ 24 Tasks</Text>
-
-                                <View style={styles.avatarGroup}>
-                                    <View style={[styles.avatarMini, { backgroundColor: '#ccc' }]} />
-                                    <View style={[styles.avatarMini, { backgroundColor: '#0af' }]} />
-                                    <View style={[styles.avatarMini, { backgroundColor: '#0072B5' }]}>
-                                        <Text style={{ color: '#fff', fontSize: 12 }}>+</Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.progressBar}>
-                                    <View style={[styles.progressFill, { width: `${proj.progress}%` }]} />
-                                </View>
-                                <Text style={styles.progressPercent}>{proj.progress}%</Text>
-                            </TouchableOpacity>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: SIDE }}
+                        snapToInterval={CARD + GAP}
+                        snapToAlignment="start"
+                        decelerationRate="fast"
+                    >
+                        {projects.map(p => (
+                            <View key={p.project_id} style={{ width: CARD, marginRight: GAP, flexShrink: 0 }}>
+                                <ProjectCard
+                                    data={p}
+                                    width={CARD}            // gunakan lebar yang sama
+                                    onPress={() =>
+                                        navigation.navigate('AdminProjectTaskListScreen', {
+                                            project_id: p.project_id,
+                                            project_title: p.project_title,
+                                        })
+                                    }
+                                />
+                            </View>
                         ))}
                     </ScrollView>
+
                 </View>
 
                 {/* Tasks */}

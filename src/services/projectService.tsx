@@ -53,3 +53,58 @@ export const fetchProjectTasks = async (projectId: number) => {
         throw error;
     }
 };
+
+
+
+export type ProjectSummary = {
+    project_id: number;
+    project_title: string;
+    client_name: string;
+    due_date: string | null;
+    total_tasks: number;
+    completed_tasks: number;
+    progress_percent: number;
+    freelancer_count: number;
+    freelancer_avatars: string[];
+    extra_freelancers: number;
+};
+
+const toJson = async (res: Response) => {
+    const raw = await res.text();
+    try { return JSON.parse(raw); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+};
+
+const auth = (t: string) => ({
+    Accept: 'application/json',
+    Authorization: `Bearer ${t}`,
+});
+
+
+export const getProjectSummaries = async (userToken: string): Promise<ProjectSummary[]> => {
+    const token = userToken?.trim();
+    if (!token) throw new Error('Missing userToken');
+
+    const res = await fetch(API_ENDPOINTS.projectSummaries, {
+        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    });
+
+    const text = await res.text();
+    console.log(text);
+
+    let json: any;
+    try { json = JSON.parse(text); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    return Array.isArray(json) ? json as ProjectSummary[] : (json ? [json as ProjectSummary] : []);
+};
+
+export const getProjectSummaryById = async (userToken: string, projectId: number): Promise<ProjectSummary> => {
+    const token = (userToken ?? '').trim();
+    if (!token) throw new Error('Missing userToken');
+    if (!projectId || projectId <= 0) throw new Error('projectId tidak sah');
+
+    const res = await fetch(API_ENDPOINTS.projectSummary(projectId), { headers: auth(token) });
+    const json = await toJson(res);
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json as ProjectSummary;
+};
