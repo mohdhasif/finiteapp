@@ -1,49 +1,59 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, Image, TouchableOpacity,
-    ScrollView, Switch, SafeAreaView, ActivityIndicator, Alert
+    ScrollView, Switch, SafeAreaView, ActivityIndicator, Alert,
+    TextInput, Platform, UIManager, LayoutAnimation
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '../constants/apiConfig';
-
-// location libs
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
-import { Platform } from 'react-native';
 
 type Coords = { latitude: number; longitude: number } | null;
-
 
 type SaveSettingsPayload = {
     enabled?: number;
     latitude?: number;
     longitude?: number;
 };
+type SaveSettingsResponse = { success?: boolean;[k: string]: any };
 
-type SaveSettingsResponse = {
-    success?: boolean;
-    [k: string]: any;
-};
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const AdminProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { logout } = useAuth();
 
+    // Toggle umum app (project/task dsb)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
+
+    // Auth/storage
     const [installId, setInstallId] = useState<string | null>(null);
     const [userToken, setUserToken] = useState<string | null>(null);
 
+    // Prayer dropdown states
+    const [prayerExpanded, setPrayerExpanded] = useState(false);
+    const [prayerEnabled, setPrayerEnabled] = useState(true);
+    const [latInput, setLatInput] = useState<string>('');
+    const [lngInput, setLngInput] = useState<string>('');
+
+    // UI
     const [coords, setCoords] = useState<Coords>(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingPrayer, setSavingPrayer] = useState(false);
+
+    // throttle autosave on focus
+    const lastAutoRunRef = useRef<number>(0);
 
     useEffect(() => {
-        // load token/install_id + prefill setting if ada
+        // load token/install_id + prefill prayer setting
         (async () => {
             try {
                 const inst = await AsyncStorage.getItem('install_id');
@@ -51,22 +61,36 @@ const AdminProfileScreen = () => {
                 setInstallId(inst);
                 setUserToken(token);
 
-                // (optional) prefill enabled dari server kalau ada endpoint
+                // Prefill dari server
                 try {
                     const headers: Record<string, string> = { Accept: 'application/json' };
-                    let url: string | null = null;
+                    let url = API_ENDPOINTS.getPrayerSettings;
                     if (token) {
-                        url = `${API_ENDPOINTS.getPrayerSettings}?me=1`;
+                        url += (url.includes('?') ? '&' : '?') + 'me=1';
                         headers.Authorization = `Bearer ${token}`;
                     } else if (inst) {
-                        url = `${API_ENDPOINTS.getPrayerSettings}?install_id=${encodeURIComponent(inst)}`;
+                        url += (url.includes('?') ? '&' : '?') + `install_id=${encodeURIComponent(inst)}`;
+                    } else {
+                        return;
                     }
-                    if (url) {
-                        const r = await fetch(url, { headers });
-                        if (r.ok) {
-                            const j = await r.json();
-                            if (j?.setting?.enabled != null) setIsNotificationOn(!!j.setting.enabled);
-                        }
+                    const ctrl = new AbortController();
+                    const to = setTimeout(() => ctrl.abort(), 15000);
+                    const r = await fetch(url, { headers, signal: ctrl.signal });
+                    clearTimeout(to);
+                    if (!r.ok) return;
+                    const ct = r.headers.get('content-type') || '';
+                    const j = ct.includes('application/json') ? await r.json() : null;
+                    if (!j?.setting) return;
+
+                    if (typeof j.setting.enabled !== 'undefined') {
+                        setPrayerEnabled(!!j.setting.enabled);
+                    }
+                    if (j.setting.latitude != null && j.setting.longitude != null) {
+                        const lat = Number(j.setting.latitude);
+                        const lng = Number(j.setting.longitude);
+                        setCoords({ latitude: lat, longitude: lng });
+                        setLatInput(String(lat));
+                        setLngInput(String(lng));
                     }
                 } catch { }
             } finally {
@@ -75,22 +99,14 @@ const AdminProfileScreen = () => {
         })();
     }, []);
 
-    useEffect(() => {
-        // auto-capture location setiap kali screen buka
-        captureAndSaveLocation(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
+    // ===== Helpers =====
     const ensureLocationPermission = async (): Promise<boolean> => {
-        const perm =
-            Platform.OS === 'android'
-                ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
-                : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+        const perm = Platform.OS === 'android'
+            ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+            : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
 
         let res = await check(perm);
-        if (res === RESULTS.DENIED) {
-            res = await request(perm);
-        }
+        if (res === RESULTS.DENIED) res = await request(perm);
         if (res === RESULTS.BLOCKED) {
             Alert.alert(
                 'Location Disabled',
@@ -105,122 +121,155 @@ const AdminProfileScreen = () => {
         return res === RESULTS.GRANTED || res === RESULTS.LIMITED;
     };
 
-    const getCurrentCoordinates = (): Promise<Coords> => {
-        return new Promise((resolve) => {
+    const getCurrentCoordinates = (): Promise<Coords> =>
+        new Promise(resolve => {
             Geolocation.getCurrentPosition(
-                (pos) => {
-                    resolve({
-                        latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude,
-                    });
-                },
+                pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
                 () => resolve(null),
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
             );
         });
-    };
 
     const saveSettings = async (payload: SaveSettingsPayload): Promise<SaveSettingsResponse> => {
-        // bina URL + headers
-        let url = API_ENDPOINTS.savePrayerSettings; // contoh: http://localhost:9000/save_prayer_settings.php
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        };
+        let url = API_ENDPOINTS.savePrayerSettings;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        const bodyPayload: any = { ...payload };
 
-        let bodyPayload: any = { ...payload };
+        // Prefer state; fallback ke storage
+        const token = userToken ?? (await AsyncStorage.getItem('userToken'));
+        const inst = installId ?? (await AsyncStorage.getItem('install_id'));
 
-        if (userToken) {
-            // tambah ?me=1 dengan selamat
-            url += url.includes('?') ? '&me=1' : '?me=1';
-            headers.Authorization = `Bearer ${userToken}`;
-        } else if (installId) {
-            bodyPayload.install_id = installId;
+        if (token) {
+            url += (url.includes('?') ? '&' : '?') + 'me=1';
+            headers.Authorization = `Bearer ${token}`;
+        } else if (inst) {
+            bodyPayload.install_id = inst;
         } else {
             throw new Error('install_id tiada. Buka app sekali untuk generate.');
         }
 
-        // timeout (15s) supaya tak tersekat
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const tm = setTimeout(() => controller.abort(), 15000);
 
         let res: Response;
         try {
-            res = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(bodyPayload),
-                signal: controller.signal,
-            });
+            res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(bodyPayload), signal: controller.signal });
         } catch (err: any) {
-            clearTimeout(timeout);
+            clearTimeout(tm);
             if (err?.name === 'AbortError') throw new Error('Request timeout. Sila cuba lagi.');
             throw new Error(err?.message || 'Network error');
         } finally {
-            clearTimeout(timeout);
+            clearTimeout(tm);
         }
 
         const text = await res.text();
-        console.log('SAVE SETTINGS:', text);
-        
-        const contentType = res.headers.get('content-type') || '';
-        let json: any = null;
-        if (contentType.includes('application/json')) {
-            try { json = JSON.parse(text); } catch { /* ignore */ }
-        }
-
+        const ct = res.headers.get('content-type') || '';
+        const json = ct.includes('application/json') ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
         if (!res.ok) {
-            // log untuk debug
             console.log('saveSettings error:', { status: res.status, body: text });
             throw new Error(json?.error || text || `HTTP ${res.status}`);
         }
-
         return json ?? {};
     };
 
-    const captureAndSaveLocation = async (showToastOnSuccess = false) => {
+    // ===== Prayer dropdown actions =====
+    const togglePrayerSection = () => {
+        LayoutAnimation.easeInEaseOut();
+        setPrayerExpanded(prev => !prev);
+    };
+
+    const onUseCurrentLocation = async () => {
         try {
-            setSaving(true);
+            setSavingPrayer(true);
+            const ok = await ensureLocationPermission();
+            if (!ok) return;
+            const c = await getCurrentCoordinates();
+            if (!c) {
+                Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+                return;
+            }
+            setCoords(c);
+            setLatInput(String(c.latitude));
+            setLngInput(String(c.longitude));
+        } finally {
+            setSavingPrayer(false);
+        }
+    };
+
+    const onSavePrayerSettings = async () => {
+        const lat = latInput.trim() === '' ? undefined : Number(latInput);
+        const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
+
+        if (lat !== undefined && (isNaN(lat) || lat < -90 || lat > 90)) {
+            Alert.alert('Ralat', 'Latitude tidak sah (-90 hingga 90).');
+            return;
+        }
+        if (lng !== undefined && (isNaN(lng) || lng < -180 || lng > 180)) {
+            Alert.alert('Ralat', 'Longitude tidak sah (-180 hingga 180).');
+            return;
+        }
+
+        try {
+            setSavingPrayer(true);
+            const payload: SaveSettingsPayload = { enabled: prayerEnabled ? 1 : 0 };
+            if (lat !== undefined && lng !== undefined) {
+                payload.latitude = lat;
+                payload.longitude = lng;
+            }
+            await saveSettings(payload);
+            if (lat !== undefined && lng !== undefined) setCoords({ latitude: lat, longitude: lng });
+            Alert.alert('Berjaya', 'Prayer settings disimpan.');
+        } catch (e: any) {
+            Alert.alert('Gagal', e?.message ?? 'Tidak dapat simpan settings.');
+        } finally {
+            setSavingPrayer(false);
+        }
+    };
+
+    // ===== Auto-save lokasi setiap kali screen difokus =====
+    const captureAndSaveLocation = useCallback(async (opts: { toast?: boolean; quiet?: boolean } = {}) => {
+        const { toast = false, quiet = true } = opts;
+        try {
             const ok = await ensureLocationPermission();
             if (!ok) {
-                // tetap simpan enabled state walaupun tiada lokasi
-                await saveSettings({ enabled: isNotificationOn ? 1 : 0 });
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
                 return;
             }
             const c = await getCurrentCoordinates();
             if (c) {
+                // kalau tak banyak berubah (<50m), boleh skip — jimat request
+                if (coords) {
+                    const dist = distanceMeters(coords, c);
+                    if (dist < 50) return;
+                }
                 setCoords(c);
-                await saveSettings({
-                    enabled: isNotificationOn ? 1 : 0,
-                    latitude: c.latitude,
-                    longitude: c.longitude,
-                });
-                if (showToastOnSuccess) {
+                setLatInput(String(c.latitude));
+                setLngInput(String(c.longitude));
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0, latitude: c.latitude, longitude: c.longitude });
+                if (toast) {
                     Alert.alert('Lokasi Dikemaskini', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
                 }
             } else {
-                await saveSettings({ enabled: isNotificationOn ? 1 : 0 });
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
+                if (!quiet) Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
             }
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
-        } finally {
-            setSaving(false);
+            if (!quiet) Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
         }
-    };
+    }, [coords, prayerEnabled, userToken, installId]);
 
-    const onToggleNotification = async (value: boolean) => {
-        setIsNotificationOn(value);
-        // simpan terus (tak tunggu user tekan apa-apa)
-        try {
-            setSaving(true);
-            await saveSettings({ enabled: value ? 1 : 0, ...(coords ?? {}) });
-        } catch (e: any) {
-            Alert.alert('Gagal', e?.message ?? 'Tak dapat simpan toggle');
-            setIsNotificationOn(!value);
-        } finally {
-            setSaving(false);
-        }
-    };
+    useFocusEffect(
+        useCallback(() => {
+            if (loading || (!userToken && !installId)) return;
+
+            const now = Date.now();
+            if (now - lastAutoRunRef.current < 30000) return; // throttle 30s
+            lastAutoRunRef.current = now;
+
+            // auto save senyap (tanpa alert)
+            captureAndSaveLocation({ toast: false, quiet: true });
+        }, [loading, userToken, installId, captureAndSaveLocation])
+    );
 
     if (loading) {
         return (
@@ -250,40 +299,96 @@ const AdminProfileScreen = () => {
                     <MenuItem icon="person-outline" label="My Profile" />
                     <MenuItem icon="lock-closed-outline" label="Change Password" />
 
-                    {/* Notifications toggle */}
+                    {/* Toggle umum app notifications */}
                     <View style={styles.menuItem}>
                         <Icon name="notifications-outline" size={22} color="#555" style={styles.menuIcon} />
                         <Text style={styles.menuText}>Notifications</Text>
                         <View style={{ flex: 1 }} />
                         <Switch
                             value={isNotificationOn}
-                            onValueChange={onToggleNotification}
+                            onValueChange={setIsNotificationOn}
                             trackColor={{ false: '#ccc', true: '#0077c2' }}
                             thumbColor="#fff"
                         />
                     </View>
 
-                    {/* Location status + refresh */}
-                    <View style={[styles.card, { gap: 8 }]}>
-                        <Text style={styles.cardTitle}>Current Location</Text>
-                        <Text style={styles.hint}>
-                            {coords
-                                ? `Lat: ${coords.latitude.toFixed(5)}  Lng: ${coords.longitude.toFixed(5)}`
-                                : 'Belum dapat lokasi'}
-                        </Text>
-                        <TouchableOpacity
-                            style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-                            disabled={saving}
-                            onPress={() => captureAndSaveLocation(true)}
-                        >
-                            {saving ? <ActivityIndicator color="#fff" /> : (
-                                <>
-                                    <Icon name="navigate-outline" size={18} color="#fff" />
-                                    <Text style={styles.saveText}>Refresh Location</Text>
-                                </>
-                            )}
+                    {/* Prayer Settings dropdown */}
+                    <View style={styles.card}>
+                        <TouchableOpacity style={styles.dropdownHeader} onPress={togglePrayerSection}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Icon name="volume-high-outline" size={20} color="#0d4e80" />
+                                <Text style={[styles.cardTitle, { marginLeft: 8 }]}>Prayer Settings (Azan)</Text>
+                            </View>
+                            <Icon name={prayerExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#0d4e80" />
                         </TouchableOpacity>
-                        {installId ? <Text style={styles.hint}>Install ID: {installId}</Text> : null}
+
+                        {prayerExpanded && (
+                            <View style={{ marginTop: 12, gap: 14 }}>
+                                {/* Enable Azan */}
+                                <View style={styles.rowBetween}>
+                                    <Text style={styles.label}>Enable Azan</Text>
+                                    <Switch
+                                        value={prayerEnabled}
+                                        onValueChange={setPrayerEnabled}
+                                        trackColor={{ false: '#ccc', true: '#0077c2' }}
+                                        thumbColor="#fff"
+                                    />
+                                </View>
+
+                                {/* Lat/Lng inputs */}
+                                <View>
+                                    <Text style={styles.label}>Latitude</Text>
+                                    <TextInput
+                                        value={latInput}
+                                        onChangeText={setLatInput}
+                                        placeholder="e.g. 3.1390"
+                                        keyboardType="decimal-pad"
+                                        style={styles.input}
+                                    />
+                                </View>
+                                <View>
+                                    <Text style={styles.label}>Longitude</Text>
+                                    <TextInput
+                                        value={lngInput}
+                                        onChangeText={setLngInput}
+                                        placeholder="e.g. 101.6869"
+                                        keyboardType="decimal-pad"
+                                        style={styles.input}
+                                    />
+                                </View>
+
+                                {/* Actions */}
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <TouchableOpacity
+                                        style={[styles.btn, { flex: 1 }, savingPrayer && { opacity: 0.6 }]}
+                                        onPress={onUseCurrentLocation}
+                                        disabled={savingPrayer}
+                                    >
+                                        {savingPrayer ? <ActivityIndicator color="#fff" /> : (
+                                            <>
+                                                <Icon name="navigate-outline" size={18} color="#fff" />
+                                                <Text style={styles.btnText}>Use Current Location</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.btnSecondary, { flex: 1 }, savingPrayer && { opacity: 0.6 }]}
+                                        onPress={onSavePrayerSettings}
+                                        disabled={savingPrayer}
+                                    >
+                                        <Text style={[styles.btnText, { color: '#0d4e80' }]}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text style={styles.hint}>
+                                    Sistem akan guna lat/long ini untuk ambil waktu solat harian dan hantar notifikasi tepat pada waktunya.
+                                </Text>
+
+                                {installId ? <Text style={styles.hint}>Install ID: {installId}</Text> : null}
+                                {coords ? <Text style={styles.hint}>Current: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</Text> : null}
+                            </View>
+                        )}
                     </View>
 
                     <MenuItem icon="help-circle-outline" label="FAQ" />
@@ -317,6 +422,16 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
     );
 };
 
+function distanceMeters(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+    const R = 6371000; // m
+    const dLat = (b.latitude - a.latitude) * Math.PI / 180;
+    const dLng = (b.longitude - a.longitude) * Math.PI / 180;
+    const la1 = a.latitude * Math.PI / 180;
+    const la2 = b.latitude * Math.PI / 180;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+}
+
 const styles = StyleSheet.create({
     safe: { flex: 1, backgroundColor: '#d4d4d4' },
     container: {
@@ -337,10 +452,22 @@ const styles = StyleSheet.create({
     logoutText: { fontSize: 16, color: '#0077c2', fontWeight: '500' },
 
     card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-    cardTitle: { fontSize: 16, fontWeight: '600', color: '#0d4e80', marginBottom: 4 },
-    saveBtn: { marginTop: 8, backgroundColor: '#0077c2', borderRadius: 12, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
-    saveText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
-    hint: { marginTop: 4, fontSize: 12, color: '#6b7280' },
+    cardTitle: { fontSize: 16, fontWeight: '600', color: '#0d4e80' },
+    dropdownHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+    hint: { marginTop: 6, fontSize: 12, color: '#6b7280' },
+
+    label: { fontSize: 14, color: '#0d4e80', marginBottom: 6, fontWeight: '600' },
+    input: {
+        backgroundColor: '#f5f7fb', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+        borderWidth: 1, borderColor: '#e3e8f0', fontSize: 14, color: '#0f172a',
+    },
+
+    btn: { backgroundColor: '#0077c2', borderRadius: 12, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
+    btnSecondary: { backgroundColor: '#e6f1fb', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+    btnText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
+
+    rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });
 
 export default AdminProfileScreen;
