@@ -47,7 +47,7 @@ const parseJsonSafe = (raw: string) => {
 const handleErrors = async (res: Response, raw: string) => {
     const json = parseJsonSafe(raw);
 
-    // API-level error (our unified shape)
+    // API-level error (unified shape)
     if (json && json.success === false) {
         throw new Error(json.error || 'Server returned an error');
     }
@@ -84,6 +84,11 @@ const apiFetch = async (url: string, init: RequestInit = {}, token?: string) => 
     const raw = await res.text();
     const json = await handleErrors(res, raw);
     return json;
+};
+
+const normIso = (s?: string) => {
+    if (!s) return new Date().toISOString();
+    return s.includes('T') ? s : s.replace(' ', 'T') + 'Z';
 };
 
 // ==== Service API ====
@@ -204,15 +209,10 @@ export const listNotes = async (token: string, taskId: number): Promise<TaskNote
             | 'client',
         sender_id: r.sender_id != null ? Number(r.sender_id) : null,
         message: String(r.message ?? ''),
-        created_at: String(r.created_at ?? new Date().toISOString()),
+        created_at: normIso(r.created_at),
     })) as TaskNote[];
 
-    // sort: terbaru dahulu
-    mapped.sort(
-        (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    return mapped;
+    return mapped; // sorting akan dibuat di screen masa load sahaja
 };
 
 export const addNote = async (
@@ -243,6 +243,6 @@ export const addNote = async (
             | 'client',
         sender_id: n.sender_id != null ? Number(n.sender_id) : payload.sender_id ?? null,
         message: String(n.message ?? payload.message ?? ''),
-        created_at: String(n.created_at ?? new Date().toISOString()),
+        created_at: normIso(n.created_at), // fallback ke now
     };
 };

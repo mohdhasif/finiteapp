@@ -1,5 +1,5 @@
 // src/screens/AdminTaskDetailsScreen.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -17,7 +17,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     listAttachments,
@@ -35,6 +34,16 @@ import { launchImageLibrary } from 'react-native-image-picker';
 
 const { width } = Dimensions.get('window');
 type ScreenRoute = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
+
+// Normalise tarikh → milliseconds (handle "YYYY-MM-DD HH:mm:ss" atau ISO)
+const toMs = (s?: string) => {
+    if (!s) return 0;
+    const iso = s.includes('T') ? s : s.replace(' ', 'T') + 'Z';
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? t : 0;
+};
+// Sort helper: oldest → newest (guna masa load sahaja)
+const sortOldest = (arr: TaskNote[]) => arr.slice().sort((a, b) => toMs(a.created_at) - toMs(b.created_at));
 
 const AdminTaskDetailsScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -58,8 +67,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const [notes, setNotes] = useState<TaskNote[]>([]);
     const [noteText, setNoteText] = useState('');
     const [sendingNote, setSendingNote] = useState(false);
-
     const canSend = useMemo(() => noteText.trim().length > 0, [noteText]);
+
+    const outerScrollRef = useRef<ScrollView>(null); // scroll keseluruhan
+    const notesBottomAnchor = useRef<View>(null);     // anchor untuk scroll ke bawah
 
     const toAbs = useCallback((u?: string | null) => {
         if (!u) return '';
@@ -77,7 +88,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             ]);
             setAttachments(att ?? []);
             setLinkUrlState(lk?.url ?? '');
-            setNotes(ns ?? []);
+            setNotes(sortOldest(ns ?? [])); // sort hanya masa load
         } catch (e: any) {
             Alert.alert('Gagal memuat', e?.message || 'Ralat tidak diketahui');
         } finally {
@@ -107,7 +118,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
         })();
     }, [taskId, loadAll]);
 
-    // ========== Actions ==========
+    // ===== Actions =====
     const handlePickAndUpload = () => {
         if (!token) return;
         launchImageLibrary({ mediaType: 'mixed', selectionLimit: 1 }, async (resp) => {
@@ -142,11 +153,8 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 onPress: async () => {
                     try {
                         const ok = await deleteAttachment(token, id);
-                        if (ok) {
-                            setAttachments((prev) => prev.filter((x) => x.id !== id));
-                        } else {
-                            Alert.alert('Gagal', 'Tidak dapat padam lampiran.');
-                        }
+                        if (ok) setAttachments((prev) => prev.filter((x) => x.id !== id));
+                        else Alert.alert('Gagal', 'Tidak dapat padam lampiran.');
                     } catch (e: any) {
                         Alert.alert('Gagal', e?.message || 'Ralat tidak diketahui');
                     }
@@ -185,8 +193,21 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 sender_type: 'admin',
                 message: noteText.trim(),
             });
-            setNotes((prev) => [note, ...prev]);
+
+            // Fallback created_at kalau server tak bagi, supaya tak tersort pelik
+            const safeNote: TaskNote = {
+                ...note,
+                created_at: note.created_at && note.created_at.trim() ? note.created_at : new Date().toISOString(),
+            };
+
+            // JANGAN sort di sini — terus APPEND untuk kekalkan di bawah
+            setNotes((prev) => [...prev, safeNote]);
             setNoteText('');
+
+            // Auto-scroll ke bawah supaya nampak nota baru
+            requestAnimationFrame(() => {
+                outerScrollRef.current?.scrollToEnd({ animated: true });
+            });
         } catch (e: any) {
             Alert.alert('Gagal hantar nota', e?.message || 'Ralat tidak diketahui');
         } finally {
@@ -194,10 +215,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
         }
     };
 
-    // ========== UI ==========
     return (
         <View style={styles.container}>
             <ScrollView
+                ref={outerScrollRef}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 keyboardShouldPersistTaps="handled"
@@ -206,7 +227,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 <Text style={styles.header}>Task Details</Text>
                 <Text style={styles.title}>{taskTitle}</Text>
 
-                {/* Description placeholder (boleh ganti dengan API task_details bila sedia) */}
+                {/* Description (placeholder) */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>
                         <Text style={styles.bullet}>● </Text>Description
@@ -286,11 +307,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 </View>
 
                 {/* Notes */}
-                {/* Notes */}
                 <View style={styles.cardBlock}>
                     <Text style={styles.cardTitle}>● Notes</Text>
 
-                    {/* Senarai nota: paling lama di atas */}
+                    {/* Senarai nota (oldest → newest) — disusun masa load */}
                     {loading && notes.length === 0 ? (
                         <Text style={styles.muted}>Loading notes…</Text>
                     ) : notes.length === 0 ? (
@@ -303,7 +323,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.noteMeta}>
-                                        {n.sender_type.toUpperCase()} · {new Date(n.created_at).toLocaleString()}
+                                        {n.sender_type.toUpperCase()} · {new Date(toMs(n.created_at)).toLocaleString()}
                                     </Text>
                                     <Text style={styles.noteText}>{n.message}</Text>
                                 </View>
@@ -311,7 +331,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         ))
                     )}
 
-                    {/* INPUT DIPINDAH KE PALING BAWAH */}
+                    {/* INPUT di PALING BAWAH */}
                     <View style={[styles.noteInputBox, { marginTop: 12 }]}>
                         <TextInput
                             placeholder="Tulis nota…"
@@ -334,8 +354,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                             <Text style={styles.primaryBtnText}>{sendingNote ? 'Sending…' : 'Send'}</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
 
+                    {/* Anchor untuk scrollToEnd yang tepat */}
+                    <View ref={notesBottomAnchor} />
+                </View>
 
                 <View style={{ height: 90 }} />
             </ScrollView>
@@ -465,7 +487,7 @@ const styles = StyleSheet.create({
         borderColor: '#1DA1F2',
         borderWidth: 1,
         padding: 12,
-        marginBottom: 12,
+        marginBottom: 0,
     },
     textarea: {
         minHeight: 80,
