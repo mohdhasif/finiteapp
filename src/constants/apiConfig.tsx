@@ -75,4 +75,10 @@ export const API_ENDPOINTS = {
 
     claimInstallSubscriptions: buildUrl(`claim_install_subscriptions.php`),
     savePushNotifications: buildUrl(`save_push_subscription.php`),
+
+
+
+
+    savePrayerSettings: buildUrl('save_prayer_settings.php'),
+    getPrayerSettings: buildUrl('get_prayer_settings.php'),
 };
