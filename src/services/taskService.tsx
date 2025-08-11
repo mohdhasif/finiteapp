@@ -97,11 +97,49 @@ export const getTaskDetails = async (token: string, taskId: number) => {
     if (!t) throw new Error('Missing userToken');
     if (!taskId) throw new Error('taskId tidak sah');
 
-    const res = await fetch(API_ENDPOINTS.taskDetails(taskId), {
-        headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error('Gagal ambil detail task');
-    return await res.json();
+    let res: Response | undefined;
+    let raw = '';
+
+    try {
+        res = await fetch(API_ENDPOINTS.taskDetails(taskId), {
+            headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
+        });
+
+        // Penting: baca body sekali sahaja
+        raw = await res.text();
+
+        // Cuba parse JSON
+        let json: any;
+        try {
+            json = JSON.parse(raw);
+        } catch {
+            // Server tak bagi JSON sah
+            throw new Error(`Invalid JSON from server (first 300 chars): ${raw.slice(0, 300)}`);
+        }
+
+        // HTTP-level error
+        if (!res.ok) {
+            const msg = json?.error || `HTTP ${res.status}`;
+            throw new Error(msg);
+        }
+
+        // API-level error (jika server balas { success:false, error:"..." })
+        if (json?.success === false) {
+            throw new Error(json?.error || 'Server returned an error');
+        }
+
+        return json; // berjaya
+    } catch (err: any) {
+        // Letak detail tambahan untuk trace
+        console.error('[getTaskDetails] ERROR:', err?.message);
+        if (res) {
+            console.error('[getTaskDetails] HTTP status:', res.status);
+        }
+        if (raw) {
+            console.error('[getTaskDetails] RAW kept for debug (first 500):', raw.slice(0, 500));
+        }
+        throw err;
+    }
 };
 
 export const getAllTasks = async (

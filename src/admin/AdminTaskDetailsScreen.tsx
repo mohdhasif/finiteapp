@@ -31,6 +31,8 @@ import {
 } from '../services/taskDetailsService';
 import { BASE_URL } from '../constants/apiConfig';
 import { launchImageLibrary } from 'react-native-image-picker';
+import DocumentPicker, { types } from 'react-native-document-picker';
+import { getTaskDetails } from '../services/taskService';
 
 const { width } = Dimensions.get('window');
 type ScreenRoute = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
@@ -72,6 +74,8 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const outerScrollRef = useRef<ScrollView>(null); // scroll keseluruhan
     const notesBottomAnchor = useRef<View>(null);     // anchor untuk scroll ke bawah
 
+    const [taskDetails, setTaskDetails] = useState<any>(null);
+
     const toAbs = useCallback((u?: string | null) => {
         if (!u) return '';
         if (/^https?:\/\//i.test(u)) return u;
@@ -81,14 +85,16 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const loadAll = useCallback(async (tk: string) => {
         try {
             setLoading(true);
-            const [att, lk, ns] = await Promise.all([
+            const [att, lk, ns, td] = await Promise.all([
                 listAttachments(tk, taskId),
                 getTaskLink(tk, taskId),
                 listNotes(tk, taskId),
+                getTaskDetails(tk, taskId), // <-- dapatkan detail task
             ]);
             setAttachments(att ?? []);
             setLinkUrlState(lk?.url ?? '');
             setNotes(sortOldest(ns ?? [])); // sort hanya masa load
+            setTaskDetails(td ?? null); // <-- simpan dalam state
         } catch (e: any) {
             Alert.alert('Gagal memuat', e?.message || 'Ralat tidak diketahui');
         } finally {
@@ -119,28 +125,30 @@ const AdminTaskDetailsScreen: React.FC = () => {
     }, [taskId, loadAll]);
 
     // ===== Actions =====
-    const handlePickAndUpload = () => {
+    const handlePickAndUpload = async () => {
         if (!token) return;
-        launchImageLibrary({ mediaType: 'mixed', selectionLimit: 1 }, async (resp) => {
-            try {
-                if (!resp || !resp.assets || resp.assets.length === 0) return;
-                const a = resp.assets[0];
-                const uri = a.uri;
-                if (!uri) return;
+        try {
+            const res = await DocumentPicker.pickSingle({
+                type: [types.allFiles], // semua jenis file
+            });
 
-                setUploading(true);
-                const name = a.fileName || `attachment_${Date.now()}`;
-                const type = a.type || 'application/octet-stream';
+            const uri = res.uri;
+            if (!uri) return;
 
-                const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
-                setAttachments((prev) => [uploaded, ...prev]);
-                Alert.alert('Berjaya', 'Attachment dimuat naik.');
-            } catch (e: any) {
-                Alert.alert('Gagal upload', e?.message || 'Ralat tidak diketahui');
-            } finally {
-                setUploading(false);
+            setUploading(true);
+            const name = res.name || `attachment_${Date.now()}`;
+            const type = res.type || 'application/octet-stream';
+
+            const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
+            setAttachments((prev) => [uploaded, ...prev]);
+            Alert.alert('Berjaya', 'Attachment dimuat naik.');
+        } catch (err: any) {
+            if (!DocumentPicker.isCancel(err)) {
+                Alert.alert('Gagal upload', err?.message || 'Ralat tidak diketahui');
             }
-        });
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleDeleteAttachment = (id: number) => {
@@ -163,12 +171,20 @@ const AdminTaskDetailsScreen: React.FC = () => {
         ]);
     };
 
+    const normalizeUrl = (s: string) => {
+        const trimmed = (s || '').trim();
+        return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    };
+
     const handleOpenLink = async () => {
-        if (!linkUrl) return;
-        const url = /^https?:\/\//i.test(linkUrl) ? linkUrl : `https://${linkUrl}`;
-        const supported = await Linking.canOpenURL(url);
-        if (supported) Linking.openURL(url);
-        else Alert.alert('Link tidak sah', 'URL tidak boleh dibuka.');
+        if (!linkUrl?.trim()) return;
+        const url = normalizeUrl(linkUrl);
+
+        try {
+            await Linking.openURL(url); // terus cuba
+        } catch (e) {
+            Alert.alert('Link tidak sah', 'URL tidak boleh dibuka. Pastikan ada browser atau cuba lagi.');
+        }
     };
 
     const handleSaveLink = async () => {
@@ -233,7 +249,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         <Text style={styles.bullet}>● </Text>Description
                     </Text>
                     <Text style={styles.description}>
-                        (Integrasi description sebenar dari endpoint task_details.php jika tersedia)
+                        {taskDetails?.description || 'Tiada deskripsi.'}
                     </Text>
                 </View>
 
