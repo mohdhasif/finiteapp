@@ -20,7 +20,11 @@ const statusStyles = (status?: string) => {
 
 const AdminTaskCard: React.FC<Props> = ({ task, checked, onToggleCheck, onPress }) => {
   const title = task.title || 'Untitled Task';
-  const clientName = task.client?.display_name || 'No Client';
+  // const clientName = task.client?.display_name || 'No Client';
+  const clientName =
+    task.client?.client_type === 'company'
+      ? (task.client?.company_name || 'No Client')
+      : (task.client?.name || 'No Client');
   const projTitle = task.project?.title || 'No Project';
   const pill = statusStyles(task.status);
 

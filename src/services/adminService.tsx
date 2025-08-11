@@ -1,25 +1,23 @@
-// src/services/adminService.ts (or wherever appropriate)
-
+// src/services/adminService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
 
-export const fetchClients = async () => {
-    try {
-        const response = await fetch(API_ENDPOINTS.getClients);
-        if (!response.ok) throw new Error('Gagal fetch clients');
-        return await response.json();
-    } catch (error) {
-        console.error('Fetch clients error:', error);
-        return [];
-    }
+const parse = async (res: Response) => {
+    const raw = await res.text();
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json;
 };
 
-export const fetchFreelancers = async () => {
-    try {
-        const response = await fetch(API_ENDPOINTS.getFreelancers);
-        if (!response.ok) throw new Error('Gagal fetch freelancers');
-        return await response.json();
-    } catch (error) {
-        console.error('Fetch freelancers error:', error);
-        return [];
-    }
+export const fetchClients = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.getClients, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    return parse(res);
+};
+
+export const fetchFreelancers = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.getFreelancers, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    return parse(res);
 };

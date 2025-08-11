@@ -1,53 +1,52 @@
 // src/services/taskService.ts
-
 import { API_ENDPOINTS } from '../constants/apiConfig';
 
-export const getTasksByProjectId = async (projectId: number) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.getTasksByProjectId(projectId));
-        if (!response.ok) throw new Error('Gagal dapatkan task projek');
-        return await response.json();
-    } catch (error) {
-        console.error('Error:', error);
-        throw error;
-    }
+const parse = async (res: Response) => {
+    const raw = await res.text();
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json;
+};
+
+const auth = (t: string) => ({ Authorization: `Bearer ${t}`, Accept: 'application/json' });
+
+const appendQuery = (base: string, params?: Record<string, unknown>) => {
+    const pairs = Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '');
+    if (!pairs.length) return base;
+    const q = pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
+    return `${base}${base.includes('?') ? '&' : '?'}${q}`;
+};
+
+export const getTasksByProjectId = async (token: string, projectId: number) => {
+    const res = await fetch(API_ENDPOINTS.getTasksByProjectId(projectId), { headers: auth(token) });
+    return parse(res);
 };
 
 export const getTasksByProject = async (token: string, projectId: number) => {
-    const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
-        headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Baca sebagai text dulu
-    const raw = await res.text();
-
-    let data;
-    try {
-        data = JSON.parse(raw);
-    } catch (err) {
-        console.error('JSON parse error:', err);
-        throw new Error('Server tidak mengembalikan JSON yang sah');
-    }
-
-    if (!res.ok) {
-        throw new Error(data?.error || `Gagal ambil tugasan (HTTP ${res.status})`);
-    }
-
-    return data;
+    const res = await fetch(API_ENDPOINTS.projectTasks(projectId), { headers: auth(token) });
+    return parse(res); // normalize di caller jika perlu
 };
 
+export const getAllTasks = async (
+    token: string,
+    opts: { status?: 'pending' | 'in_progress' | 'completed'; projectId?: number } = {}
+) => {
+    const url = appendQuery(API_ENDPOINTS.allTasks, { status: opts.status, project_id: opts.projectId });
+    const res = await fetch(url, { headers: auth(token) });
+    const json = await parse(res);
+    return Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+};
 
-export const updateTaskStatus = async (taskId: number, status: string) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.updateTaskStatus(taskId), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status }),
-        });
-        if (!response.ok) throw new Error('Gagal kemas kini status task');
-        return await response.json();
-    } catch (error) {
-        console.error('Error:', error);
-        throw error;
-    }
+export const getTaskDetails = async (token: string, taskId: number) => {
+    const res = await fetch(API_ENDPOINTS.taskDetails(taskId), { headers: auth(token) });
+    return parse(res);
+};
+
+export const updateTaskStatus = async (token: string, taskId: number, status: string) => {
+    const res = await fetch(API_ENDPOINTS.updateTaskStatus(taskId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...auth(token) },
+        body: JSON.stringify({ status }),
+    });
+    return parse(res);
 };

@@ -1,83 +1,37 @@
 // src/services/clientService.ts
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 
-// ✅ Get clients
-export const getClients = async () => {
-    const token = await AsyncStorage.getItem('userToken');
+const parse = async (res: Response) => {
+    const raw = await res.text();
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json;
+};
 
-    const response = await fetch(API_ENDPOINTS.getClients, {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
+export const getClients = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.getClients, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch clients');
-    }
-
-    return await response.json();
+    return parse(res);
 };
 
-// ✅ Update client
-export const updateClient = async ({
-    client_id,
-    company_name,
-    phone,
-    status,
-    client_type,
-    logo_url,
-}: {
-    client_id: number;
-    company_name: string;
-    phone: string;
-    status: string;
-    client_type: string;
-    logo_url: string | null;
+export const updateClient = async (token: string, payload: {
+    client_id: number; company_name: string; phone: string;
+    status: string; client_type: string; logo_url: string | null;
 }) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.updateClient, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                client_id,
-                company_name,
-                phone,
-                status,
-                client_type,
-                logo_url,
-            }),
-        });
-
-        return await response.json(); // { success: true/false, error: "" }
-    } catch (error) {
-        console.error('Update Client Error:', error);
-        return { success: false, error: 'Server error' };
-    }
+    const res = await fetch(API_ENDPOINTS.updateClient, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    return parse(res); // { success, error? }
 };
 
-// ✅ Approve client
-export const approveClient = async (client_id: number) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.approveClient, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ client_id }),
-        });
-
-        const resText = await response.text();
-
-        try {
-            return JSON.parse(resText);
-        } catch (error) {
-            console.error('JSON Parse Error:', error);
-            return { success: false, error: 'Invalid server response (not JSON)' };
-        }
-    } catch (error) {
-        console.error('Approve Client Error:', error);
-        return { success: false, error: 'Server error' };
-    }
+export const approveClient = async (token: string, client_id: number) => {
+    const res = await fetch(API_ENDPOINTS.approveClient, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        body: JSON.stringify({ client_id }),
+    });
+    return parse(res);
 };

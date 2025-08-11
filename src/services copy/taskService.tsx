@@ -18,7 +18,6 @@ export type Task = {
         client_type: 'company' | 'individual' | null;
         company_name: string | null;
         logo_url: string | null;
-        name: string | null;
     } | null;
     freelancers?: Array<{
         freelancer_id: number;
@@ -59,8 +58,6 @@ export const getTasksByProject = async (token: string, projectId: number) => {
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
     if (!projectId) throw new Error('projectId tidak sah');
-
-    console.log(projectId);
 
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
         headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },

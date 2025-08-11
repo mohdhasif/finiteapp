@@ -4,20 +4,19 @@
 export const BASE_URL = 'https://fd9315becb7e.ngrok-free.app';
 
 // 2) Helper untuk build URL + query params dengan selamat
-export const buildUrl = (
-    path: string,
-    params?: Record<string, string | number | boolean | undefined | null>
-) => {
-    const cleanPath = String(path).replace(/^\/+/, ''); // buang leading /
-    const url = new URL(`${BASE_URL}/${cleanPath}`);
-    if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-            if (v !== undefined && v !== null && String(v) !== '') {
-                url.searchParams.set(k, String(v));
-            }
-        });
-    }
-    return url.toString();
+const join = (base: string, path: string) =>
+    `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+
+const qs = (params?: Record<string, unknown>) =>
+    Object.entries(params ?? {})
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+        .join('&');
+
+export const buildUrl = (path: string, params?: Record<string, unknown>) => {
+    const url = join(BASE_URL, path);
+    const query = qs(params);
+    return query ? `${url}?${query}` : url;
 };
 
 export const API_ENDPOINTS = {

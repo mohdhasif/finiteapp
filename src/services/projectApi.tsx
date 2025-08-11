@@ -1,39 +1,32 @@
+// src/services/projectApi.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
 
-export const getProjects = async () => {
-    try {
-        const response = await fetch(API_ENDPOINTS.projects);
-        if (!response.ok) throw new Error('Gagal dapatkan projek');
-        return await response.json();
-    } catch (error) {
-        console.error('Error getProjects:', error);
-        throw error;
-    }
+const parse = async (res: Response) => {
+    const raw = await res.text();
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json;
 };
 
-export const createProject = async (payload: any) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.projects, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) throw new Error('Gagal cipta projek');
-        return await response.json();
-    } catch (error) {
-        console.error('Error createProject:', error);
-        throw error;
-    }
+export const getProjects = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.projects, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    return parse(res);
 };
 
-export const getProjectById = async (id: number) => {
-    try {
-        const response = await fetch(API_ENDPOINTS.projectById(id));
-        if (!response.ok) throw new Error('Gagal dapatkan projek');
-        return await response.json();
-    } catch (error) {
-        console.error('Error getProjectById:', error);
-        throw error;
-    }
+export const createProject = async (token: string, payload: any) => {
+    const res = await fetch(API_ENDPOINTS.projects, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    return parse(res);
+};
+
+export const getProjectById = async (token: string, id: number) => {
+    const res = await fetch(API_ENDPOINTS.projectById(id), {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    return parse(res);
 };

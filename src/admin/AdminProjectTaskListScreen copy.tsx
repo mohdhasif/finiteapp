@@ -61,7 +61,7 @@ const AdminProjectTaskListScreen = () => {
 
                 const arr = await getTasksByProject(token, route.params.project_id);
                 const list = Array.isArray(arr) ? arr : [];
-                console.log('TASKS ARRAY (normalized):', list);
+                // console.log('TASKS ARRAY (normalized):', list);
                 setTasksAll(list);
 
                 // init checkbox mengikut id (preserve bila re-fetch)
@@ -225,6 +225,33 @@ const AdminProjectTaskListScreen = () => {
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 150 }}
                 >
+                    {/* {loading ? (
+                        <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
+                            Loading...
+                        </Text>
+                    ) : Array.isArray(tasks) && tasks.length > 0 ? (
+                        tasks.map((task: any) => (
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                checked={!!checkedById[task.id]}
+                                onToggleCheck={() => {
+                                    setCheckedById(curr => ({ ...curr, [task.id]: !curr[task.id] }));
+                                }}
+                                onPress={() =>
+                                    navigation.push('AdminTaskDetailsScreen', {
+                                        task_title: task.title,
+                                        task_id: task.id,
+                                    })
+                                }
+                            />
+                        ))
+                    ) : (
+                        <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
+                            Tiada task dijumpai.
+                        </Text>
+                    )} */}
+
                     {loading ? (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
                             Loading...
