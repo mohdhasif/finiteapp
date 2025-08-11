@@ -13,6 +13,7 @@ import ClientListScreen from '../admin/ClientListScreen';
 import ClientApprovalScreen from '../admin/ClientApprovalScreen';
 import FreelancerListScreen from '../admin/FreelancerListScreen';
 import FreelancerApprovalScreen from '../admin/FreelancerApprovalScreen';
+import AddTaskScreen from '../admin/AddTaskScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,11 @@ export default function AdminStack() {
             <Stack.Screen
                 name="FreelancerApprovalScreen"
                 component={FreelancerApprovalScreen}
+                options={{ headerShown: false }} // ✅ buang header
+            />
+            <Stack.Screen
+                name="AddTaskScreen"
+                component={AddTaskScreen}
                 options={{ headerShown: false }} // ✅ buang header
             />
         </Stack.Navigator>

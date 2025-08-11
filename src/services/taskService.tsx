@@ -60,8 +60,6 @@ export const getTasksByProject = async (token: string, projectId: number) => {
     if (!t) throw new Error('Missing userToken');
     if (!projectId) throw new Error('projectId tidak sah');
 
-    console.log(projectId);
-
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
         headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
     });
@@ -131,4 +129,42 @@ export const getAllTasks = async (
     if (!res.ok) throw new Error((json && json.error) || `HTTP ${res.status}`);
 
     return Array.isArray(json?.data) ? (json.data as Task[]) : [];
+};
+
+
+
+
+
+export type CreateTaskPayload = {
+    title: string;
+    description?: string;
+    status?: 'pending' | 'in_progress' | 'completed';
+    due_date?: string;              // 'YYYY-MM-DD'
+    start_at?: string;              // 'YYYY-MM-DD HH:MM:SS'
+    end_at?: string;                // 'YYYY-MM-DD HH:MM:SS'
+    project_id: number;
+};
+
+export const createTask = async (token: string, payload: CreateTaskPayload) => {
+    const res = await fetch(API_ENDPOINTS.createTask, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try { json = JSON.parse(raw); } catch {
+        throw new Error('Server tidak mengembalikan JSON yang sah');
+    }
+
+    if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `Gagal tambah task (HTTP ${res.status})`);
+    }
+
+    return json;
 };

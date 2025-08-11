@@ -33,19 +33,19 @@ const AdminTaskDetailsScreen = () => {
                 <View style={styles.dropdown}>
                     <TouchableOpacity
                         style={styles.option}
-                    // onPress={() => {
-                    //     setShowOptions(false);
-                    //     navigation.navigate('NewProjectScreen'); // Ganti ikut nama sebenar
-                    // }}
+                        onPress={() => {
+                            setShowOptions(false);
+                            navigation.navigate('AdminCreateProjectScreen'); // Ganti ikut nama sebenar
+                        }}
                     >
                         <Text style={styles.optionText}>New Project</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.option}
-                    // onPress={() => {
-                    //     setShowOptions(false);
-                    //     navigation.navigate('NewTaskScreen'); // Ganti ikut nama sebenar
-                    // }}
+                        onPress={() => {
+                            setShowOptions(false);
+                            navigation.navigate('AddTaskScreen'); // Ganti ikut nama sebenar
+                        }}
                     >
                         <Text style={styles.optionText}>New Task</Text>
                     </TouchableOpacity>
@@ -128,19 +128,19 @@ const AdminTaskDetailsScreen = () => {
                 <View style={styles.dropdown}>
                     <TouchableOpacity
                         style={styles.option}
-                    // onPress={() => {
-                    //     setShowMenu(false);
-                    //     navigation.navigate('NewProjectScreen');
-                    // }}
+                        onPress={() => {
+                            setShowMenu(false);
+                            navigation.navigate('AdminCreateProjectScreen');
+                        }}
                     >
                         <Text style={styles.optionText}>New Project</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.option}
-                    // onPress={() => {
-                    //     setShowMenu(false);
-                    //     navigation.navigate('NewTaskScreen');
-                    // }}
+                        onPress={() => {
+                            setShowMenu(false);
+                            navigation.navigate('AddTaskScreen');
+                        }}
                     >
                         <Text style={styles.optionText}>New Task</Text>
                     </TouchableOpacity>

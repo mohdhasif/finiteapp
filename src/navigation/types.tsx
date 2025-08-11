@@ -47,4 +47,7 @@ export type RootStackParamList = {
 
 
   FreelancerApprovalScreen: { freelancer: any }; // tukar `any` ke type sebenar kalau ada
+
+
+  AddTaskScreen: undefined;
 };

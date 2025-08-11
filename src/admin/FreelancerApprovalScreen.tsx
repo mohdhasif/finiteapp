@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { updateFreelancer, approveFreelancer } from '../services/freelancerService';
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -131,7 +132,8 @@ const FreelancerApprovalScreen = () => {
         setLoading(true);
 
         try {
-            const result = await approveFreelancer(freelancer.id);
+            const token = (await AsyncStorage.getItem('userToken')) ?? ''; // 🔄 standardize
+            const result = await approveFreelancer(token, freelancer.id);
 
             if (result.success) {
                 setAvailability(true);

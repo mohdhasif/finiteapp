@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -16,6 +16,7 @@ import { getAllTasks, type Task } from '../services/taskService';
 
 import ProjectCard from '../component/ProjectCard';
 import { getProjectSummaries, type ProjectSummary } from '../services/projectService';
+
 
 const { width } = Dimensions.get('window');
 const CARD = Math.round(width * 0.62); // nampak >1 kad
@@ -40,16 +41,16 @@ export type Freelancer = {
 };
 
 const AdminHomeScreen = () => {
+    // --- Navigation (dah ada dalam file anda)
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    // UI states
+    // ================= UI states
     const [showDropdown, setShowDropdown] = useState(false);
     const [filterVisible, setFilterVisible] = useState(false);
-
     type FilterValue = 'All' | 'Pending' | 'in_progress' | 'completed';
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('All');
 
-    // Data states
+    // ================= Data states
     const [clients, setClients] = useState<Client[]>([]);
     const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -60,38 +61,53 @@ const AdminHomeScreen = () => {
     const [loadingTasks, setLoadingTasks] = useState(false);
     const [checkedStates, setCheckedStates] = useState<boolean[]>([]);
 
-    // Utils
+    // ================= Utils
     const formatDate = (d?: string | null) =>
-        !d ? 'No due date' :
-            new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        !d
+            ? 'No due date'
+            : new Date(d).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
 
-    // Load clients + freelancers
-    useEffect(() => {
-        let alive = true;
-        (async () => {
-
-            const token = (await AsyncStorage.getItem('userToken'))?.trim();
-            if (!token) throw new Error('No userToken');
-
-            const [clientData, freelancerData] = await Promise.all([
-                fetchClients(token),
-                fetchFreelancers(token),
-            ]);
-            if (!alive) return;
-            setClients(clientData);
-            setFreelancers(freelancerData);
-        })();
-        return () => { alive = false; };
-    }, []);
-
-    // Filter mapping for tasks
-    const resolveStatus = (f: FilterValue): 'pending' | 'in_progress' | 'completed' | undefined => {
+    // ================= Filter mapping
+    const resolveStatus = (
+        f: FilterValue
+    ): 'pending' | 'in_progress' | 'completed' | undefined => {
         if (f === 'All') return undefined;
         if (f === 'Pending') return 'pending';
         return f; // 'in_progress' | 'completed'
     };
 
-    // Load tasks when filter changes
+    // ================= Loaders
+    // Gabungkan fetch clients + freelancers + projects
+    const loadMasters = useCallback(async () => {
+        try {
+            setLoadingProjects(true);
+            setProjError(null);
+
+            const token = (await AsyncStorage.getItem('userToken'))?.trim();
+            if (!token) throw new Error('No userToken');
+
+            const [clientData, freelancerData, projectData] = await Promise.all([
+                fetchClients(token),
+                fetchFreelancers(token),
+                getProjectSummaries(token),
+            ]);
+
+            setClients(clientData);
+            setFreelancers(freelancerData);
+            setProjects(Array.isArray(projectData) ? projectData : []);
+            
+        } catch (e: any) {
+            setProjError(e?.message || 'Failed to load projects');
+            setProjects([]);
+        } finally {
+            setLoadingProjects(false);
+        }
+    }, []);
+
     const loadTasks = useCallback(async () => {
         setLoadingTasks(true);
         try {
@@ -109,30 +125,22 @@ const AdminHomeScreen = () => {
         }
     }, [selectedFilter]);
 
-    useEffect(() => { loadTasks(); }, [loadTasks]);
+    // ================= Refresh setiap kali screen FOKUS
+    useFocusEffect(
+        useCallback(() => {
+            // bila masuk screen / kembali fokus -> tarik data latest
+            loadMasters();
+            loadTasks();
 
-    // Load projects (once)
+            // tiada cleanup khas diperlukan di sini
+            return () => { };
+        }, [loadMasters, loadTasks])
+    );
+
+    // ================= Bila filter berubah (semasa screen aktif), refresh tasks sahaja
     useEffect(() => {
-        let alive = true;
-        (async () => {
-            try {
-                setLoadingProjects(true);
-                setProjError(null);
-                const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
-                if (!token) throw new Error('No userToken');
-                const data = await getProjectSummaries(token);
-                if (!alive) return;
-                setProjects(Array.isArray(data) ? data : []);
-            } catch (e: any) {
-                if (!alive) return;
-                setProjError(e?.message || 'Failed to load projects');
-                setProjects([]);
-            } finally {
-                if (alive) setLoadingProjects(false);
-            }
-        })();
-        return () => { alive = false; };
-    }, []);
+        loadTasks();
+    }, [loadTasks]);
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -146,7 +154,7 @@ const AdminHomeScreen = () => {
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
                         <Text style={styles.optionText}>New Task</Text>
                     </TouchableOpacity>
                 </View>

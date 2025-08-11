@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { updateClient, approveClient } from '../services/clientService';
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -56,7 +57,8 @@ const ClientApprovalScreen = () => {
 
   const handleApprove = async () => {
     setLoading(true);
-    const result = await approveClient(client.client_id);
+    const token = (await AsyncStorage.getItem('userToken')) ?? ''; // 🔄 standardize
+    const result = await approveClient(token, client.client_id);
 
     if (result.success) {
       setStatusValue('active');
@@ -66,17 +68,6 @@ const ClientApprovalScreen = () => {
     }
 
     setLoading(false);
-  };
-
-  const pickLogo = () => {
-    launchImageLibrary({ mediaType: 'photo' }, (response) => {
-      if (response.assets && response.assets.length > 0) {
-        const selected = response.assets[0];
-        if (selected.uri) {
-          setLogoUrl({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
-        }
-      }
-    });
   };
 
   const handleUpdate = async () => {
@@ -132,6 +123,17 @@ const ClientApprovalScreen = () => {
     }
   };
 
+  const pickLogo = () => {
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.assets && response.assets.length > 0) {
+        const selected = response.assets[0];
+        if (selected.uri) {
+          setLogoUrl({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
+        }
+      }
+    });
+  };
+
   return (
     <PaperProvider>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
@@ -156,8 +158,10 @@ const ClientApprovalScreen = () => {
                       : logoUrl // { uri: ... }
                     : require('../assets/user.png')
                 }
-                style={styles.logo} resizeMode="contain"
+                style={styles.logo}
+                resizeMode="contain"
               />}
+
             <TouchableOpacity style={styles.uploadBtn} onPress={pickLogo}>
               <Text style={styles.uploadText}>Upload Logo</Text>
             </TouchableOpacity>

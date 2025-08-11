@@ -61,7 +61,6 @@ const AdminProjectTaskListScreen = () => {
 
                 const arr = await getTasksByProject(token, route.params.project_id);
                 const list = Array.isArray(arr) ? arr : [];
-                console.log('TASKS ARRAY (normalized):', list);
                 setTasksAll(list);
 
                 // init checkbox mengikut id (preserve bila re-fetch)
@@ -122,10 +121,22 @@ const AdminProjectTaskListScreen = () => {
             {/* Floating Action Button Menu */}
             {showOptions && (
                 <View style={styles.dropdown}>
-                    <TouchableOpacity style={styles.option}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => {
+                            setShowOptions(false);
+                            navigation.navigate('AdminCreateProjectScreen'); // Ganti ikut nama sebenar
+                        }}
+                    >
                         <Text style={styles.optionText}>New Project</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.option}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => {
+                            setShowOptions(false);
+                            navigation.navigate('AddTaskScreen'); // Ganti ikut nama sebenar
+                        }}
+                    >
                         <Text style={styles.optionText}>New Task</Text>
                     </TouchableOpacity>
                 </View>
@@ -259,10 +270,22 @@ const AdminProjectTaskListScreen = () => {
             {/* Floating Menu */}
             {showMenu && (
                 <View style={styles.dropdown}>
-                    <TouchableOpacity style={styles.option}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => {
+                            setShowMenu(false);
+                            navigation.navigate('AdminCreateProjectScreen');
+                        }}
+                    >
                         <Text style={styles.optionText}>New Project</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.option}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => {
+                            setShowMenu(false);
+                            navigation.navigate('AddTaskScreen');
+                        }}
+                    >
                         <Text style={styles.optionText}>New Task</Text>
                     </TouchableOpacity>
                 </View>

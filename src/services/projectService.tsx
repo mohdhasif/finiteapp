@@ -49,3 +49,77 @@ export const getProjectSummaryById = async (userToken: string, projectId: number
     const res = await fetch(API_ENDPOINTS.projectSummary(projectId), { headers: auth(userToken) });
     return await parse(res) as ProjectSummary;
 };
+
+
+
+
+type CreateProjectPayload = {
+    title: string;
+    client_id: number;
+    description: string | null;
+    priority: 'low' | 'medium' | 'high' | null;
+    start_at: string | null; // 'YYYY-MM-DD HH:mm:ss' or null
+    end_at: string | null;   // ✅ ensure exists
+    status: 'pending' | 'in_progress' | 'completed';
+    progress: number; // 0-100
+    // Optional if backend support:
+    // due_date?: string | null; // 'YYYY-MM-DD'
+};
+
+export const createProject = async (token: string, body: CreateProjectPayload) => {
+    const res = await fetch(API_ENDPOINTS.createProject, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch {
+        throw new Error('Server tidak mengembalikan JSON yang sah');
+    }
+
+    if (!res.ok || json?.success === false) {
+        const msg = json?.error || `Gagal cipta projek (HTTP ${res.status})`;
+        throw new Error(msg);
+    }
+    return json;
+};
+
+
+
+
+
+export type ProjectOption = {
+    id: number;
+    title: string;
+    client_id: number | null;
+    client_name: string | null;
+};
+
+export const getProjectsOptions = async (token: string): Promise<ProjectOption[]> => {
+    const res = await fetch(API_ENDPOINTS.projectsOptions, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+        },
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try { json = JSON.parse(raw); } catch {
+        throw new Error('Server tidak mengembalikan JSON yang sah');
+    }
+
+    if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `Gagal ambil projek (HTTP ${res.status})`);
+    }
+
+    return Array.isArray(json.data) ? json.data : [];
+};

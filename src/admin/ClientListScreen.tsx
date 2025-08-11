@@ -12,26 +12,11 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-type ProjectSummary = {
-    project_id: number;
-    project_title: string;
-    client_name: string;
-    due_date: string | null;
-    total_tasks: number;
-    completed_tasks: number;
-    progress_percent: number;
-    freelancer_count: number;
-    freelancer_avatars: string[];
-    extra_freelancers: number;
-};
-
-type AdminTaskDetailsScreenRouteProp = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
 
 const { width } = Dimensions.get('window');
 
@@ -49,10 +34,23 @@ type Client = {
     logo_url?: string | null;
 };
 
-const statusOptions = ['all', 'pending', 'approved', 'rejected', 'active', 'non-active'];
+type ProjectSummary = {
+    project_id: number;
+    project_title: string;
+    client_name: string;
+    due_date: string | null;
+    total_tasks: number;
+    completed_tasks: number;
+    progress_percent: number;
+    freelancer_count: number;
+    freelancer_avatars: string[];
+    extra_freelancers: number;
+};
+
+const statusOptions = ['all', 'pending', 'approved', 'rejected', 'active', 'non-active'] as const;
 
 const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch ((status || '').toLowerCase()) {
         case 'approved': return '#28a745';
         case 'pending': return '#ffc107';
         case 'rejected': return '#dc3545';
@@ -69,70 +67,57 @@ const getProgressColor = (progress: number) => {
 };
 
 const ClientListScreen = () => {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+    // ---- state (letak SEMUA hooks sebelum sebarang return)
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedFilter, setSelectedFilter] = useState('all');
+    const [selectedFilter, setSelectedFilter] = useState<(typeof statusOptions)[number]>('all');
     const [dropdownVisible, setDropdownVisible] = useState(false);
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const route = useRoute<AdminTaskDetailsScreenRouteProp>();
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchClients(); // only when screen focused
-        }, [selectedFilter])
-    );
+    // Optional: projek ringkas (kalau tak guna, boleh buang block ni)
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const [err, setErr] = useState<string | null>(null);
 
-    const fetchClients = async (isRefreshing = false) => {
+    // --- fetchers
+    const fetchClients = useCallback(async (isRefreshing = false) => {
         try {
-            if (!isRefreshing) setLoading(true); // Elak tunjuk spinner atas kalau pull-to-refresh
-
+            if (!isRefreshing) setLoading(true);
             const response = await fetch(API_ENDPOINTS.getClients);
             const text = await response.text();
 
-            let data;
+            let data: Client[] = [];
             try {
                 data = JSON.parse(text);
-            } catch (err) {
-                console.error('JSON parse error:', err);
+            } catch (e) {
+                console.error('JSON parse error:', e);
                 return;
             }
-
-            setClients(data);
+            setClients(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Fetch error:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
+    // Refresh bila screen fokus
+    useFocusEffect(
+        useCallback(() => {
+            fetchClients();
+            return () => { };
+        }, [fetchClients, selectedFilter])
+    );
+
+    // Refresh bila filter berubah (jika backend support filter server-side boleh tambah query)
     useEffect(() => {
         setLoading(true);
         fetchClients();
-    }, [selectedFilter]);
+    }, [fetchClients, selectedFilter]);
 
-    const filteredClients =
-        selectedFilter === 'all'
-            ? clients
-            : clients.filter(c => c.client_status.toLowerCase() === selectedFilter.toLowerCase());
-
-    const handlePress = (client: Client) => {
-        navigation.navigate('ClientApprovalScreen', { client: client });
-    };
-
-    if (loading && !refreshing) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007bff" />
-            </View>
-        );
-    }
-
-
-    const [projects, setProjects] = useState<ProjectSummary[]>([]);
-    const [err, setErr] = useState<string | null>(null);
-
+    // Optional: load project summaries (debug/log)
     useEffect(() => {
         let alive = true;
         (async () => {
@@ -145,27 +130,43 @@ const ClientListScreen = () => {
                 });
 
                 const text = await res.text();
-                console.log(text);
-                
                 let json: any;
                 try { json = JSON.parse(text); } catch { json = []; }
 
                 if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-
                 if (!alive) return;
+
                 setProjects(Array.isArray(json) ? json : (json ? [json] : []));
             } catch (e) {
                 if (!alive) return;
                 setProjects([]);
+                setErr((e as Error)?.message ?? 'Failed to load projects');
             }
         })();
         return () => { alive = false; };
     }, []);
 
+    // ----- derived
+    const filteredClients =
+        selectedFilter === 'all'
+            ? clients
+            : clients.filter(c => (c.client_status || '').toLowerCase() === selectedFilter.toLowerCase());
+
+    const handlePress = (client: Client) => {
+        navigation.navigate('ClientApprovalScreen', { client });
+    };
+
+    // ---- early return AFTER all hooks
+    if (loading && !refreshing) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007bff" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
-
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -232,7 +233,7 @@ const ClientListScreen = () => {
                         refreshing={refreshing}
                         onRefresh={() => {
                             setRefreshing(true);
-                            fetchClients(true); // isRefreshing = true
+                            fetchClients(true);
                         }}
                     />
                 }
@@ -259,7 +260,7 @@ const ClientListScreen = () => {
                                 ) : (
                                     <View style={styles.avatarCircle}>
                                         <Text style={styles.avatarInitial}>
-                                            {item.name.charAt(0).toUpperCase()}
+                                            {item.name?.charAt(0)?.toUpperCase() ?? '?'}
                                         </Text>
                                     </View>
                                 )}
@@ -278,11 +279,28 @@ const ClientListScreen = () => {
                                     ]}
                                 >
                                     <Text style={styles.statusText}>
-                                        {item.client_status.toUpperCase()}
+                                        {(item.client_status || '').toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
 
+                            {/* (Optional) progress – uncomment kalau nak */}
+                            {/* {typeof item.progress === 'number' && (
+                <>
+                  <View style={styles.progressBarContainer}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: `${item.progress}%`,
+                          backgroundColor: getProgressColor(item.progress),
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.progressText}>{item.progress}%</Text>
+                </>
+              )} */}
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}

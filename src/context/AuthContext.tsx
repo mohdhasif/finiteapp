@@ -19,14 +19,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const loadUser = async () => {
             try {
-                const token = await AsyncStorage.getItem('userToken');
-                const storedRole = await AsyncStorage.getItem('userRole');
+                const [token, storedRole] = await Promise.all([
+                    AsyncStorage.getItem('userToken'),
+                    AsyncStorage.getItem('userRole'),
+                ]);
+
+                console.log('LOADING USER:', token, storedRole);
 
                 if (!token || !storedRole) {
                     await AsyncStorage.clear(); // 🔒 Auto logout if data is incomplete
                     setUserRole(null);
                 } else {
                     setUserRole(storedRole);
+
+                    // ——— CLAIM INSTALL → letak kat sini ———
+                    try {
+                        const installId = await AsyncStorage.getItem('install_id');
+                        if (installId) {
+                            const claimedKey = `install_claimed_${installId}`;
+                            const already = await AsyncStorage.getItem(claimedKey);
+                            console.log('Already claimed?', already);
+                            
+                            if (already !== '1') {
+                                const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: `Bearer ${token}`,
+                                        'Content-Type': 'application/json',
+                                        Accept: 'application/json',
+                                    },
+                                    body: JSON.stringify({ install_id: installId }),
+                                });
+                                if (!res.ok) {
+                                    const t = await res.text();
+                                    throw new Error(t || `HTTP ${res.status}`);
+                                }
+                                await AsyncStorage.setItem(claimedKey, '1');
+                                console.log('Install ID claimed successfully at loadUser()');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Claim install failed at loadUser():', e);
+                    }
+                    // ————————————————————————————————
                 }
             } catch (error) {
                 console.error('Failed to load user role:', error);
