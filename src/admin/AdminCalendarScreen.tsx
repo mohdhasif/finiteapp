@@ -15,6 +15,10 @@ import {
     ProjectCalendarEvent,
     toYMD,
 } from '../services/calendarService';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 
 const BLUE = '#0B7EBE';
 const BG = '#F4F7FB';
@@ -33,6 +37,9 @@ type CalendarItem = AgendaEntry & {
 };
 
 const AdminCalendarScreen: React.FC = () => {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+    const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [events, setEvents] = useState<ProjectCalendarEvent[]>([]);
@@ -159,6 +166,23 @@ const AdminCalendarScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
+
+            {/* Quick Add dropdown */}
+            {showDropdown && (
+                <View style={styles.dropdown}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
+                        <Text style={styles.optionText}>New Project</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
+                        <Text style={styles.optionText}>New Task</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <View style={styles.header}>
                 <Text style={styles.h1}>Project Calendar</Text>
                 <Text style={styles.h2}>Lihat start & end date projek</Text>
@@ -194,6 +218,27 @@ const AdminCalendarScreen: React.FC = () => {
                     }}
                 />
             )}
+
+            {/* Bottom Tab */}
+            <View style={styles.bottomTab}>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
+                    <Icon name="home" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
+                    <Icon name="calendar" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
+                    <Icon name="add" size={32} color="#0072B5" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
+                    <Icon name="notifications" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
+                    <Icon name="person" size={26} color="#fff" />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -268,6 +313,44 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     emptyText: { color: MUTED, fontSize: 13 },
+
+
+    // Bottom tab
+    bottomTab: {
+        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
+    },
+    fab: {
+        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
+        alignItems: 'center', justifyContent: 'center', marginTop: -40,
+    },
+
+    dropdown: {
+        position: 'absolute',
+        bottom: 80,
+        alignSelf: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingVertical: 4,
+        width: 160,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 10,
+        zIndex: 10,
+    },
+
+    option: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+    },
+    optionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0072B5',
+    },
 });
 
 export default AdminCalendarScreen;

@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
+import { getMyProfile, type MyProfile } from '../services/adminService'; // contoh path
 
 type Coords = { latitude: number; longitude: number } | null;
 
@@ -51,6 +52,10 @@ const AdminProfileScreen = () => {
 
     // throttle autosave on focus
     const lastAutoRunRef = useRef<number>(0);
+
+    const [userInfo, setUserInfo] = useState<any>(null);
+
+    const [profile, setProfile] = useState<MyProfile | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -98,6 +103,54 @@ const AdminProfileScreen = () => {
 
             // auto save senyap (tanpa alert)
         }, [loading, userToken, installId])
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            const loadUserData = async () => {
+                const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                const parsedUserInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+
+                setUserInfo(parsedUserInfo);
+                console.log(userInfo);
+            };
+            loadUserData();
+        }, [])
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            let isActive = true;
+
+            const run = async () => {
+                try {
+                    const now = Date.now();
+                    if (now - lastAutoRunRef.current < 30_000) {
+                        console.log('[PROFILE] throttled');
+                        return;
+                    }
+                    lastAutoRunRef.current = now;
+
+                    const tokenRaw = await AsyncStorage.getItem('userToken'); // string | null
+                    if (!tokenRaw) {
+                        console.log('[PROFILE] token tiada, skip');
+                        return;
+                    }
+
+                    const me = await getMyProfile(tokenRaw); // tokenRaw confirmed string
+                    if (!isActive) return;
+
+                    console.log('[PROFILE] me =', me);
+                    setProfile(me);
+                } catch (err: any) {
+                    if (!isActive) return;
+                    console.log('[PROFILE][ERR]', err?.message || err);
+                }
+            };
+
+            run();
+            return () => { isActive = false; };
+        }, [])
     );
 
     // useFocusEffect(
@@ -309,6 +362,15 @@ const AdminProfileScreen = () => {
     //     }
     // }, [coords, prayerEnabled, userToken, installId]);
 
+    // Sumber avatar default
+    const avatarSrc = require('../assets/user.png');
+
+    // Sumber logo client (dari profile), fallback ke avatar default
+    const logoSource =
+        profile?.avatar_url && /^https?:\/\//.test(profile.avatar_url)
+            ? { uri: profile.avatar_url }
+            : avatarSrc;
+
     if (loading) {
         return (
             <SafeAreaView style={styles.safe}>
@@ -325,11 +387,15 @@ const AdminProfileScreen = () => {
                 <Text style={styles.title}>Profile</Text>
 
                 <View style={styles.profileSection}>
-                    <Image source={require('../assets/user.png')} style={styles.avatar} />
+                    <Image
+                        source={logoSource}
+                        style={styles.avatar}
+                    />
+
                     <View>
-                        <Text style={styles.name}>Jane Smith</Text>
-                        <Text style={styles.email}>janesmith@email.com</Text>
-                        <Text style={styles.role}>Viewer</Text>
+                        <Text style={styles.name}>{userInfo.name}</Text>
+                        <Text style={styles.email}>{userInfo.email}</Text>
+                        <Text style={styles.role}>{userInfo.role}</Text>
                     </View>
                 </View>
 

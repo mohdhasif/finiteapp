@@ -1,34 +1,125 @@
-import React, { useState } from 'react';
+// src/screens/AdminMyProfileScreen.tsx
+import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    StyleSheet,
-    Image,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-    SafeAreaView,
+    View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
+    ScrollView, Dimensions, SafeAreaView, Alert,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getMyProfile, updateMyProfile, uploadAvatar, type MyProfile } from '../services/adminService';
+import { updateMyProfileForm } from '../services/adminService';
+import { log } from 'node:console';
+import { launchImageLibrary, Asset } from 'react-native-image-picker';
+
 
 const { width } = Dimensions.get('window');
 
 const AdminMyProfileScreen = () => {
-    const [isModalVisible, setModalVisible] = useState(false);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [token, setToken] = useState<string>('');
 
+    const [profile, setProfile] = useState<MyProfile | null>(null);
+    const [name, setName] = useState('');
+    const [dob, setDob] = useState('');      // YYYY-MM-DD
+    const [gender, setGender] = useState<'male' | 'female' | ''>('');
+    const [phone, setPhone] = useState('');
+    const [avatarUriLocal, setAvatarUriLocal] = useState<{ uri: string; fileName?: string; type?: string } | string | null>(null);
+    const [myId, setMyId] = useState<number | null>(null);
+    const [me, setMe] = useState<MyProfile | null>(null);
 
-    const handleSave = () => {
-        setModalVisible(true);
+    useEffect(() => {
+        (async () => {
+            try {
+                const tk = (await AsyncStorage.getItem('userToken')) || '';
+                setToken(tk);
+                if (!tk) {
+                    Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+                    setLoading(false);
+                    return;
+                }
+                const me = await getMyProfile(tk);
+
+                setMe(me);
+                setMyId(me.id ?? null);
+                setProfile(me);
+                setName(me.name || '');
+                setDob(me.dob || '');
+                setGender((me.gender as any) || '');
+                setPhone(me.phone || '');
+                setAvatarUriLocal(me.avatar_url || null);
+            } catch (e: any) {
+                Alert.alert('Gagal', e?.message || 'Gagal memuat profil');
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, []);
+
+    const handleSave = async () => {
+        if (!token) return;
+        try {
+            setSaving(true);
+
+            const formData = new FormData();
+            // Field asas (string sahaja)
+            if (name !== undefined) formData.append('name', name);
+            if (phone !== undefined) formData.append('phone', phone);
+            if (dob !== undefined) formData.append('dob', dob || '');
+            if (gender !== undefined) formData.append('gender', gender || '');
+
+            // Fail atau URL sedia ada
+            if (avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri) {
+                const fileName = avatarUriLocal.fileName || `logo_${myId}.jpg`;
+                const fileType = avatarUriLocal.type || 'image/jpeg';
+
+                formData.append('avatar', {
+                    uri: avatarUriLocal.uri,
+                    name: fileName,
+                    type: fileType,
+                } as any); // TypeScript workaround for FormData file
+            } else if (typeof avatarUriLocal === 'string') {
+                // Send previous URL so backend retains it
+                formData.append('avatar_url', avatarUriLocal);
+            }
+
+            const result = await updateMyProfileForm(token, formData);
+            if (result.success) {
+                // refresh UI dengan data terkini dari server
+                if (result.data) {
+                    setProfile(result.data);
+                }
+                setAvatarUriLocal(avatarUriLocal);
+                setModalVisible(true);
+            } else {
+                throw new Error(result.error || 'Failed to update profile');
+            }
+        } catch (e: any) {
+            Alert.alert('Gagal', e?.message || 'Tidak berjaya menyimpan profil.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleNext = () => {
         setModalVisible(false);
-        navigation.navigate('AdminProfileScreen'); // Navigate to the next screen
+        navigation.navigate('AdminProfileScreen');
+    };
+
+    const pickAvatar = () => {
+        launchImageLibrary({ mediaType: 'photo' }, (response) => {
+            if (response.assets && response.assets.length > 0) {
+                const selected = response.assets[0];
+                if (selected.uri) {
+                    setAvatarUriLocal({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
+                }
+            }
+        });
     };
 
     return (
@@ -37,49 +128,93 @@ const AdminMyProfileScreen = () => {
                 <Text style={styles.header}>My Profile</Text>
 
                 <View style={styles.avatarContainer}>
-                    <Image source={require('../assets/user.png')} style={styles.avatar} />
-                    <TouchableOpacity style={styles.editCircle} />
+                    {avatarUriLocal &&
+                        <Image
+                            source={
+                                avatarUriLocal
+                                    ? typeof avatarUriLocal === 'string'
+                                        ? { uri: avatarUriLocal }
+                                        : avatarUriLocal // { uri: ... }
+                                    : require('../assets/user.png')
+                            }
+                            style={styles.avatar}
+                            resizeMode="contain"
+                        />}
+
+                    <TouchableOpacity style={styles.editCircle} onPress={pickAvatar} />
+                    <Text style={styles.smallHint}>Tap bulat putih untuk pilih avatar</Text>
                 </View>
 
                 {/* Basic Details */}
                 <Text style={styles.sectionTitle}>Basic Details</Text>
 
                 <Text style={styles.label}>Full Name</Text>
-                <TextInput style={styles.input} value="Jane Smith" editable={false} />
+                <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Nama penuh"
+                    editable={!loading}
+                />
 
-                <Text style={styles.label}>Date of Birth</Text>
-                <TextInput style={styles.input} value="23 July 2025" editable={false} />
+                {/* <Text style={styles.label}>Date of Birth (YYYY-MM-DD)</Text>
+                <TextInput
+                    style={styles.input}
+                    value={dob}
+                    onChangeText={setDob}
+                    placeholder="cth. 1995-07-23"
+                    autoCapitalize="none"
+                    keyboardType="numbers-and-punctuation"
+                    editable={!loading}
+                /> */}
 
-                <Text style={styles.label}>Gender</Text>
+                {/* <Text style={styles.label}>Gender</Text>
                 <View style={styles.genderRow}>
-                    <View style={[styles.genderButton, styles.disabledGender]}>
-                        <Text style={styles.disabledText}>Male</Text>
-                    </View>
-                    <View style={[styles.genderButton, styles.activeGender]}>
-                        <Text style={styles.activeText}>Female</Text>
-                    </View>
-                </View>
+                    <TouchableOpacity
+                        style={[styles.genderButton, gender !== 'male' ? styles.disabledGender : styles.activeGender]}
+                        onPress={() => setGender('male')}
+                        disabled={loading}
+                    >
+                        <Text style={gender === 'male' ? styles.activeText : styles.disabledText}>Male</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.genderButton, gender !== 'female' ? styles.disabledGender : styles.activeGender]}
+                        onPress={() => setGender('female')}
+                        disabled={loading}
+                    >
+                        <Text style={gender === 'female' ? styles.activeText : styles.disabledText}>Female</Text>
+                    </TouchableOpacity>
+                </View> */}
 
                 {/* Contact Details */}
                 <Text style={styles.sectionTitle}>Contact Details</Text>
 
-                <Text style={styles.label}>Mobile Number</Text>
-                <TextInput style={styles.input} value="+60 11234 5678" editable={false} />
+                {/* <Text style={styles.label}>Mobile Number</Text>
+                <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="+60 ..."
+                    keyboardType="phone-pad"
+                    editable={!loading}
+                /> */}
 
                 <Text style={styles.label}>Email</Text>
                 <TextInput
-                    style={styles.input}
-                    value="janesmith@gmail.com"
+                    style={[styles.input, { backgroundColor: '#EEE' }]}
+                    value={profile?.email || ''}
                     editable={false}
                 />
             </ScrollView>
 
-            {/* Static Save Button */}
+            {/* Save Button */}
             <View style={styles.bottomWrapper}>
                 <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={handleSave}>
-                    <Text style={styles.saveText}>Save</Text>
+                    style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                >
+                    <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save'}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -106,148 +241,43 @@ const AdminMyProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#EAEAEA',
-    },
-    content: {
-        padding: 20,
-        paddingBottom: 100, // enough space above save button
-    },
+    container: { flex: 1, backgroundColor: '#EAEAEA' },
+    content: { padding: 20, paddingBottom: 100 },
     header: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#0066A0',
-        marginBottom: 20,
-        alignSelf: 'center',
+        fontSize: 22, fontWeight: '700', color: '#0066A0', marginBottom: 20, alignSelf: 'center',
     },
-    avatarContainer: {
-        alignItems: 'center',
-        marginBottom: 25,
-    },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-    },
+    avatarContainer: { alignItems: 'center', marginBottom: 10 },
+    avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#DDD' },
     editCircle: {
-        width: 20,
-        height: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        position: 'absolute',
-        bottom: 5,
-        right: width / 2 - 105,
+        width: 20, height: 20, backgroundColor: '#fff', borderRadius: 10,
+        position: 'absolute', bottom: 5, right: width / 2 - 105, borderWidth: 1, borderColor: '#CCC',
     },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#0066A0',
-        marginTop: 20,
-        marginBottom: 10,
-    },
-    label: {
-        fontSize: 14,
-        marginBottom: 5,
-        color: '#333',
-    },
+    smallHint: { marginTop: 6, fontSize: 12, color: '#666' },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0066A0', marginTop: 16, marginBottom: 10 },
+    label: { fontSize: 14, marginBottom: 5, color: '#333' },
     input: {
-        width: '100%',
-        height: 45,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        color: '#555',
+        width: '100%', height: 45, backgroundColor: '#F5F5F5', borderRadius: 8,
+        paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#ddd', color: '#555',
     },
-    genderRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginBottom: 20,
-    },
-    genderButton: {
-        flex: 1,
-        height: 45,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 8,
-    },
-    disabledGender: {
-        backgroundColor: '#E2E2E2',
-    },
-    activeGender: {
-        backgroundColor: '#0072B5',
-    },
-    disabledText: {
-        color: '#999',
-        fontWeight: '600',
-    },
-    activeText: {
-        color: '#fff',
-        fontWeight: '600',
-    },
+    genderRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    genderButton: { flex: 1, height: 45, justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
+    disabledGender: { backgroundColor: '#E2E2E2' },
+    activeGender: { backgroundColor: '#0072B5' },
+    disabledText: { color: '#666', fontWeight: '600' },
+    activeText: { color: '#fff', fontWeight: '600' },
     bottomWrapper: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#EAEAEA',
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#ccc',
+        position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#EAEAEA',
+        padding: 20, borderTopWidth: 1, borderTopColor: '#ccc',
     },
-    saveButton: {
-        backgroundColor: '#0072B5',
-        paddingVertical: 14,
-        borderRadius: 30,
-        alignItems: 'center',
-    },
-    saveText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    // Modal Styles
-    modal: {
-        justifyContent: 'flex-end',
-        margin: 0,
-    },
-    modalContent: {
-        backgroundColor: '#2D71B7',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        padding: 30,
-        alignItems: 'center',
-    },
-    checkmark: {
-        fontSize: 48,
-        color: '#fff',
-        marginBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-    modalSub: {
-        fontSize: 14,
-        color: '#fff',
-        marginTop: 5,
-        marginBottom: 20,
-    },
-    modalButton: {
-        backgroundColor: '#fff',
-        paddingHorizontal: 30,
-        paddingVertical: 10,
-        borderRadius: 25,
-    },
-    modalButtonText: {
-        color: '#2D71B7',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
+    saveButton: { backgroundColor: '#0072B5', paddingVertical: 14, borderRadius: 30, alignItems: 'center' },
+    saveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    modal: { justifyContent: 'flex-end', margin: 0 },
+    modalContent: { backgroundColor: '#2D71B7', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30, alignItems: 'center' },
+    checkmark: { fontSize: 48, color: '#fff', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+    modalSub: { fontSize: 14, color: '#fff', marginTop: 5, marginBottom: 20 },
+    modalButton: { backgroundColor: '#fff', paddingHorizontal: 30, paddingVertical: 10, borderRadius: 25 },
+    modalButtonText: { color: '#2D71B7', fontWeight: 'bold', fontSize: 16 },
 });
 
 export default AdminMyProfileScreen;
