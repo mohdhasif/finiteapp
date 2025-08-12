@@ -29,29 +29,6 @@ const parseJson = async (res: Response) => {
     return json;
 };
 
-export const getNotifications = async (token: string, opts: ListOptions = {}) => {
-    const params = new URLSearchParams();
-    if (opts.page) params.set('page', String(opts.page));
-    if (opts.per_page) params.set('per_page', String(opts.per_page));
-    if (opts.status) params.set('status', opts.status);
-
-    const url = params.toString()
-        ? `${API_ENDPOINTS.notificationsList}?${params.toString()}`
-        : API_ENDPOINTS.notificationsList;
-
-    const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
-
-    const json = await parseJson(res);
-    return {
-        data: (json?.data ?? []) as NotificationItem[],
-        total: json?.total ?? 0,
-        page: json?.page ?? 1,
-        per_page: json?.per_page ?? 20,
-    };
-};
-
 export const getBadgeCount = async (token: string) => {
     const res = await fetch(API_ENDPOINTS.notificationsBadge, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -94,4 +71,53 @@ export const createNotification = async (
     });
     const json = await parseJson(res);
     return json;
+};
+
+
+
+
+const qs = (obj: Record<string, any>) =>
+    Object.entries(obj)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+        .join('&');
+
+export const getNotifications = async (
+    token: string,
+    opts: { page: number; per_page: number; status: 'all' | 'unread' }
+) => {
+    // sokong dua bentuk: endpoint string ATAU function
+    const endpoint = (API_ENDPOINTS as any).notificationsList;
+    const url =
+        typeof endpoint === 'function'
+            ? endpoint(opts.page, opts.per_page, opts.status)
+            : `${endpoint}?${qs({ page: opts.page, per_page: opts.per_page, status: opts.status })}`;
+
+    console.log('[SVC][REQ]', { url, tokenLen: token?.length || 0 });
+
+    const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token || ''}`, Accept: 'application/json' },
+    });
+    const raw = await res.text();
+    console.log('[SVC][RES]', { status: res.status, ok: res.ok });
+    console.log('[SVC][RAW]', raw.slice(0, 200));
+
+    let json: any;
+    try { json = JSON.parse(raw); }
+    catch { throw new Error('Invalid JSON from server: ' + raw.slice(0, 120)); }
+
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    const data =
+        (Array.isArray(json?.data) && json.data) ||
+        (Array.isArray(json?.notifications) && json.notifications) ||
+        (Array.isArray(json?.items) && json.items) ||
+        (Array.isArray(json) && json) ||
+        [];
+
+    const total =
+        typeof json?.total === 'number' ? json.total :
+            typeof json?.count === 'number' ? json.count :
+                (Array.isArray(data) ? data.length : 0);
+
+    return { data, total };
 };

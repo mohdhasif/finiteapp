@@ -14,7 +14,7 @@ import ClientApprovalScreen from '../admin/ClientApprovalScreen';
 import FreelancerListScreen from '../admin/FreelancerListScreen';
 import FreelancerApprovalScreen from '../admin/FreelancerApprovalScreen';
 import AddTaskScreen from '../admin/AddTaskScreen';
-import AdminNotificationsScreen from '../admin/NotificationsScreen';
+import AdminNotificationsScreen from '../admin/AdminNotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 

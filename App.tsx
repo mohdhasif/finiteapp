@@ -71,7 +71,7 @@ export default function App() {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
       } catch (e) {
-        console.warn('sync anon sub failed:', e);
+        // console.warn('sync anon sub failed:', e);
       }
     };
     run();

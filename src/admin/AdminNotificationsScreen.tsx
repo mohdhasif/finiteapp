@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import {
     getNotifications,
     getBadgeCount,
@@ -24,8 +25,11 @@ import {
 const BLUE = '#0B7EBE';
 const SUB = '#6B7C8F';
 
-const timeAgo = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime();
+const timeAgo = (iso?: string | null) => {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return '';
+    const diff = Date.now() - t;
     const m = Math.floor(diff / 60000);
     if (m < 1) return 'just now';
     if (m < 60) return `${m} minutes ago`;
@@ -51,7 +55,7 @@ const NotificationRow: React.FC<{
                     {item.title || 'Notification'}
                 </Text>
                 {!!item.body && <Text style={styles.body} numberOfLines={2}>{item.body}</Text>}
-                <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
+                {!!item.created_at && <Text style={styles.time}>{timeAgo(item.created_at)}</Text>}
             </View>
 
             {unread && <View style={styles.dot} />}
@@ -64,7 +68,9 @@ const AdminNotificationsScreen: React.FC = () => {
     const [loadingFirst, setLoadingFirst] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [badge, setBadge] = useState(0);
-    const [page, setPage] = useState(1);
+
+    // ✅ paging 0-based
+    const [page, setPage] = useState(0);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [noData, setNoData] = useState(false);
@@ -82,23 +88,45 @@ const AdminNotificationsScreen: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Auto refresh setiap kali screen fokus
+    useFocusEffect(
+        useCallback(() => {
+            refresh();
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [])
+    );
+
     const loadPage = useCallback(
         async (p: number) => {
+            console.log('[SCREEN] before getNotifications', { p, tokenLen: tokenRef.current?.length || 0 });
             try {
-                const { data, total } = await getNotifications(tokenRef.current, {
+                const resp = await getNotifications(tokenRef.current, {
                     page: p,
                     per_page: perPage,
                     status: 'all',
                 });
-                if (p === 1) {
+                console.log('[SCREEN] after getNotifications', { p, len: resp?.data?.length, total: resp?.total });
+
+                const data = Array.isArray(resp?.data) ? resp.data : [];
+                const total: number | null = typeof resp?.total === 'number' ? resp.total : null;
+
+                if (p === 0) {
                     setList(data);
                     setNoData((total ?? data.length) === 0);
                 } else {
                     setList(prev => [...prev, ...data]);
                 }
-                setHasMore(data.length === perPage);
+
+                if (total != null) {
+                    const loaded = (p + 1) * perPage;
+                    setHasMore(loaded < total);
+                } else {
+                    setHasMore(data.length === perPage);
+                }
+
                 return true;
-            } catch (e) {
+            } catch (e: any) {
+                console.log('[SCREEN][loadPage][ERROR]', e?.message || e);   // ✅ penting
                 setHasMore(false);
                 return false;
             }
@@ -109,10 +137,12 @@ const AdminNotificationsScreen: React.FC = () => {
     const refresh = useCallback(async () => {
         try {
             setRefreshing(true);
+            // Ambil badge dulu (tak bergantung paging)
             const [badgeCount] = await Promise.all([getBadgeCount(tokenRef.current)]);
-            setBadge(badgeCount);
-            setPage(1);
-            await loadPage(1);
+            setBadge(typeof badgeCount === 'number' ? badgeCount : (badgeCount?.count ?? 0));
+
+            setPage(0);
+            await loadPage(0);
         } finally {
             setRefreshing(false);
             setLoadingFirst(false);
@@ -121,11 +151,9 @@ const AdminNotificationsScreen: React.FC = () => {
 
     const loadMore = useCallback(async () => {
         if (inFlightRef.current || loadingMore || !hasMore || noData) return;
-
         inFlightRef.current = true;
         setLoadingMore(true);
         const next = page + 1;
-
         try {
             const ok = await loadPage(next);
             if (ok) setPage(next);
@@ -138,9 +166,7 @@ const AdminNotificationsScreen: React.FC = () => {
     const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
         const pad = 120;
-        const nearBottom =
-            contentOffset.y + layoutMeasurement.height >= contentSize.height - pad;
-
+        const nearBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - pad;
         const now = Date.now();
         if (nearBottom && now - lastLoadTsRef.current > 800) {
             lastLoadTsRef.current = now;
@@ -156,6 +182,7 @@ const AdminNotificationsScreen: React.FC = () => {
             );
             setBadge(b => Math.max(0, b - 1));
         }
+        // TODO: navigate ikut it.type / it.data jika perlu
     };
 
     const onMarkAll = async () => {
@@ -169,7 +196,7 @@ const AdminNotificationsScreen: React.FC = () => {
             <View style={styles.header}>
                 <Text style={styles.h1}>Notifications</Text>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={onMarkAll} style={styles.markAllBtn}>
+                    <TouchableOpacity onPress={onMarkAll} style={[styles.markAllBtn, { marginRight: 12 }]}>
                         <Text style={styles.markAllText}>Mark all read</Text>
                     </TouchableOpacity>
                     <View style={styles.badgeWrap}>
@@ -199,7 +226,7 @@ const AdminNotificationsScreen: React.FC = () => {
                     contentContainerStyle={{ paddingBottom: 24 }}
                 >
                     {list.map((item, idx) => (
-                        <View key={item.id ?? idx}>
+                        <View key={`${item.id ?? 'idx'}-${idx}`}>
                             <NotificationRow item={item} onPress={() => onPressItem(item)} />
                             <View style={styles.sep} />
                         </View>
@@ -228,7 +255,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#EEF3F7', paddingHorizontal: 20, paddingTop: 20 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
     h1: { fontSize: 32, fontWeight: '800', color: BLUE },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    headerRight: { flexDirection: 'row', alignItems: 'center' }, // buang 'gap' untuk compatibility
     markAllBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#D9ECF8' },
     markAllText: { color: BLUE, fontWeight: '600' },
 

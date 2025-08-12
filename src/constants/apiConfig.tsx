@@ -31,15 +31,13 @@ export const API_ENDPOINTS = {
     // ---- Projects
     clientProjects: buildUrl('client_projects.php'),
     projectDetails: (projectId: number) => buildUrl('project_details.php', { project_id: projectId }),
-
     projects: buildUrl('get_projects.php'),
-    projectById: (id: number) => buildUrl(`projects/${id}`), // jika endpoint wujud
-
+    projectById: (id: number) => buildUrl(`projects/${id}`), // jika memang ada endpoint REST
     projectTasks: (projectId: number) => buildUrl('project_tasks.php', { project_id: projectId }),
     projectTasksPublic: (projectId: number) => buildUrl('project_tasks_public.php', { project_id: projectId }),
     taskDetails: (taskId: number) => buildUrl('task_details.php', { task_id: taskId }),
-    getTasksByProjectId: (projectId: number) => buildUrl(`projects/${projectId}/tasks`), // jika endpoint wujud
-    updateTaskStatus: (taskId: number) => buildUrl(`tasks/${taskId}`), // jika endpoint wujud
+    getTasksByProjectId: (projectId: number) => buildUrl(`projects/${projectId}/tasks`), // kalau wujud
+    updateTaskStatus: (taskId: number) => buildUrl(`tasks/${taskId}`), // kalau wujud
 
     // ---- Forms / Auth / Uploads
     submitJoinForm: buildUrl('freelancers.php'),
@@ -60,38 +58,24 @@ export const API_ENDPOINTS = {
     addNote: buildUrl('add_note.php'),
 
     projectSummaries: buildUrl('get_project_summaries.php'),
-    projectSummary: (projectId: number) => buildUrl(` get_project_summaries.php?project_id=${projectId}`),
+    projectSummary: (projectId: number) => buildUrl('get_project_summaries.php', { project_id: projectId }), // ❌ buang space + guna params
 
+    createProject: buildUrl('create_project.php'),
+    projectsOptions: buildUrl('get_projects_options.php'),
+    createTask: buildUrl('create_task.php'),
 
-
-    createProject: buildUrl(`create_project.php`),
-
-
-
-    projectsOptions: buildUrl(`get_projects_options.php`),
-    createTask: buildUrl(`create_task.php`),
-
-
-
-    claimInstallSubscriptions: buildUrl(`claim_install_subscriptions.php`),
-    savePushNotifications: buildUrl(`save_push_subscription.php`),
-
-
-
+    claimInstallSubscriptions: buildUrl('claim_install_subscriptions.php'),
+    savePushNotifications: buildUrl('save_push_subscription.php'),
 
     savePrayerSettings: buildUrl('save_prayer_settings.php'),
     getPrayerSettings: buildUrl('get_prayer_settings.php'),
 
-
-
-
-
-
-
-    notificationsList: buildUrl(`notifications_list.php`),
-    notificationsCreate: buildUrl(`notifications_create.php`),
-    notificationsMarkRead: buildUrl(`notifications_mark_read.php`),
-    notificationsMarkAllRead: buildUrl(`notifications_mark_all_read.php`),
-    notificationsBadge: buildUrl(`notifications_badge.php`),
-    notificationsSendPush: buildUrl(`notifications_send_push.php`), // optional (OneSignal/FCM)
+    // ---- Notifications (jadikan function supaya pass params dengan selamat)
+    notificationsList: (page: number, per_page: number, status: 'all' | 'unread' = 'all') =>
+        buildUrl('notifications_list.php', { page, per_page, status }),
+    notificationsCreate: buildUrl('notifications_create.php'),
+    notificationsMarkRead: buildUrl('notifications_mark_read.php'),
+    notificationsMarkAllRead: buildUrl('notifications_mark_all_read.php'),
+    notificationsBadge: buildUrl('notifications_badge.php'),
+    notificationsSendPush: buildUrl('notifications_send_push.php'),
 };
