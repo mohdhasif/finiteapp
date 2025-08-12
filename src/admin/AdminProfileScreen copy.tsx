@@ -53,144 +53,51 @@ const AdminProfileScreen = () => {
     const lastAutoRunRef = useRef<number>(0);
 
     useEffect(() => {
+        // load token/install_id + prefill prayer setting
         (async () => {
             try {
-                let inst = await AsyncStorage.getItem('install_id');
+                const inst = await AsyncStorage.getItem('install_id');
                 const token = await AsyncStorage.getItem('userToken');
-
-                // kalau tak jumpa, generate sekali
-                if (!inst) {
-                    inst = `inst_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-                    await AsyncStorage.setItem('install_id', inst);
-                }
-
                 setInstallId(inst);
                 setUserToken(token);
 
-                // Prefill dari server (guna inst yang confirm wujud)
-                await loadPrayerSettings(token, inst);
+                // Prefill dari server
+                try {
+                    const headers: Record<string, string> = { Accept: 'application/json' };
+                    let url = API_ENDPOINTS.getPrayerSettings;
+                    if (token) {
+                        url += (url.includes('?') ? '&' : '?') + 'me=1';
+                        headers.Authorization = `Bearer ${token}`;
+                    } else if (inst) {
+                        url += (url.includes('?') ? '&' : '?') + `install_id=${encodeURIComponent(inst)}`;
+                    } else {
+                        return;
+                    }
+                    const ctrl = new AbortController();
+                    const to = setTimeout(() => ctrl.abort(), 15000);
+                    const r = await fetch(url, { headers, signal: ctrl.signal });
+                    clearTimeout(to);
+                    if (!r.ok) return;
+                    const ct = r.headers.get('content-type') || '';
+                    const j = ct.includes('application/json') ? await r.json() : null;
+                    if (!j?.setting) return;
+
+                    if (typeof j.setting.enabled !== 'undefined') {
+                        setPrayerEnabled(!!j.setting.enabled);
+                    }
+                    if (j.setting.latitude != null && j.setting.longitude != null) {
+                        const lat = Number(j.setting.latitude);
+                        const lng = Number(j.setting.longitude);
+                        setCoords({ latitude: lat, longitude: lng });
+                        setLatInput(String(lat));
+                        setLngInput(String(lng));
+                    }
+                } catch { }
             } finally {
                 setLoading(false);
             }
         })();
     }, []);
-
-    useFocusEffect(
-        useCallback(() => {
-            (async () => {
-                let inst = installId ?? (await AsyncStorage.getItem('install_id'));
-                if (!inst) {
-                    inst = `inst_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-                    await AsyncStorage.setItem('install_id', inst);
-                    setInstallId(inst);
-                }
-            })();
-        }, [installId])
-    );
-
-    useFocusEffect(
-        useCallback(() => {
-            if (loading || (!userToken && !installId)) return;
-
-            const now = Date.now();
-            if (now - lastAutoRunRef.current < 30000) return; // throttle 30s
-            lastAutoRunRef.current = now;
-
-            // auto save senyap (tanpa alert)
-        }, [loading, userToken, installId])
-    );
-
-    // useFocusEffect(
-    //     useCallback(() => {
-    //         if (loading || (!userToken && !installId)) return;
-
-    //         const now = Date.now();
-    //         if (now - lastAutoRunRef.current < 30000) return; // throttle 30s
-    //         lastAutoRunRef.current = now;
-
-    //         // auto save senyap (tanpa alert)
-    //         captureAndSaveLocation({ toast: false, quiet: true });
-    //     }, [loading, userToken, installId, captureAndSaveLocation])
-    // );
-
-    const saveSettings = async (payload: SaveSettingsPayload): Promise<SaveSettingsResponse> => {
-        let url = API_ENDPOINTS.savePrayerSettings;
-        const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
-        const bodyPayload: any = { ...payload };
-
-        // Prefer state; fallback ke storage
-        const token = userToken ?? (await AsyncStorage.getItem('userToken'));
-        const inst = installId ?? (await AsyncStorage.getItem('install_id'));
-
-        if (token) {
-            url += (url.includes('?') ? '&' : '?') + 'me=1';
-            headers.Authorization = `Bearer ${token}`;
-        } else if (inst) {
-            bodyPayload.install_id = inst;
-        } else {
-            throw new Error('install_id tiada. Buka app sekali untuk generate.');
-        }
-
-        const controller = new AbortController();
-        const tm = setTimeout(() => controller.abort(), 15000);
-
-        let res: Response;
-        try {
-            res = await fetch(url,
-                {
-                    method: 'POST',
-                    headers, body: JSON.stringify(bodyPayload),
-                    signal: controller.signal
-                });
-        } catch (err: any) {
-            clearTimeout(tm);
-            if (err?.name === 'AbortError') throw new Error('Request timeout. Sila cuba lagi.');
-            throw new Error(err?.message || 'Network error');
-        } finally {
-            clearTimeout(tm);
-        }
-
-        const text = await res.text();
-        const ct = res.headers.get('content-type') || '';
-        const json = ct.includes('application/json') ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
-        if (!res.ok) {
-            console.log('saveSettings error:', { status: res.status, body: text });
-            throw new Error(json?.error || text || `HTTP ${res.status}`);
-        }
-        return json ?? {};
-    };
-
-    async function loadPrayerSettings(token: string | null, inst: string | null) {
-        try {
-            const headers: Record<string, string> = { Accept: 'application/json' };
-            let url = API_ENDPOINTS.getPrayerSettings;
-            if (token) {
-                url += (url.includes('?') ? '&' : '?') + 'me=1';
-                headers.Authorization = `Bearer ${token}`;
-            } else if (inst) {
-                url += (url.includes('?') ? '&' : '?') + `install_id=${encodeURIComponent(inst)}`;
-            } else return;
-
-            const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 15000);
-            const r = await fetch(url, { headers, signal: ctrl.signal });
-            clearTimeout(to);
-            if (!r.ok) return;
-            const j = (await r.json()) ?? {};
-            if (!j?.setting) return;
-
-            if (typeof j.setting.enabled !== 'undefined') {
-                setPrayerEnabled(!!j.setting.enabled);
-            }
-            if (j.setting.latitude != null && j.setting.longitude != null) {
-                const lat = Number(j.setting.latitude);
-                const lng = Number(j.setting.longitude);
-                setCoords({ latitude: lat, longitude: lng });
-                setLatInput(String(lat));
-                setLngInput(String(lng));
-            }
-        } catch { }
-    }
 
     // ===== Helpers =====
     const ensureLocationPermission = async (): Promise<boolean> => {
@@ -222,6 +129,48 @@ const AdminProfileScreen = () => {
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
             );
         });
+
+    const saveSettings = async (payload: SaveSettingsPayload): Promise<SaveSettingsResponse> => {
+        let url = API_ENDPOINTS.savePrayerSettings;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        const bodyPayload: any = { ...payload };
+
+        // Prefer state; fallback ke storage
+        const token = userToken ?? (await AsyncStorage.getItem('userToken'));
+        const inst = installId ?? (await AsyncStorage.getItem('install_id'));
+
+        if (token) {
+            url += (url.includes('?') ? '&' : '?') + 'me=1';
+            headers.Authorization = `Bearer ${token}`;
+        } else if (inst) {
+            bodyPayload.install_id = inst;
+        } else {
+            throw new Error('install_id tiada. Buka app sekali untuk generate.');
+        }
+
+        const controller = new AbortController();
+        const tm = setTimeout(() => controller.abort(), 15000);
+
+        let res: Response;
+        try {
+            res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(bodyPayload), signal: controller.signal });
+        } catch (err: any) {
+            clearTimeout(tm);
+            if (err?.name === 'AbortError') throw new Error('Request timeout. Sila cuba lagi.');
+            throw new Error(err?.message || 'Network error');
+        } finally {
+            clearTimeout(tm);
+        }
+
+        const text = await res.text();
+        const ct = res.headers.get('content-type') || '';
+        const json = ct.includes('application/json') ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
+        if (!res.ok) {
+            console.log('saveSettings error:', { status: res.status, body: text });
+            throw new Error(json?.error || text || `HTTP ${res.status}`);
+        }
+        return json ?? {};
+    };
 
     // ===== Prayer dropdown actions =====
     const togglePrayerSection = () => {
@@ -278,36 +227,49 @@ const AdminProfileScreen = () => {
     };
 
     // ===== Auto-save lokasi setiap kali screen difokus =====
-    // const captureAndSaveLocation = useCallback(async (opts: { toast?: boolean; quiet?: boolean } = {}) => {
-    //     const { toast = false, quiet = true } = opts;
-    //     try {
-    //         const ok = await ensureLocationPermission();
-    //         if (!ok) {
-    //             await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
-    //             return;
-    //         }
-    //         const c = await getCurrentCoordinates();
-    //         if (c) {
-    //             // kalau tak banyak berubah (<50m), boleh skip — jimat request
-    //             if (coords) {
-    //                 const dist = distanceMeters(coords, c);
-    //                 if (dist < 50) return;
-    //             }
-    //             setCoords(c);
-    //             setLatInput(String(c.latitude));
-    //             setLngInput(String(c.longitude));
-    //             await saveSettings({ enabled: prayerEnabled ? 1 : 0, latitude: c.latitude, longitude: c.longitude });
-    //             if (toast) {
-    //                 Alert.alert('Lokasi Dikemaskini', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
-    //             }
-    //         } else {
-    //             await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
-    //             if (!quiet) Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
-    //         }
-    //     } catch (e: any) {
-    //         if (!quiet) Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
-    //     }
-    // }, [coords, prayerEnabled, userToken, installId]);
+    const captureAndSaveLocation = useCallback(async (opts: { toast?: boolean; quiet?: boolean } = {}) => {
+        const { toast = false, quiet = true } = opts;
+        try {
+            const ok = await ensureLocationPermission();
+            if (!ok) {
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
+                return;
+            }
+            const c = await getCurrentCoordinates();
+            if (c) {
+                // kalau tak banyak berubah (<50m), boleh skip — jimat request
+                if (coords) {
+                    const dist = distanceMeters(coords, c);
+                    if (dist < 50) return;
+                }
+                setCoords(c);
+                setLatInput(String(c.latitude));
+                setLngInput(String(c.longitude));
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0, latitude: c.latitude, longitude: c.longitude });
+                if (toast) {
+                    Alert.alert('Lokasi Dikemaskini', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
+                }
+            } else {
+                await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
+                if (!quiet) Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+            }
+        } catch (e: any) {
+            if (!quiet) Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
+        }
+    }, [coords, prayerEnabled, userToken, installId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (loading || (!userToken && !installId)) return;
+
+            const now = Date.now();
+            if (now - lastAutoRunRef.current < 30000) return; // throttle 30s
+            lastAutoRunRef.current = now;
+
+            // auto save senyap (tanpa alert)
+            captureAndSaveLocation({ toast: false, quiet: true });
+        }, [loading, userToken, installId, captureAndSaveLocation])
+    );
 
     if (loading) {
         return (

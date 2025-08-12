@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             const claimedKey = `install_claimed_${installId}`;
                             const already = await AsyncStorage.getItem(claimedKey);
                             console.log('Already claimed?', already);
-                            
+
                             if (already !== '1') {
                                 const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
                                     method: 'POST',
@@ -95,6 +95,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await AsyncStorage.setItem('userToken', data.token);
             await AsyncStorage.setItem('userRole', data.user.role);
             await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
+
+            try {
+                const installId = await AsyncStorage.getItem('install_id');
+                if (installId) {
+                    const claimedKey = `install_claimed_${installId}`;
+                    const already = await AsyncStorage.getItem(claimedKey);
+                    console.log('Already claimed?', already);
+
+                    if (already !== '1') {
+                        const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${data.token}`,
+                                'Content-Type': 'application/json',
+                                Accept: 'application/json',
+                            },
+                            body: JSON.stringify({ install_id: installId }),
+                        });
+                        if (!res.ok) {
+                            const t = await res.text();
+                            throw new Error(t || `HTTP ${res.status}`);
+                        }
+                        await AsyncStorage.setItem(claimedKey, '1');
+                        console.log('Install ID claimed successfully at loadUser()');
+                    }
+                }
+            } catch (e) {
+                console.warn('Claim install failed at loadUser():', e);
+            }
 
             return data.user.role; // Biarkan caller handle navigation
         } catch (error) {

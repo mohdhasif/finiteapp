@@ -81,4 +81,17 @@ export const API_ENDPOINTS = {
 
     savePrayerSettings: buildUrl('save_prayer_settings.php'),
     getPrayerSettings: buildUrl('get_prayer_settings.php'),
+
+
+
+
+
+
+
+    notificationsList: buildUrl(`notifications_list.php`),
+    notificationsCreate: buildUrl(`notifications_create.php`),
+    notificationsMarkRead: buildUrl(`notifications_mark_read.php`),
+    notificationsMarkAllRead: buildUrl(`notifications_mark_all_read.php`),
+    notificationsBadge: buildUrl(`notifications_badge.php`),
+    notificationsSendPush: buildUrl(`notifications_send_push.php`), // optional (OneSignal/FCM)
 };

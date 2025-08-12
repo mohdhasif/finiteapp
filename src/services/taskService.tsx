@@ -195,6 +195,8 @@ export const createTask = async (token: string, payload: CreateTaskPayload) => {
     });
 
     const raw = await res.text();
+    console.log('raw:', raw);
+    
     let json: any;
     try { json = JSON.parse(raw); } catch {
         throw new Error('Server tidak mengembalikan JSON yang sah');

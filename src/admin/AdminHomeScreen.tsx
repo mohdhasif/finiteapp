@@ -99,7 +99,7 @@ const AdminHomeScreen = () => {
             setClients(clientData);
             setFreelancers(freelancerData);
             setProjects(Array.isArray(projectData) ? projectData : []);
-            
+
         } catch (e: any) {
             setProjError(e?.message || 'Failed to load projects');
             setProjects([]);
@@ -343,7 +343,8 @@ const AdminHomeScreen = () => {
                 <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
                     <Icon name="add" size={32} color="#0072B5" />
                 </TouchableOpacity>
-                <TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
                     <Icon name="notifications" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>

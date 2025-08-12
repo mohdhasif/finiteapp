@@ -76,6 +76,8 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const [taskDetails, setTaskDetails] = useState<any>(null);
 
+    const [showDropdown, setShowDropdown] = useState(false);
+
     const toAbs = useCallback((u?: string | null) => {
         if (!u) return '';
         if (/^https?:\/\//i.test(u)) return u;
@@ -233,12 +235,30 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
+
+            {/* Quick Add dropdown */}
+            {showDropdown && (
+                <View style={styles.dropdown}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
+                        <Text style={styles.optionText}>New Project</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
+                        <Text style={styles.optionText}>New Task</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <ScrollView
                 ref={outerScrollRef}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 keyboardShouldPersistTaps="handled"
             >
+
                 {/* Header */}
                 <Text style={styles.header}>Task Details</Text>
                 <Text style={styles.title}>{taskTitle}</Text>
@@ -386,15 +406,13 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 <TouchableOpacity>
                     <Icon name="calendar" size={26} color="#fff" />
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTaskScreen')}>
+                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
                     <Icon name="add" size={32} color="#0072B5" />
                 </TouchableOpacity>
-
                 <TouchableOpacity>
                     <Icon name="notifications" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
                     <Icon name="person" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
@@ -551,5 +569,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: -40,
+    },
+
+
+    dropdown: {
+        position: 'absolute',
+        bottom: 80,
+        alignSelf: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingVertical: 4,
+        width: 160,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 10,
+        zIndex: 10,
+    },
+
+    option: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+    },
+    optionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0072B5',
     },
 });

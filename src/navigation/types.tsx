@@ -50,4 +50,6 @@ export type RootStackParamList = {
 
 
   AddTaskScreen: undefined;
+
+  AdminNotificationsScreen: undefined;
 };
