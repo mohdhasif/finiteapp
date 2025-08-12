@@ -337,7 +337,8 @@ const AdminHomeScreen = () => {
                 <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
                     <Icon name="home" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
                     <Icon name="calendar" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>

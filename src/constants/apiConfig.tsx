@@ -78,4 +78,8 @@ export const API_ENDPOINTS = {
     notificationsMarkAllRead: buildUrl('notifications_mark_all_read.php'),
     notificationsBadge: buildUrl('notifications_badge.php'),
     notificationsSendPush: buildUrl('notifications_send_push.php'),
+
+
+
+    projectsCalendar: buildUrl(`projects_calendar.php`),
 };
