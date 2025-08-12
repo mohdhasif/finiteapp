@@ -125,6 +125,11 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
       Alert.alert('Peringatan', 'Sila isi Title dan pilih Project');
       return;
     }
+    if (!startAt || !endAt) {
+      Alert.alert('Maklumat tidak lengkap', 'Sila pilih tarikh mula dan tamat.');
+      return;
+    }
+
     if (startAt && endAt) {
       if (new Date(startAt) > new Date(endAt)) {
         Alert.alert('Ralat', 'End time mesti selepas Start time');
