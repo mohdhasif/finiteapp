@@ -1,7 +1,9 @@
 // src/constants/apiConfig.ts
 
+import { url } from "inspector";
+
 // 1) Buang trailing slash untuk elak `//`
-export const BASE_URL = 'https://fd9315becb7e.ngrok-free.app';
+export const BASE_URL = 'https://78fac64ce66c.ngrok-free.app';
 
 // 2) Helper untuk build URL + query params dengan selamat
 const join = (base: string, path: string) =>
@@ -90,4 +92,34 @@ export const API_ENDPOINTS = {
 
 
     changePassword: buildUrl('/change_password.php'),
+
+    taskStatus: (id: number) => buildUrl('/update_status.php', { id }),
+
+
+
+
+    // task assignees
+    addTaskAssignee: buildUrl('/task_assignees_add.php'),
+    removeTaskAssignee: buildUrl('/task_assignees_remove.php'),
+    listTaskAssignees: buildUrl('/task_assignees_list.php'),
+
+    urlListTaskAssignees: buildUrl('/task_assignees_list.php'),
+    urlAssignTaskAssignee: buildUrl('/task_assignees_assign.php'),
+    urlUpdateTaskAssigneeRole: buildUrl('/task_assignees_update_role.php'),
+    urlRemoveTaskAssignee: buildUrl('/task_assignees_remove.php'),
+
+    urlGetFreelancers: buildUrl('/freelancers_simple.php'), // <--- TAMBAH INI
 };
+
+
+// buildUrl('/task_assignees_list.php', { task_id: taskId });
+// buildUrl('/task_assignees_assign.php');
+// buildUrl('/task_assignees_update_role.php');
+// buildUrl('/task_assignees_remove.php', { task_id: taskId, freelancer_id: freelancerId });
+
+
+// marketing.finite@gmail.com  dah ada
+// admin.finite@gmail.com 011
+// hr.finite@gmail.com 011
+
+// pass finite123

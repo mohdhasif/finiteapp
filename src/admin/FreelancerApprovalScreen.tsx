@@ -137,6 +137,7 @@ const FreelancerApprovalScreen = () => {
 
             if (result.success) {
                 setAvailability(true);
+                setStatus('approved');
                 Alert.alert('Approved', 'Freelancer is now active.');
             } else {
                 Alert.alert('Error', result.error || 'Approval failed.');

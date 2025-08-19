@@ -12,14 +12,28 @@ export const fetchClients = async (token: string) => {
     const res = await fetch(API_ENDPOINTS.getClients, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
-    return parse(res);
+    const text = await res.text();
+    try {
+        const result = JSON.parse(text);
+        return result;
+    } catch (error) {
+        console.log('Error parsing JSON:', error);
+    }
+    // return parse(res);
 };
 
 export const fetchFreelancers = async (token: string) => {
     const res = await fetch(API_ENDPOINTS.getFreelancers, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
-    return parse(res);
+    const text = await res.text();
+    try {
+        const result = JSON.parse(text);
+        return result;
+    } catch (error) {
+        console.log('Error parsing JSON:', error);
+    }
+    // return parse(res);
 };
 
 
@@ -143,6 +157,7 @@ export async function getMyProfile(token: string): Promise<MyProfile> {
         headers: { Authorization: `Bearer ${token}` },
     });
     const raw = await res.text();
+    
     let json: any;
     try { json = JSON.parse(raw); } catch { throw new Error('JSON tidak sah'); }
     if (!res.ok || !json?.success) {

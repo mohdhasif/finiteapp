@@ -1,7 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
-    View, Text, ScrollView, TouchableOpacity, Image, StyleSheet,
-    Dimensions, SafeAreaView,
+    View,
+    Text,
+    ScrollView,
+    TouchableOpacity,
+    Image,
+    StyleSheet,
+    Dimensions,
+    SafeAreaView,
+    Alert
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -12,7 +19,7 @@ import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchClients, fetchFreelancers } from '../services/adminService';
 import AdminTaskCard from '../component/AdminTaskCard';
-import { getAllTasks, type Task } from '../services/taskService';
+import { getAllTasks, updateTaskStatus, type Task } from '../services/taskService';
 
 import ProjectCard from '../component/ProjectCard';
 import { getProjectSummaries, type ProjectSummary } from '../services/projectService';
@@ -141,6 +148,69 @@ const AdminHomeScreen = () => {
     useEffect(() => {
         loadTasks();
     }, [loadTasks]);
+
+
+    ///////////////////////////// START
+
+    const refetchProjectsOnly = useCallback(async () => {
+        try {
+            setLoadingProjects(true);
+            const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+            if (!token) throw new Error('No userToken');
+            const projectData = await getProjectSummaries(token);
+            setProjects(Array.isArray(projectData) ? projectData : []);
+        } finally {
+            setLoadingProjects(false);
+        }
+    }, []);
+
+    const pendingIdsRef = useRef<Set<number>>(new Set());
+
+    const handleToggleCheck = async (idx: number, t: Task) => {
+        const id = t.id;
+        if (!id) return;
+
+        // if already completed, ignore (your existing guard)
+        if ((t.status || '').toLowerCase() === 'completed') return;
+
+        // Prevent double taps while pending
+        if (pendingIdsRef.current.has(id)) return;
+        pendingIdsRef.current.add(id);
+
+        // Grab token
+        const token = (await AsyncStorage.getItem('userToken')) || '';
+        if (!token) {
+            pendingIdsRef.current.delete(id);
+            Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+            return;
+        }
+
+        // --- Optimistic UI ---
+        const prevTasks = [...tasks];
+        const prevChecked = [...checkedStates];
+
+        const nextChecked = [...checkedStates];
+        nextChecked[idx] = true; // checking means completed
+        setCheckedStates(nextChecked);
+
+        const nextTasks = [...tasks];
+        nextTasks[idx] = { ...nextTasks[idx], status: 'completed' };
+        setTasks(nextTasks);
+
+        try {
+            await updateTaskStatus(token, id, 'completed');
+            // success: keep optimistic state
+            await Promise.all([refetchProjectsOnly(), loadTasks()]);
+
+        } catch (e: any) {
+            // rollback
+            setTasks(prevTasks);
+            setCheckedStates(prevChecked);
+            Alert.alert('Gagal', e?.message || 'Gagal mengemaskini status tugas');
+        } finally {
+            pendingIdsRef.current.delete(id);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -312,12 +382,13 @@ const AdminHomeScreen = () => {
                                 key={t.id ?? idx}
                                 task={t}
                                 checked={isCompleted ? true : !!checkedStates[idx]}
-                                onToggleCheck={() => {
-                                    if (isCompleted) return;
-                                    const next = [...checkedStates];
-                                    next[idx] = !next[idx];
-                                    setCheckedStates(next);
-                                }}
+                                // onToggleCheck={() => {
+                                //     if (isCompleted) return;
+                                //     const next = [...checkedStates];
+                                //     next[idx] = !next[idx];
+                                //     setCheckedStates(next);
+                                // }}
+                                onToggleCheck={() => handleToggleCheck(idx, t)}
                                 onPress={() =>
                                     navigation.push('AdminTaskDetailsScreen', {
                                         task_title: t.title ?? 'Task',

@@ -63,7 +63,7 @@ const AdminCalendarScreen: React.FC = () => {
             });
             setEvents(data);
         } catch (e: any) {
-            console.log('[CAL][ERR]', e?.message || e);
+            // console.log('[CAL][ERR]', e?.message || e);
         } finally {
             setLoading(false);
         }

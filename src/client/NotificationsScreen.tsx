@@ -46,12 +46,12 @@ const NotificationsScreen = () => {
     return (
         <View style={styles.container}>
             <Text style={styles.header}>Notifications</Text>
-            <FlatList
+            {/* <FlatList
                 data={notifications}
                 renderItem={renderItem}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
+            /> */}
 
             {/* Bottom Nav */}
             <View style={styles.bottomNav}>

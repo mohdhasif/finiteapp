@@ -27,7 +27,7 @@ const BottomSheetPicker: React.FC<Props> = ({ title, visible, items, value, onCl
         >
             <View style={styles.sheet}>
                 {!!title && <Text style={styles.title}>{title}</Text>}
-                <FlatList
+                {/* <FlatList
                     data={items}
                     keyExtractor={(it) => it.value}
                     renderItem={({ item }) => {
@@ -44,7 +44,7 @@ const BottomSheetPicker: React.FC<Props> = ({ title, visible, items, value, onCl
                         );
                     }}
                     ItemSeparatorComponent={() => <View style={styles.sep} />}
-                />
+                /> */}
             </View>
         </Modal>
     );

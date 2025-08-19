@@ -112,7 +112,6 @@ const AdminProfileScreen = () => {
                 const parsedUserInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
 
                 setUserInfo(parsedUserInfo);
-                console.log(userInfo);
             };
             loadUserData();
         }, [])
@@ -126,25 +125,26 @@ const AdminProfileScreen = () => {
                 try {
                     const now = Date.now();
                     if (now - lastAutoRunRef.current < 30_000) {
-                        console.log('[PROFILE] throttled');
+                        // console.log('[PROFILE] throttled');
                         return;
                     }
                     lastAutoRunRef.current = now;
 
                     const tokenRaw = await AsyncStorage.getItem('userToken'); // string | null
                     if (!tokenRaw) {
-                        console.log('[PROFILE] token tiada, skip');
+                        // console.log('[PROFILE] token tiada, skip');
                         return;
                     }
 
                     const me = await getMyProfile(tokenRaw); // tokenRaw confirmed string
                     if (!isActive) return;
 
-                    console.log('[PROFILE] me =', me);
+                    console.log(me);
                     setProfile(me);
+                    setUserInfo(me);
                 } catch (err: any) {
                     if (!isActive) return;
-                    console.log('[PROFILE][ERR]', err?.message || err);
+                    // console.log('[PROFILE][ERR]', err?.message || err);
                 }
             };
 
@@ -207,7 +207,7 @@ const AdminProfileScreen = () => {
         const ct = res.headers.get('content-type') || '';
         const json = ct.includes('application/json') ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
         if (!res.ok) {
-            console.log('saveSettings error:', { status: res.status, body: text });
+            // console.log('saveSettings error:', { status: res.status, body: text });
             throw new Error(json?.error || text || `HTTP ${res.status}`);
         }
         return json ?? {};
@@ -362,6 +362,37 @@ const AdminProfileScreen = () => {
     //     }
     // }, [coords, prayerEnabled, userToken, installId]);
 
+    const handleToggleAzan = async (next: boolean) => {
+        // Optimistic UI
+        setPrayerEnabled(next);
+
+        // Sediakan payload — hantar enabled sahaja pun cukup
+        // (optional) kalau nak hantar lat/lng sekali bila wujud & sah
+        const lat = latInput.trim() === '' ? undefined : Number(latInput);
+        const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
+        const payload: SaveSettingsPayload = { enabled: next ? 1 : 0 };
+
+        if (
+            lat !== undefined && !isNaN(lat) && lat >= -90 && lat <= 90 &&
+            lng !== undefined && !isNaN(lng) && lng >= -180 && lng <= 180
+        ) {
+            payload.latitude = lat;
+            payload.longitude = lng;
+        }
+
+        try {
+            setSavingPrayer(true);
+            await saveSettings(payload); // <-- terus update DB
+            // (optional) boleh tambah toast/snackbar ringan jika perlu
+        } catch (e: any) {
+            // Revert bila gagal
+            setPrayerEnabled(!next);
+            Alert.alert('Gagal', e?.message ?? 'Tidak dapat kemaskini tetapan azan.');
+        } finally {
+            setSavingPrayer(false);
+        }
+    };
+
     // Sumber avatar default
     const avatarSrc = require('../assets/user.png');
 
@@ -433,10 +464,12 @@ const AdminProfileScreen = () => {
                                     <Text style={styles.label}>Enable Azan</Text>
                                     <Switch
                                         value={prayerEnabled}
-                                        onValueChange={setPrayerEnabled}
+                                        onValueChange={handleToggleAzan}
+                                        disabled={savingPrayer}
                                         trackColor={{ false: '#ccc', true: '#0077c2' }}
                                         thumbColor="#fff"
                                     />
+
                                 </View>
 
                                 {/* Lat/Lng inputs */}

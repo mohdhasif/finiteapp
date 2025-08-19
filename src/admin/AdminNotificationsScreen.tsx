@@ -104,14 +104,14 @@ const AdminNotificationsScreen: React.FC = () => {
 
     const loadPage = useCallback(
         async (p: number) => {
-            console.log('[SCREEN] before getNotifications', { p, tokenLen: tokenRef.current?.length || 0 });
+            // console.log('[SCREEN] before getNotifications', { p, tokenLen: tokenRef.current?.length || 0 });
             try {
                 const resp = await getNotifications(tokenRef.current, {
                     page: p,
                     per_page: perPage,
                     status: 'all',
                 });
-                console.log('[SCREEN] after getNotifications', { p, len: resp?.data?.length, total: resp?.total });
+                // console.log('[SCREEN] after getNotifications', { p, len: resp?.data?.length, total: resp?.total });
 
                 const data = Array.isArray(resp?.data) ? resp.data : [];
                 const total: number | null = typeof resp?.total === 'number' ? resp.total : null;
@@ -132,7 +132,7 @@ const AdminNotificationsScreen: React.FC = () => {
 
                 return true;
             } catch (e: any) {
-                console.log('[SCREEN][loadPage][ERROR]', e?.message || e);   // ✅ penting
+                // console.log('[SCREEN][loadPage][ERROR]', e?.message || e);   // ✅ penting
                 setHasMore(false);
                 return false;
             }

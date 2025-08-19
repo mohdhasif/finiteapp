@@ -40,8 +40,6 @@ import {
     removeTaskAssignee,
     updateTaskAssigneeRole,
     type Assignee,
-    searchFreelancersSimple,
-    type NewAssignee,
 } from '../services/taskAssigneesService';
 
 const { width } = Dimensions.get('window');
@@ -95,7 +93,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const [adding, setAdding] = useState(false);
 
     // untuk modal pilihan freelancer (saranan: guna API freelancers_simple)
-    const [options, setOptions] = useState<NewAssignee[]>([]);
+    const [options, setOptions] = useState<Assignee[]>([]);
     const [searchQ, setSearchQ] = useState('');
     const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -259,35 +257,6 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const openAddAssignee = () => { setShowAddModal(true); /* panggil fetch options di sini kalau perlu */ };
 
-    const fetchOptions = useCallback(async () => {
-        if (!token) return;
-        try {
-            setLoadingOptions(true);
-            const rows = await searchFreelancersSimple(token, {
-                q: searchQ.trim(),
-                only_active: 1,
-                page: 1,
-                per_page: 20,
-            });
-            setOptions(rows);
-        } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak dapat memuat senarai freelancer.');
-            setOptions([]);
-        } finally {
-            setLoadingOptions(false);
-        }
-    }, [token, searchQ]);
-
-    useEffect(() => {
-        if (showAddModal) {
-            fetchOptions();
-        } else {
-            setOptions([]);
-            setSearchQ('');
-        }
-    }, [showAddModal, fetchOptions]);
-
-
     const handleRemoveAssignee = (fid: number) => {
         if (!token) return;
         Alert.alert('Buang freelancer?', 'Freelancer akan dibuang dari task ini.', [
@@ -316,12 +285,13 @@ const AdminTaskDetailsScreen: React.FC = () => {
         }
     };
 
-    const handleSelectToAdd = async (f: NewAssignee) => {
+    const handleSelectToAdd = async (f: Assignee) => {
         if (!token) return;
         try {
             setAdding(true);
-            await assignTaskAssignee(token, taskId, f.id, 'other'); // default role
-            setAssignees(prev => [...prev, { ...f, role: 'other' } as any]); // cast ringkas; backend akan normalize
+            // default role → 'other' (atau boleh letak UI pilih role dalam modal)
+            await assignTaskAssignee(token, taskId, f.id, 'other');
+            setAssignees(prev => [...prev, { ...f, role: 'other' }]);
             setShowAddModal(false);
             setOptions([]);
             setSearchQ('');
@@ -576,7 +546,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                             value={searchQ}
                             onChangeText={setSearchQ}
                             autoCapitalize="none"
-                            onSubmitEditing={fetchOptions}
+                            onSubmitEditing={() => {/* panggil fetchOptions(searchQ) */ }}
                         />
                     </View>
 

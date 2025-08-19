@@ -195,8 +195,8 @@ export const createTask = async (token: string, payload: CreateTaskPayload) => {
     });
 
     const raw = await res.text();
-    console.log('raw:', raw);
-    
+    // console.log('raw:', raw);
+
     let json: any;
     try { json = JSON.parse(raw); } catch {
         throw new Error('Server tidak mengembalikan JSON yang sah');
@@ -207,4 +207,39 @@ export const createTask = async (token: string, payload: CreateTaskPayload) => {
     }
 
     return json;
+};
+
+
+
+
+export type NewTask = {
+    id: number;
+    title?: string;
+    status?: 'pending' | 'in_progress' | 'completed';
+    // ... your other fields
+};
+
+export const updateTaskStatus = async (
+    token: string,
+    taskId: number,
+    status: 'pending' | 'in_progress' | 'completed'
+): Promise<Task> => {
+    const res = await fetch(API_ENDPOINTS.taskStatus(taskId), {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+    });
+
+    const text = await res.text();
+    let json: any;
+    try { json = JSON.parse(text); } catch { throw new Error('Server returned invalid JSON'); }
+
+    if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || `Failed to update status (HTTP ${res.status})`);
+    }
+
+    return json.data as Task;
 };

@@ -57,7 +57,7 @@ const ClientListScreen = () => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch('https://fd9315becb7e.ngrok-free.app/get_clients.php');
+            const response = await fetch('https://78fac64ce66c.ngrok-free.app/get_clients.php');
             const text = await response.text();
             const data = JSON.parse(text);
             setClients(data);

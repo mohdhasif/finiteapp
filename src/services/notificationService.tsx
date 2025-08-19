@@ -92,14 +92,14 @@ export const getNotifications = async (
             ? endpoint(opts.page, opts.per_page, opts.status)
             : `${endpoint}?${qs({ page: opts.page, per_page: opts.per_page, status: opts.status })}`;
 
-    console.log('[SVC][REQ]', { url, tokenLen: token?.length || 0 });
+    // console.log('[SVC][REQ]', { url, tokenLen: token?.length || 0 });
 
     const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token || ''}`, Accept: 'application/json' },
     });
     const raw = await res.text();
-    console.log('[SVC][RES]', { status: res.status, ok: res.ok });
-    console.log('[SVC][RAW]', raw.slice(0, 200));
+    // console.log('[SVC][RES]', { status: res.status, ok: res.ok });
+    // console.log('[SVC][RAW]', raw.slice(0, 200));
 
     let json: any;
     try { json = JSON.parse(raw); }
