@@ -23,6 +23,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { updateClient, approveClient } from '../services/clientService';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -154,7 +155,7 @@ const ClientApprovalScreen = () => {
                 source={
                   logoUrl
                     ? typeof logoUrl === 'string'
-                      ? { uri: logoUrl }
+                      ? { uri: BASE_URL.replace(/\/+$/, '') + logoUrl }
                       : logoUrl // { uri: ... }
                     : require('../assets/user.png')
                 }

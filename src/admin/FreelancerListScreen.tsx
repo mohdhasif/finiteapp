@@ -17,6 +17,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { API_ENDPOINTS } from '../constants/apiConfig'; // sesuaikan path
+import { BASE_URL } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -149,7 +150,7 @@ const FreelancerListScreen = () => {
                                     ]}
                                 >
                                     {status === 'all'
-                                        ? 'All Clients'
+                                        ? 'All Freelancers'
                                         : status.charAt(0).toUpperCase() + status.slice(1)}
                                 </Text>
                             </TouchableOpacity>
@@ -186,7 +187,7 @@ const FreelancerListScreen = () => {
                             <View style={styles.headerRow}>
                                 {freelancer.avatar ? (
                                     <Image
-                                        source={{ uri: freelancer.avatar }}
+                                        source={{ uri: BASE_URL.replace(/\/+$/, '') + freelancer.avatar }}
                                         style={styles.avatarImage}
                                         resizeMode="cover"
                                     />

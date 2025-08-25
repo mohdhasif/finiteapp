@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -253,7 +254,7 @@ const ClientListScreen = () => {
                             <View style={styles.headerRow}>
                                 {item.logo_url ? (
                                     <Image
-                                        source={{ uri: item.logo_url }}
+                                        source={{ uri: BASE_URL.replace(/\/+$/, '') + item.logo_url }}
                                         style={styles.avatarImage}
                                         resizeMode="contain"
                                     />

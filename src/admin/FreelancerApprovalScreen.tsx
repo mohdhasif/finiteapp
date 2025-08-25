@@ -23,6 +23,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { updateFreelancer, approveFreelancer } from '../services/freelancerService';
 import { API_ENDPOINTS } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -181,7 +182,7 @@ const FreelancerApprovalScreen = () => {
                                 source={
                                     avatarUrl
                                         ? typeof avatarUrl === 'string'
-                                            ? { uri: avatarUrl }
+                                            ? { uri: BASE_URL.replace(/\/+$/, '') + avatarUrl }
                                             : avatarUrl // { uri: ... }
                                         : require('../assets/user.png')
                                 }

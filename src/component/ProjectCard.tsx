@@ -31,12 +31,12 @@ const ProjectCard: React.FC<Props> = ({ data, onPress, width = 220 }) => {
         <Text style={styles.rowText}>{total} Tasks</Text>
       </View>
 
-      <View style={[styles.row, { marginTop: 12 }]}>
+      {/* <View style={[styles.row, { marginTop: 12 }]}>
         <View style={[styles.dot, { backgroundColor: '#B0BEC5' }]} />
         <View style={[styles.dot, { backgroundColor: WHITE, marginLeft: -8 }]} />
         <View style={[styles.dot, { backgroundColor: '#03A9F4', marginLeft: -8 }]} />
         <Text style={styles.plus}>+</Text>
-      </View>
+      </View> */}
 
       <Text style={styles.bigPercent}>{percent}%</Text>
 

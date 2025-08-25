@@ -30,6 +30,8 @@ const CARD = Math.round(width * 0.62); // nampak >1 kad
 const GAP = 12;
 const SIDE = 20;
 
+import { BASE_URL } from '../constants/apiConfig';
+
 type Client = {
     client_id: string;
     name: string;
@@ -253,8 +255,8 @@ const AdminHomeScreen = () => {
                             <View key={c.client_id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
-                                        source={typeof c.logo_url === 'string' && c.logo_url.startsWith('http')
-                                            ? { uri: c.logo_url }
+                                        source={typeof c.logo_url === 'string'
+                                            ? { uri: BASE_URL.replace(/\/+$/, '') + c.logo_url }
                                             : require('../assets/user.png')}
                                         style={styles.clientLogo}
                                         resizeMode="contain"
@@ -280,8 +282,8 @@ const AdminHomeScreen = () => {
                             <View key={f.id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
-                                        source={typeof f.avatar === 'string' && f.avatar.startsWith('http')
-                                            ? { uri: f.avatar }
+                                        source={typeof f.avatar === 'string'
+                                            ? { uri: BASE_URL.replace(/\/+$/, '') + f.avatar }
                                             : require('../assets/user.png')}
                                         style={styles.clientLogo}
                                     />
