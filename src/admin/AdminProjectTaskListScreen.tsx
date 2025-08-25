@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, Animated, Dimensions, PanResponder, Alert
+    ScrollView, Animated, Dimensions, PanResponder, Alert, Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -10,9 +10,21 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getTasksByProject, updateTaskStatus } from '../services/taskService';
-import { getProjectDetails } from '../services/projectService';
+import { getProjectDetails, getProjectFreelancers } from '../services/projectService';
+import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminTaskCard from '../component/AdminTaskCard';
+
+// Type definitions for API responses
+type ProjectFreelancer = {
+    freelancer_id: number;
+    user_id: number;
+    avatar_url: string | null;
+    skillset: string;
+    freelancer_status: string;
+    freelancer_name: string;
+    freelancer_email: string;
+};
 
 const { height, width } = Dimensions.get('window');
 type AdminProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'AdminProjectTaskListScreen'>;
@@ -44,10 +56,11 @@ const AdminProjectTaskListScreen = () => {
     const [tasksAll, setTasksAll] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [projectDetails, setProjectDetails] = useState<any>(null);
+    const [projectFreelancers, setProjectFreelancers] = useState<ProjectFreelancer[]>([]);
 
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
-    
+
     // Prevent double taps while pending
     const pendingIdsRef = useRef<Set<number>>(new Set());
 
@@ -61,6 +74,27 @@ const AdminProjectTaskListScreen = () => {
                 year: 'numeric',
             });
 
+    const getAvatarSource = (avatarUrl: string | null) => {
+        if (!avatarUrl) {
+            return require('../assets/user.png');
+        }
+        // Construct full URL if it's a relative path
+        const fullUrl = avatarUrl.startsWith('http') ? avatarUrl : `${BASE_URL}${avatarUrl}`;
+        return { uri: fullUrl };
+    };
+
+    // Calculate progress percentage
+    const progressPercentage = projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / Math.max(tasksAll.length, 1)) * 100) || 0;
+    const progressRotation = Math.min(progressPercentage * 3.6, 360);
+    
+    console.log('Progress Debug:', {
+        projectProgress: projectDetails?.progress_percent,
+        completedTasks: tasksAll.filter(t => t.status === 'completed').length,
+        totalTasks: tasksAll.length,
+        calculatedPercentage: progressPercentage,
+        rotationDegrees: progressRotation
+    });
+
     useEffect(() => {
         slideAnim.setValue(BOTTOM_TOP);
     }, [BOTTOM_TOP, slideAnim]);
@@ -73,15 +107,17 @@ const AdminProjectTaskListScreen = () => {
                 const token = await AsyncStorage.getItem('userToken'); // tukar jika key sebenar lain
                 if (!token) throw new Error('Token tidak dijumpai');
 
-                // Fetch both tasks and project details in parallel
-                const [arr, projectData] = await Promise.all([
+                // Fetch tasks, project details, and freelancers in parallel
+                const [arr, projectData, freelancersData] = await Promise.all([
                     getTasksByProject(token, route.params.project_id),
-                    getProjectDetails(token, route.params.project_id)
+                    getProjectDetails(token, route.params.project_id),
+                    getProjectFreelancers(token, route.params.project_id)
                 ]);
 
                 const list = Array.isArray(arr) ? arr : [];
                 setTasksAll(list);
                 setProjectDetails(projectData);
+                setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
 
                 // init checkbox mengikut id (preserve bila re-fetch)
                 setCheckedById(() => {
@@ -136,7 +172,7 @@ const AdminProjectTaskListScreen = () => {
         const nextChecked = { ...checkedById, [taskId]: true }; // checking means completed
         setCheckedById(nextChecked);
 
-        const nextTasks = tasksAll.map(t => 
+        const nextTasks = tasksAll.map(t =>
             t.id === taskId ? { ...t, status: 'completed' } : t
         );
         setTasksAll(nextTasks);
@@ -148,7 +184,7 @@ const AdminProjectTaskListScreen = () => {
             const arr = await getTasksByProject(token, route.params.project_id);
             const list = Array.isArray(arr) ? arr : [];
             setTasksAll(list);
-            
+
             // Update checkbox states based on new data
             setCheckedById(() => {
                 const next: Record<number, boolean> = {};
@@ -231,9 +267,16 @@ const AdminProjectTaskListScreen = () => {
 
                     <Text style={styles.label}>Assigned to</Text>
                     <View style={styles.avatarGroup}>
-                        {projectDetails?.freelancer_avatars?.slice(0, 3).map((avatar: string, index: number) => (
-                            <View key={index} style={[styles.avatar, { backgroundColor: ['#0066a2', '#000', '#00aaff'][index] || '#666' }]} />
-                        )) || (
+                        {projectFreelancers.length > 0 ? (
+                            projectFreelancers.slice(0, 3).map((freelancer: ProjectFreelancer, index: number) => (
+                                <Image
+                                    key={freelancer.freelancer_id || index}
+                                    source={getAvatarSource(freelancer.avatar_url)}
+                                    style={styles.avatar}
+                                    resizeMode="cover"
+                                />
+                            ))
+                        ) : (
                             <>
                                 <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
                                 <View style={[styles.avatar, { backgroundColor: '#000' }]} />
@@ -259,11 +302,23 @@ const AdminProjectTaskListScreen = () => {
 
                 <View style={styles.progressRing}>
                     <View style={styles.circle}>
+                        <View style={styles.progressCircle}>
+                            <View style={styles.progressBackground} />
+                            <View style={[
+                                styles.progressArc,
+                                {
+                                    transform: [{
+                                        rotate: `${progressRotation}deg`
+                                    }]
+                                }
+                            ]} />
+                        </View>
                         <Text style={styles.progressText}>
-                            {projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / tasksAll.length) * 100) || 0}%
+                            {progressPercentage}%
                         </Text>
                     </View>
                 </View>
+                
             </View>
 
             {/* Bottom Task Drawer */}
@@ -445,7 +500,7 @@ const styles = StyleSheet.create({
     progressBar: {
         marginTop: 8, height: 5, backgroundColor: '#ccc', borderRadius: 3, overflow: 'hidden', width: '70%'
     },
-    progressFill: { width: '60%', height: '100%', backgroundColor: '#4aa9ff' },
+    progressFillBar: { width: '60%', height: '100%', backgroundColor: '#4aa9ff' },
     rowWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     taskFilter: {
@@ -486,9 +541,28 @@ const styles = StyleSheet.create({
     metaText: { color: '#fff', fontSize: 13 },
     progressRing: { justifyContent: 'center', alignItems: 'center' },
     circle: {
-        width: 80, height: 80, borderRadius: 40, borderWidth: 8,
-        borderColor: '#004d7a', borderTopColor: '#4aa9ff',
+        width: 80, height: 80, borderRadius: 40,
         justifyContent: 'center', alignItems: 'center',
+        position: 'relative',
+    },
+    progressCircle: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+    },
+    progressBackground: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+        borderWidth: 8, borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    progressArc: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+        borderWidth: 8, borderColor: 'transparent',
+        borderTopColor: '#4aa9ff',
+        borderRightColor: '#4aa9ff',
+        borderBottomColor: 'transparent',
+        borderLeftColor: 'transparent',
+        transform: [{ rotate: '0deg' }],
     },
     progressText: { fontWeight: 'bold', color: '#fff', fontSize: 16 },
 

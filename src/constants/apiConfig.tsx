@@ -33,6 +33,7 @@ export const API_ENDPOINTS = {
     // ---- Projects
     clientProjects: buildUrl('client_projects.php'),
     projectDetails: (projectId: number) => buildUrl('project_details.php', { project_id: projectId }),
+    projectFreelancers: (projectId: number) => buildUrl('get_project_freelancers.php', { project_id: projectId }),
     projects: buildUrl('get_projects.php'),
     projectById: (id: number) => buildUrl(`projects/${id}`), // jika memang ada endpoint REST
     projectTasks: (projectId: number) => buildUrl('project_tasks.php', { project_id: projectId }),

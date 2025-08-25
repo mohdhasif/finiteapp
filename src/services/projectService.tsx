@@ -55,6 +55,18 @@ export const getProjectDetails = async (token: string, projectId: number) => {
     return parseText(text);
 };
 
+export const getProjectFreelancers = async (token: string, projectId: number) => {
+    const res = await fetch(API_ENDPOINTS.projectFreelancers(projectId), { headers: auth(token) });
+    const text = await res.text();
+    console.log('projectFreelancers', text);
+    
+    if (!res.ok) {
+        const json = parseText(text);
+        throw new Error(json?.error || `HTTP ${res.status}`);
+    }
+    return parseText(text);
+};
+
 export const fetchProjectTasks = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), { headers: auth(token) });
     const json = await parse(res);

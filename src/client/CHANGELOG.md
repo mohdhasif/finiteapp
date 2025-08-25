@@ -55,6 +55,10 @@ src/client/
 - **TaskCard.tsx** - Changed checkbox to display-only (read-only) by removing TouchableOpacity and onPress functionality
 - **TaskDetailsScreen.tsx** - Completely refactored to match AdminTaskDetailsScreen.tsx with full API integration, attachments, links, notes, and real-time functionality
 - **AdminProjectTaskListScreen.tsx** - Added backend integration to fetch real project details data including title, description, due date, progress percentage, and freelancer avatars
+- **API Integration** - Added get_project_freelancers.php endpoint and getProjectFreelancers service function to fetch real freelancer data from database
+- **AdminProjectTaskListScreen.tsx** - Updated freelancer data handling to match real API response structure with proper TypeScript types
+- **AdminProjectTaskListScreen.tsx** - Changed freelancer avatars to display actual images from avatar_url with fallback to user.png
+- **AdminProjectTaskListScreen.tsx** - Implemented working circular progress bar with dynamic rotation based on project completion percentage
 
 ### 📦 Usage
 ```typescript
