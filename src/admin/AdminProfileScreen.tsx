@@ -57,6 +57,8 @@ const AdminProfileScreen = () => {
 
     const [profile, setProfile] = useState<MyProfile | null>(null);
 
+    const [showDropdown, setShowDropdown] = useState(false);
+
     useEffect(() => {
         (async () => {
             try {
@@ -414,6 +416,23 @@ const AdminProfileScreen = () => {
 
     return (
         <SafeAreaView style={styles.safe}>
+
+            {/* Quick Add dropdown */}
+            {showDropdown && (
+                <View style={styles.dropdown}>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
+                        <Text style={styles.optionText}>New Project</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.option}
+                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
+                        <Text style={styles.optionText}>New Task</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={styles.title}>Profile</Text>
 
@@ -529,18 +548,40 @@ const AdminProfileScreen = () => {
                     </View>
 
                     <MenuItem icon="help-circle-outline" label="FAQ" />
+                    <MenuItem icon="log-out-outline" label="Logout" onLogout={logout} />
+
                 </View>
 
-                <TouchableOpacity style={styles.logoutContainer} onPress={logout}>
+                {/* <TouchableOpacity style={styles.logoutContainer} onPress={logout}>
                     <Icon name="log-out-outline" size={22} color="#555" style={styles.menuIcon} />
                     <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </ScrollView>
+
+            <View style={styles.bottomTab}>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
+                    <Icon name="home" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
+                    <Icon name="calendar" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
+                    <Icon name="add" size={32} color="#0072B5" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
+                    <Icon name="notifications" size={26} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
+                    <Icon name="person" size={26} color="#fff" />
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 };
 
-const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
+const MenuItem = ({ icon, label, onLogout }: { icon: string; label: string; onLogout?: () => void }) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const handlePress = () => {
         if (label === 'My Profile') {
@@ -549,7 +590,10 @@ const MenuItem = ({ icon, label }: { icon: string; label: string }) => {
             navigation.navigate('AdminChangePasswordScreen');
         } else if (label === 'FAQ') {
             navigation.navigate('AdminFAQScreen');
+        } else if (label === 'Logout') {
+            onLogout?.();
         }
+
     };
     return (
         <TouchableOpacity style={styles.menuItem} onPress={handlePress}>
@@ -570,6 +614,33 @@ function distanceMeters(a: { latitude: number; longitude: number }, b: { latitud
 }
 
 const styles = StyleSheet.create({
+
+    dropdown: {
+        position: 'absolute',
+        bottom: 80,
+        alignSelf: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingVertical: 4,
+        width: 160,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 10,
+        zIndex: 10,
+    },
+
+    option: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+    },
+    optionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0072B5',
+    },
+
     safe: { flex: 1, backgroundColor: '#d4d4d4' },
     container: {
         padding: 24, paddingBottom: 40, flexGrow: 1, justifyContent: 'flex-start',
@@ -605,6 +676,17 @@ const styles = StyleSheet.create({
     btnText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
 
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+    // Bottom tab
+    bottomTab: {
+        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
+    },
+    fab: {
+        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
+        alignItems: 'center', justifyContent: 'center', marginTop: -40,
+    },
 });
 
 export default AdminProfileScreen;
