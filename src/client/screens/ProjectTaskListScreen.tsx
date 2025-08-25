@@ -1,21 +1,20 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, Animated, Dimensions, PanResponder, Alert
+    ScrollView, Animated, Dimensions, PanResponder, Alert, ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/types';
-import { getTasksByProject, updateTaskStatus } from '../services/taskService';
-import { getProjectDetails } from '../services/projectService';
+import type { RootStackParamList } from '../../navigation/types';
+import { getTasksByProjectPublic, updateTaskStatus } from '../../services/taskService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AdminTaskCard from '../component/AdminTaskCard';
+import TaskCard from '../../component/TaskCard';
 
 const { height, width } = Dimensions.get('window');
-type AdminProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'AdminProjectTaskListScreen'>;
+type ProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'ProjectTaskListScreen'>;
 
 const FILTERS = [
     { label: 'All Tasks', value: 'all' },
@@ -25,9 +24,9 @@ const FILTERS = [
 ] as const;
 type FilterValue = (typeof FILTERS)[number]['value'];
 
-const AdminProjectTaskListScreen = () => {
+const ProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const route = useRoute<AdminProjectTaskListScreenRouteProp>();
+    const route = useRoute<ProjectTaskListScreenRouteProp>();
 
     // Drawer positions
     const BOTTOM_TOP = height * 0.25;
@@ -37,13 +36,10 @@ const AdminProjectTaskListScreen = () => {
     // UI states
     const [filterVisible, setFilterVisible] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('all');
-    const [showMenu, setShowMenu] = useState(false);
-    const [showOptions, setShowOptions] = useState(false);
 
     // Data states
     const [tasksAll, setTasksAll] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [projectDetails, setProjectDetails] = useState<any>(null);
 
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
@@ -51,37 +47,21 @@ const AdminProjectTaskListScreen = () => {
     // Prevent double taps while pending
     const pendingIdsRef = useRef<Set<number>>(new Set());
 
-    // ================= Utils
-    const formatDate = (d?: string | null) =>
-        !d
-            ? 'No due date'
-            : new Date(d).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-            });
-
     useEffect(() => {
         slideAnim.setValue(BOTTOM_TOP);
     }, [BOTTOM_TOP, slideAnim]);
 
-    // Fetch tasks and project details on mount
+    // Fetch tasks on mount
     useEffect(() => {
         const run = async () => {
             try {
                 setLoading(true);
-                const token = await AsyncStorage.getItem('userToken'); // tukar jika key sebenar lain
+                const token = await AsyncStorage.getItem('userToken');
                 if (!token) throw new Error('Token tidak dijumpai');
 
-                // Fetch both tasks and project details in parallel
-                const [arr, projectData] = await Promise.all([
-                    getTasksByProject(token, route.params.project_id),
-                    getProjectDetails(token, route.params.project_id)
-                ]);
-
+                const arr = await getTasksByProjectPublic(token, route.params.projectId);
                 const list = Array.isArray(arr) ? arr : [];
                 setTasksAll(list);
-                setProjectDetails(projectData);
 
                 // init checkbox mengikut id (preserve bila re-fetch)
                 setCheckedById(() => {
@@ -95,13 +75,13 @@ const AdminProjectTaskListScreen = () => {
                     return next;
                 });
             } catch (err: any) {
-                console.error('Fetch data error:', err?.message || err);
+                console.error('Fetch tasks error:', err?.message || err);
             } finally {
                 setLoading(false);
             }
         };
         run();
-    }, [route.params.project_id]);
+    }, [route.params.projectId]);
 
     // Filtered tasks (client-side)
     const tasks = useMemo(() => {
@@ -145,7 +125,7 @@ const AdminProjectTaskListScreen = () => {
             await updateTaskStatus(token, taskId, 'completed');
             // success: keep optimistic state
             // Optionally refetch tasks to ensure consistency
-            const arr = await getTasksByProject(token, route.params.project_id);
+            const arr = await getTasksByProjectPublic(token, route.params.projectId);
             const list = Array.isArray(arr) ? arr : [];
             setTasksAll(list);
             
@@ -199,55 +179,23 @@ const AdminProjectTaskListScreen = () => {
 
     return (
         <View style={styles.container}>
-            {/* Floating Action Button Menu */}
-            {showOptions && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => {
-                            setShowOptions(false);
-                            navigation.navigate('AdminCreateProjectScreen'); // Ganti ikut nama sebenar
-                        }}
-                    >
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => {
-                            setShowOptions(false);
-                            navigation.navigate('AddTaskScreen'); // Ganti ikut nama sebenar
-                        }}
-                    >
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
             {/* Top Card */}
             <View style={styles.topCard}>
                 <View style={styles.cardLeft}>
-                    <Text style={styles.title}>{projectDetails?.title || route.params.project_title}</Text>
-                    <Text style={styles.subtitle}>{projectDetails?.description || 'Project description'}</Text>
+                    <Text style={styles.title}>{route.params.projectTitle}</Text>
+                    <Text style={styles.subtitle}>August postings</Text>
 
                     <Text style={styles.label}>Assigned to</Text>
                     <View style={styles.avatarGroup}>
-                        {projectDetails?.freelancer_avatars?.slice(0, 3).map((avatar: string, index: number) => (
-                            <View key={index} style={[styles.avatar, { backgroundColor: ['#0066a2', '#000', '#00aaff'][index] || '#666' }]} />
-                        )) || (
-                            <>
-                                <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
-                                <View style={[styles.avatar, { backgroundColor: '#000' }]} />
-                                <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} />
-                            </>
-                        )}
+                        <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
+                        <View style={[styles.avatar, { backgroundColor: '#000' }]} />
+                        <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} />
                     </View>
 
                     <View style={styles.metaRow}>
                         <View style={styles.metaItem}>
                             <Icon name="calendar-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                            <Text style={styles.metaText}>
-                                {formatDate(projectDetails?.end_at)}
-                            </Text>
+                            <Text style={styles.metaText}>Jan 13, 2025</Text>
                         </View>
 
                         <View style={styles.metaItem}>
@@ -259,9 +207,7 @@ const AdminProjectTaskListScreen = () => {
 
                 <View style={styles.progressRing}>
                     <View style={styles.circle}>
-                        <Text style={styles.progressText}>
-                            {projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / tasksAll.length) * 100) || 0}%
-                        </Text>
+                        <Text style={styles.progressText}>50%</Text>
                     </View>
                 </View>
             </View>
@@ -333,16 +279,16 @@ const AdminProjectTaskListScreen = () => {
                         </Text>
                     ) : Array.isArray(tasks) && tasks.length > 0 ? (
                         tasks.map((task: any) => (
-                            <AdminTaskCard
+                            <TaskCard
                                 key={task.id}
                                 task={task}
                                 checked={!!checkedById[task.id]}
                                 onToggleCheck={() => handleToggleCheck(task.id)}
                                 onPress={() =>
-                                    navigation.push('AdminTaskDetailsScreen', {
-                                        task_title: task.title,
+                                    navigation.push('TaskDetailsScreen', {
                                         task_id: task.id,
-                                    })
+                                        task_title: task.title,
+                                    } as any)
                                 }
                             />
                         ))
@@ -351,60 +297,26 @@ const AdminProjectTaskListScreen = () => {
                             Tiada task dijumpai.
                         </Text>
                     )}
-
-
                 </ScrollView>
             </Animated.View>
 
-            {/* Floating Menu */}
-            {showMenu && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => {
-                            setShowMenu(false);
-                            navigation.navigate('AdminCreateProjectScreen');
-                        }}
-                    >
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => {
-                            setShowMenu(false);
-                            navigation.navigate('AddTaskScreen');
-                        }}
-                    >
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
+            {/* Bottom Navigation */}
+            <View style={styles.bottomNav}>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+                    <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity>
-                    <Icon name="calendar" size={26} color="#fff" />
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                    <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.fab} onPress={() => setShowOptions(!showOptions)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-
-                <TouchableOpacity>
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
+                    <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
         </View>
     );
 };
 
-export default AdminProjectTaskListScreen;
+export default ProjectTaskListScreen;
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#073B61' },
@@ -491,21 +403,4 @@ const styles = StyleSheet.create({
         justifyContent: 'center', alignItems: 'center',
     },
     progressText: { fontWeight: 'bold', color: '#fff', fontSize: 16 },
-
-    bottomTab: {
-        flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#0072B5',
-        paddingVertical: 14, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-        position: 'absolute', bottom: 0, width: '100%', alignItems: 'center',
-    },
-    fab: {
-        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
-        alignItems: 'center', justifyContent: 'center', marginTop: -40,
-    },
-    dropdown: {
-        position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: '#fff',
-        borderRadius: 10, paddingVertical: 4, width: 140, shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 10, zIndex: 10,
-    },
-    option: { paddingVertical: 10, paddingHorizontal: 20 },
-    optionText: { fontSize: 14, fontWeight: '600', color: '#0072B5' },
 });

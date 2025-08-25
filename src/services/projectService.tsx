@@ -21,16 +21,38 @@ const parse = async (res: Response) => {
     return json;
 };
 
+const parseText = (text: string) => {
+    let json: any;
+    try {
+        json = JSON.parse(text);
+    } catch {
+        throw new Error('Server tidak mengembalikan JSON yang sah');
+    }
+    return json;
+};
+
 const auth = (t: string) => ({ Accept: 'application/json', Authorization: `Bearer ${t}` });
 
 export const getClientProjects = async (token: string) => {
     const res = await fetch(API_ENDPOINTS.clientProjects, { headers: auth(token) });
-    return parse(res);
+    const text = await res.text();
+    // console.log(text);
+    if (!res.ok) {
+        const json = parseText(text);
+        throw new Error(json?.error || `HTTP ${res.status}`);
+    }
+    return parseText(text);
 };
 
 export const getProjectDetails = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectDetails(projectId), { headers: auth(token) });
-    return parse(res);
+    const text = await res.text();
+    console.log(text);
+    if (!res.ok) {
+        const json = parseText(text);
+        throw new Error(json?.error || `HTTP ${res.status}`);
+    }
+    return parseText(text);
 };
 
 export const fetchProjectTasks = async (token: string, projectId: number) => {

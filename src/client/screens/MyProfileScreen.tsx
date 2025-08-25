@@ -1,34 +1,105 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    StyleSheet,
-    Image,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-    SafeAreaView,
+    View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
+    ScrollView, Dimensions, SafeAreaView, Alert,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/types';
+import type { RootStackParamList } from '../../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 const { width } = Dimensions.get('window');
 
 const MyProfileScreen = () => {
-    const [isModalVisible, setModalVisible] = useState(false);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [token, setToken] = useState<string>('');
 
+    const [profile, setProfile] = useState<any>(null);
+    const [name, setName] = useState('');
+    const [dob, setDob] = useState('');      // YYYY-MM-DD
+    const [gender, setGender] = useState<'male' | 'female' | ''>('');
+    const [phone, setPhone] = useState('');
+    const [avatarUriLocal, setAvatarUriLocal] = useState<{ uri: string; fileName?: string; type?: string } | string | null>(null);
+    const [myId, setMyId] = useState<number | null>(null);
+    const [me, setMe] = useState<any>(null);
 
-    const handleSave = () => {
-        setModalVisible(true);
+    useEffect(() => {
+        (async () => {
+            try {
+                const tk = (await AsyncStorage.getItem('userToken')) || '';
+                setToken(tk);
+                if (!tk) {
+                    Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+                    setLoading(false);
+                    return;
+                }
+                
+                // Load user info from AsyncStorage for now
+                const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+                
+                console.log(userInfo?.avatar_url);
+                
+                setMe(userInfo);
+                setMyId(userInfo?.id ?? null);
+                setProfile(userInfo);
+                setName(userInfo?.name || '');
+                setDob(userInfo?.dob || '');
+                setGender((userInfo?.gender as any) || '');
+                setPhone(userInfo?.phone || '');
+                setAvatarUriLocal(userInfo?.avatar_url || null);
+            } catch (e: any) {
+                Alert.alert('Gagal', e?.message || 'Gagal memuat profil');
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, []);
+
+    const handleSave = async () => {
+        if (!token) return;
+        try {
+            setSaving(true);
+
+            // For now, just update local storage
+            const updatedUserInfo = {
+                ...me,
+                name,
+                dob,
+                gender,
+                phone,
+                avatar_url: avatarUriLocal
+            };
+            
+            await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+            setProfile(updatedUserInfo);
+            setModalVisible(true);
+        } catch (e: any) {
+            Alert.alert('Gagal', e?.message || 'Tidak berjaya menyimpan profil.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleNext = () => {
         setModalVisible(false);
-        navigation.navigate('ProfileScreen'); // Navigate to the next screen
+        navigation.navigate('ProfileScreen');
+    };
+
+    const pickAvatar = () => {
+        launchImageLibrary({ mediaType: 'photo' }, (response) => {
+            if (response.assets && response.assets.length > 0) {
+                const selected = response.assets[0];
+                if (selected.uri) {
+                    setAvatarUriLocal({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
+                }
+            }
+        });
     };
 
     return (
@@ -37,49 +108,53 @@ const MyProfileScreen = () => {
                 <Text style={styles.header}>My Profile</Text>
 
                 <View style={styles.avatarContainer}>
-                    <Image source={require('../assets/user.png')} style={styles.avatar} />
-                    <TouchableOpacity style={styles.editCircle} />
+                    <Image
+                        source={
+                            avatarUriLocal
+                                ? typeof avatarUriLocal === 'string'
+                                    ? { uri: avatarUriLocal }
+                                    : avatarUriLocal // { uri: ... }
+                                : require('../../assets/user.png')
+                        }
+                        style={styles.avatar}
+                        resizeMode="contain"
+                    />
+
+                    <TouchableOpacity style={styles.editCircle} onPress={pickAvatar} />
+                    <Text style={styles.smallHint}>Tap bulat putih untuk pilih avatar</Text>
                 </View>
 
                 {/* Basic Details */}
                 <Text style={styles.sectionTitle}>Basic Details</Text>
 
                 <Text style={styles.label}>Full Name</Text>
-                <TextInput style={styles.input} value="Jane Smith" editable={false} />
-
-                <Text style={styles.label}>Date of Birth</Text>
-                <TextInput style={styles.input} value="23 July 2025" editable={false} />
-
-                <Text style={styles.label}>Gender</Text>
-                <View style={styles.genderRow}>
-                    <View style={[styles.genderButton, styles.disabledGender]}>
-                        <Text style={styles.disabledText}>Male</Text>
-                    </View>
-                    <View style={[styles.genderButton, styles.activeGender]}>
-                        <Text style={styles.activeText}>Female</Text>
-                    </View>
-                </View>
+                <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Nama penuh"
+                    editable={!loading}
+                />
 
                 {/* Contact Details */}
                 <Text style={styles.sectionTitle}>Contact Details</Text>
 
-                <Text style={styles.label}>Mobile Number</Text>
-                <TextInput style={styles.input} value="+60 11234 5678" editable={false} />
-
                 <Text style={styles.label}>Email</Text>
                 <TextInput
-                    style={styles.input}
-                    value="janesmith@gmail.com"
+                    style={[styles.input, { backgroundColor: '#EEE' }]}
+                    value={profile?.email || ''}
                     editable={false}
                 />
             </ScrollView>
 
-            {/* Static Save Button */}
+            {/* Save Button */}
             <View style={styles.bottomWrapper}>
                 <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={handleSave}>
-                    <Text style={styles.saveText}>Save</Text>
+                    style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                >
+                    <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save'}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -138,6 +213,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 5,
         right: width / 2 - 105,
+        borderWidth: 1,
+        borderColor: '#CCC',
+    },
+    smallHint: { 
+        marginTop: 6, 
+        fontSize: 12, 
+        color: '#666' 
     },
     sectionTitle: {
         fontSize: 16,

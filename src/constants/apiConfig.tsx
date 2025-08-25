@@ -3,7 +3,7 @@
 import { url } from "inspector";
 
 // 1) Buang trailing slash untuk elak `//`
-export const BASE_URL = 'https://78fac64ce66c.ngrok-free.app';
+export const BASE_URL = 'https://a3d5e73f0172.ngrok-free.app';
 
 // 2) Helper untuk build URL + query params dengan selamat
 const join = (base: string, path: string) =>

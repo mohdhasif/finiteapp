@@ -4,7 +4,7 @@ export type RootStackParamList = {
   ServiceScreen: undefined;
   NotificationsScreen: undefined;
   DiscoveryForm: { selectedServices: string[] }; // ✅ betul di sini
-  TaskDetailsScreen: { task: string }; // ✅ betul di sini
+  TaskDetailsScreen: { task_title: string, task_id: number }; // ✅ betul di sini
   ProfileScreen: undefined; // ✅ betul di sini
   LoginScreen: undefined; // ✅ betul di sini
   FabMenu: undefined; // ✅ betul di sini

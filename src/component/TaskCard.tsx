@@ -7,7 +7,7 @@ import type { Task } from '../services/taskService';
 type Props = {
     task: Task;
     checked: boolean;
-    onToggleCheck: () => void;
+    onToggleCheck?: () => void; // Optional since checkbox is now display-only
     onPress: () => void;
 };
 
@@ -32,17 +32,15 @@ const TaskCard: React.FC<Props> = ({ task, checked, onToggleCheck, onPress }) =>
                 end={{ x: 1, y: 1 }}
                 style={styles.card}
             >
-                {/* LEFT: centered checkbox */}
-                <TouchableOpacity
-                    onPress={onToggleCheck}
+                {/* LEFT: centered checkbox (display only) */}
+                <View
                     style={[
                         styles.checkbox,
                         { backgroundColor: checked ? '#28a745' : '#E3E8EF' },
                     ]}
-                    activeOpacity={0.8}
                 >
                     {checked && <Icon name="checkmark" size={16} color="#fff" />}
-                </TouchableOpacity>
+                </View>
 
                 {/* MIDDLE: titles (vertically centered with checkbox) */}
                 <View style={styles.middleCol}>

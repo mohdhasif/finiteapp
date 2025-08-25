@@ -1,11 +1,13 @@
-import ProjectListScreen from '../client/ProjectListScreen';
-import ProjectTaskListScreen from '../client/ProjectTaskListScreen';
-import TaskDetailsScreen from '../client/TaskDetailsScreen';
-import NotificationsScreen from '../client/NotificationsScreen';
-import ProfileScreen from '../client/ProfileScreen';
-import MyProfileScreen from '../client/MyProfileScreen';
-import ChangePasswordScreen from '../client/ChangePasswordScreen';
-import FAQScreen from '../client/FAQScreen';
+import {
+    ProjectListScreen,
+    ProjectTaskListScreen,
+    TaskDetailsScreen,
+    NotificationsScreen,
+    ProfileScreen,
+    MyProfileScreen,
+    ChangePasswordScreen,
+    FAQScreen
+} from '../client';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
