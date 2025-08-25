@@ -1,48 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView
 } from 'react-native';
-import Modal from 'react-native-modal';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createProject } from '../services/projectService';
 import { getClientsOptions } from '../services/adminService';
+import SelectionModal from '../component/SelectionModal';
 
 const BLUE = '#0B7EBE';
 const BG = '#EFEFEF';
 const TEXT = '#1A2A35';
 const SUB = '#6B7C8F';
+const BORDER = '#E1E6EC';
 
-type PickerItem<T extends string | number = string> = { label: string; value: T };
-
-const PRIORITIES: PickerItem<'low' | 'medium' | 'high'>[] = [
-  { label: 'High', value: 'high' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'Low', value: 'low' },
+const PRIORITIES = [
+  { label: 'High', value: 'high' as const },
+  { label: 'Medium', value: 'medium' as const },
+  { label: 'Low', value: 'low' as const },
 ];
 
-const STATUSES: PickerItem<'pending' | 'in_progress' | 'completed'>[] = [
-  { label: 'Pending', value: 'pending' },
-  { label: 'In Progress', value: 'in_progress' },
-  { label: 'Completed', value: 'completed' },
+const STATUSES = [
+  { label: 'Pending', value: 'pending' as const },
+  { label: 'In Progress', value: 'in_progress' as const },
+  { label: 'Completed', value: 'completed' as const },
 ];
-
-/** 🔧 Module-scope Underline (elak re-mount) */
-const Underline: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <View style={styles.underline}>{children}</View>
-);
 
 const CreateProjectScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -50,43 +36,48 @@ const CreateProjectScreen = () => {
   // Form states
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed'>('pending');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(null);
+  const [progress, setProgress] = useState<string>('0');
 
-  const [client, setClient] = useState<number | null>(null);
-  const [clients, setClients] = useState<PickerItem<number>[]>([]);
+  // Client selection
+  const [clients, setClients] = useState<Array<{ label: string; value: number }>>([]);
+  const [selectedClient, setSelectedClient] = useState<{ label: string; value: number } | null>(null);
   const [loadingClients, setLoadingClients] = useState(false);
 
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(null);
-  const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed'>('pending');
-  const [progress, setProgress] = useState<string>('0'); // input-friendly
+  // Date/time states
+  const [startDate, setStartDate] = useState<string>(''); // YYYY-MM-DD HH:MM:SS
+  const [endDate, setEndDate] = useState<string>(''); // YYYY-MM-DD HH:MM:SS
 
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [pickingStartDate, setPickingStartDate] = useState(true);
+  // Modal states
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
 
-  const [saving, setSaving] = useState(false);
-  const [isSuccessVisible, setSuccessVisible] = useState(false);
+  // Date/time pickers
+  const [showStartDate, setShowStartDate] = useState(false);
+  const [showStartTime, setShowStartTime] = useState(false);
+  const [tmpStartDate, setTmpStartDate] = useState<Date | null>(null);
 
-  // active modal picker: 'client' | 'priority' | 'status' | null
-  const [activePicker, setActivePicker] = useState<null | 'client' | 'priority' | 'status'>(null);
+  const [showEndDate, setShowEndDate] = useState(false);
+  const [showEndTime, setShowEndTime] = useState(false);
+  const [tmpEndDate, setTmpEndDate] = useState<Date | null>(null);
 
-  const toSQLDateTime = (d: Date | null) =>
-    d
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
-        2,
-        '0'
-      )} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`
-      : null;
+  const [loading, setLoading] = useState(false);
 
-  const getLabel = <T extends string | number>(list: PickerItem<T>[], val: T | null) =>
-    list.find(i => i.value === val)?.label ?? undefined;
+  // helpers
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const toMySQLDate = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const toMySQLDateTime = (d: Date) =>
+    `${toMySQLDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 
-  // load clients from API
+  // Load clients from API
   useEffect(() => {
     (async () => {
       setLoadingClients(true);
       try {
-        const token = await AsyncStorage.getItem('userToken'); // 🔄 standardize key
+        const token = await AsyncStorage.getItem('userToken');
         const options = await getClientsOptions(token ?? undefined, {
           statusIn: ['approved', 'active'],
           sort: 'label',
@@ -100,307 +91,287 @@ const CreateProjectScreen = () => {
     })();
   }, []);
 
-  const handleDateConfirm = (date: Date) => {
-    if (pickingStartDate) setStartDate(date);
-    else setEndDate(date);
-    setDatePickerVisible(false);
+  // handlers — start_at (date -> time)
+  const onPickStartDate = (date: Date) => {
+    setTmpStartDate(date);
+    setShowStartDate(false);
+    setShowStartTime(true);
+  };
+  const onPickStartTime = (time: Date) => {
+    const base = tmpStartDate || new Date();
+    const final = new Date(
+      base.getFullYear(), base.getMonth(), base.getDate(),
+      time.getHours(), time.getMinutes(), 0, 0
+    );
+    setStartDate(toMySQLDateTime(final));
+    setShowStartTime(false);
   };
 
-  const modalData = useMemo(() => {
-    switch (activePicker) {
-      case 'client':
-        return { title: 'Select Client', list: clients as PickerItem<number>[], value: client, set: setClient };
-      case 'priority':
-        return { title: 'Select Priority', list: PRIORITIES as PickerItem[], value: priority, set: setPriority };
-      case 'status':
-        return { title: 'Select Status', list: STATUSES as PickerItem[], value: status, set: setStatus };
-      default:
-        return null;
-    }
-  }, [activePicker, client, priority, status, clients]);
+  // handlers — end_at (date -> time)
+  const onPickEndDate = (date: Date) => {
+    setTmpEndDate(date);
+    setShowEndDate(false);
+    setShowEndTime(true);
+  };
+  const onPickEndTime = (time: Date) => {
+    const base = tmpEndDate || new Date();
+    const final = new Date(
+      base.getFullYear(), base.getMonth(), base.getDate(),
+      time.getHours(), time.getMinutes(), 0, 0
+    );
+    setEndDate(toMySQLDateTime(final));
+    setShowEndTime(false);
+  };
 
-  const handleSave = async () => {
-    if (!projectName.trim()) {
-      Alert.alert('Validation', 'Project name is required.');
-      return;
-    }
-    if (!client) {
-      Alert.alert('Validation', 'Please select a client.');
-      return;
-    }
-    // ✅ validation date
-    if (startDate && endDate && endDate.getTime() < startDate.getTime()) {
-      Alert.alert('Validation', 'End date/time must be after Start date/time.');
+  const canSubmit = useMemo(() => {
+    return projectName.trim().length > 0 && selectedClient && startDate && endDate;
+  }, [projectName, selectedClient, startDate, endDate]);
+
+  const onSubmit = async () => {
+    if (!canSubmit || !selectedClient) {
+      Alert.alert('Peringatan', 'Sila isi Project Name, pilih Client, dan set Start/End date');
       return;
     }
 
-    setSaving(true);
+    if (startDate && endDate) {
+      if (new Date(startDate) > new Date(endDate)) {
+        Alert.alert('Ralat', 'End time mesti selepas Start time');
+        return;
+      }
+    }
+
     try {
-      const token = (await AsyncStorage.getItem('userToken')) ?? ''; // 🔄 standardize
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) throw new Error('Tiada token. Sila log masuk semula.');
+
       const payload = {
         title: projectName.trim(),
-        client_id: client,
+        client_id: selectedClient.value,
         description: description || null,
         priority: priority ?? null,
-        start_at: toSQLDateTime(startDate),
-        end_at: toSQLDateTime(endDate), // ✅ ensure sent
+        start_at: startDate,
+        end_at: endDate,
         status,
         progress: Math.max(0, Math.min(100, parseInt(progress || '0', 10) || 0)),
-        // Optional: due_date if anda mahu simpan pada table projects atau untuk compat backend
-        // due_date: endDate ? toSQLDateTime(endDate)?.slice(0, 10) : null, // YYYY-MM-DD
-      } as const;
+      };
 
       await createProject(token, payload);
-      setSuccessVisible(true);
+      Alert.alert('Berjaya', 'Project telah dicipta', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save project.');
+      Alert.alert('Ralat', e?.message || 'Gagal mencipta project');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleNext = () => {
-    setSuccessVisible(false);
-    navigation.goBack();
-  };
+  // Item untuk modal Client
+  const clientItems = useMemo(
+    () =>
+      clients.map(c => ({
+        label: c.label,
+        value: c.value,
+      })),
+    [clients]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="always"
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.title}>Create new project</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+          <Text style={styles.header}>Create Project</Text>
 
+          {/* Project Name */}
           <Text style={styles.label}>Project Name</Text>
-          <Underline>
-            <TextInput
-              value={projectName}
-              onChangeText={setProjectName}
-              placeholder="Enter project name"
-              placeholderTextColor={SUB}
-              style={styles.inputText}
-              autoCorrect={false}
-              blurOnSubmit={false}
-              returnKeyType="next"
-            />
-          </Underline>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter project name"
+            placeholderTextColor={SUB}
+            value={projectName}
+            onChangeText={setProjectName}
+          />
 
+          {/* Client */}
           <Text style={styles.label}>Client</Text>
-          <Underline>
-            <TouchableOpacity
-              style={styles.pickerField}
-              onPress={() => !loadingClients && setActivePicker('client')}
-              disabled={loadingClients}
-            >
-              <Text style={[styles.pickerValue, !client && styles.placeholder]}>
-                {loadingClients ? 'Loading clients…' : getLabel(clients, client) ?? 'Select client'}
-              </Text>
-              <Text style={styles.chev}>▾</Text>
-            </TouchableOpacity>
-          </Underline>
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowClientPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {selectedClient ? selectedClient.label : 'Pilih client'}
+            </Text>
+          </TouchableOpacity>
 
+          {/* Description */}
           <Text style={styles.label}>Description</Text>
-          <Underline>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Project description"
-              placeholderTextColor={SUB}
-              style={[styles.inputText, { height: 88 }]}
-              multiline
-              textAlignVertical="top"
-              autoCorrect={false}
-            />
-          </Underline>
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            placeholder="Project description..."
+            placeholderTextColor={SUB}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
 
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <Text style={styles.label}>Start date/time</Text>
-              <Underline>
-                <TouchableOpacity
-                  onPress={() => {
-                    setPickingStartDate(true);
-                    setDatePickerVisible(true);
-                  }}
-                  style={styles.pickerField}
-                >
-                  <Text style={[styles.pickerValue, !startDate && styles.placeholder]}>
-                    {startDate ? startDate.toLocaleString() : 'Select start date'}
-                  </Text>
-                  <Text style={styles.chev}>▾</Text>
-                </TouchableOpacity>
-              </Underline>
-            </View>
-
-            <View style={[styles.col, { marginLeft: 18 }]}>
-              <Text style={styles.label}>End date/time</Text>
-              <Underline>
-                <TouchableOpacity
-                  onPress={() => {
-                    setPickingStartDate(false);
-                    setDatePickerVisible(true);
-                  }}
-                  style={styles.pickerField}
-                >
-                  <Text style={[styles.pickerValue, !endDate && styles.placeholder]}>
-                    {endDate ? endDate.toLocaleString() : 'Select end date'}
-                  </Text>
-                  <Text style={styles.chev}>▾</Text>
-                </TouchableOpacity>
-              </Underline>
-            </View>
-          </View>
-
+          {/* Status */}
           <Text style={styles.label}>Status</Text>
-          <Underline>
-            <TouchableOpacity style={styles.pickerField} onPress={() => setActivePicker('status')}>
-              <Text style={styles.pickerValue}>{getLabel(STATUSES, status)}</Text>
-              <Text style={styles.chev}>▾</Text>
-            </TouchableOpacity>
-          </Underline>
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowStatusPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {STATUSES.find(s => s.value === status)?.label}
+            </Text>
+          </TouchableOpacity>
 
-          <Text style={styles.label}>Progress</Text>
-          <Underline>
-            <TextInput
-              value={progress}
-              onChangeText={(t) => setProgress(t.replace(/[^\d]/g, '').slice(0, 3))}
-              placeholder="0 - 100"
-              placeholderTextColor={SUB}
-              style={styles.inputText}
-              keyboardType="number-pad"
-              maxLength={3}
-            />
-          </Underline>
-
+          {/* Priority */}
           <Text style={styles.label}>Priority</Text>
-          <Underline>
-            <TouchableOpacity style={styles.pickerField} onPress={() => setActivePicker('priority')}>
-              <Text style={[styles.pickerValue, !priority && styles.placeholder]}>
-                {getLabel(PRIORITIES, priority) ?? 'Select priority'}
-              </Text>
-              <Text style={styles.chev}>▾</Text>
-            </TouchableOpacity>
-          </Underline>
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowPriorityPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {priority ? PRIORITIES.find(p => p.value === priority)?.label : 'Pilih priority'}
+            </Text>
+          </TouchableOpacity>
 
-          <View style={{ height: 110 }} />
+          {/* Progress */}
+          <Text style={styles.label}>Progress</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0 - 100"
+            placeholderTextColor={SUB}
+            value={progress}
+            onChangeText={(t) => setProgress(t.replace(/[^\d]/g, '').slice(0, 3))}
+            keyboardType="number-pad"
+            maxLength={3}
+          />
+
+          {/* Start Date/Time */}
+          <Text style={styles.label}>Start Date/Time</Text>
+          <TouchableOpacity style={styles.select} onPress={() => setShowStartDate(true)}>
+            <Text style={styles.selectText}>{startDate || 'Pilih tarikh & masa mula'}</Text>
+          </TouchableOpacity>
+
+          {/* End Date/Time */}
+          <Text style={styles.label}>End Date/Time</Text>
+          <TouchableOpacity style={styles.select} onPress={() => setShowEndDate(true)}>
+            <Text style={styles.selectText}>{endDate || 'Pilih tarikh & masa tamat'}</Text>
+          </TouchableOpacity>
+
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.submitBtn, !canSubmit || loading ? styles.btnDisabled : undefined]}
+            onPress={onSubmit}
+            disabled={!canSubmit || loading}
+          >
+            <Text style={styles.submitText}>{loading ? 'Menyimpan...' : 'Cipta Project'}</Text>
+          </TouchableOpacity>
         </ScrollView>
 
-        <View style={styles.sticky}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-            <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Modal
-          isVisible={isSuccessVisible}
-          onBackdropPress={() => setSuccessVisible(false)}
-          animationIn="slideInUp"
-          animationOut="slideOutDown"
-          useNativeDriver
-          style={styles.modal}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={styles.modalTitle}>Successfully Saved!</Text>
-            <Text style={styles.modalSub}>Your project has been created.</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={handleNext}>
-              <Text style={styles.modalButtonText}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
-
-        <DateTimePickerModal
-          isVisible={datePickerVisible}
-          mode="datetime"
-          onConfirm={handleDateConfirm}
-          onCancel={() => setDatePickerVisible(false)}
+        {/* Client Modal */}
+        <SelectionModal
+          visible={showClientPicker}
+          title="Pilih Client"
+          items={clientItems}
+          value={selectedClient?.value ?? null}
+          onClose={() => setShowClientPicker(false)}
+          onSelect={(it) => {
+            const found = clients.find(c => c.value === it.value);
+            if (found) setSelectedClient(found);
+          }}
+          showSearch
+          placeholder="Cari client"
         />
 
-        <Modal
-          isVisible={!!modalData}
-          onBackdropPress={() => setActivePicker(null)}
-          animationIn="slideInUp"
-          animationOut="slideOutDown"
-          useNativeDriver
-          style={styles.selectorModal}
-        >
-          <View style={styles.selectorSheet}>
-            <Text style={styles.selectorTitle}>{modalData?.title}</Text>
+        {/* Status Modal */}
+        <SelectionModal
+          visible={showStatusPicker}
+          title="Pilih Status"
+          items={STATUSES}
+          value={status}
+          onClose={() => setShowStatusPicker(false)}
+          onSelect={(it) => setStatus(it.value as any)}
+          showSearch={false}
+        />
 
-            <ScrollView style={{ maxHeight: 360 }}>
-              {activePicker === 'client' && loadingClients ? (
-                <Text style={{ alignSelf: 'center', paddingVertical: 16, color: SUB }}>Loading…</Text>
-              ) : (modalData?.list ?? []).length === 0 ? (
-                <Text style={{ alignSelf: 'center', paddingVertical: 16, color: SUB }}>No options</Text>
-              ) : (
-                (modalData?.list ?? []).map((opt) => {
-                  const isActive = (modalData?.value as any) === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={String(opt.value)}
-                      style={styles.optionRow}
-                      onPress={() => (modalData as any)?.set(opt.value)}
-                    >
-                      <Text style={styles.optionLabel}>{opt.label}</Text>
-                      <Text style={[styles.tick, { opacity: isActive ? 1 : 0 }]}>✓</Text>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
+        {/* Priority Modal */}
+        <SelectionModal
+          visible={showPriorityPicker}
+          title="Pilih Priority"
+          items={PRIORITIES}
+          value={priority}
+          onClose={() => setShowPriorityPicker(false)}
+          onSelect={(it) => setPriority(it.value as any)}
+          showSearch={false}
+        />
 
-            <TouchableOpacity style={styles.selectorClose} onPress={() => setActivePicker(null)}>
-              <Text style={styles.selectorCloseText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
+        {/* Start: date -> time */}
+        <DateTimePickerModal
+          isVisible={showStartDate}
+          mode="date"
+          onConfirm={onPickStartDate}
+          onCancel={() => setShowStartDate(false)}
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+        />
+        <DateTimePickerModal
+          isVisible={showStartTime}
+          mode="time"
+          is24Hour
+          onConfirm={onPickStartTime}
+          onCancel={() => setShowStartTime(false)}
+        />
+
+        {/* End: date -> time */}
+        <DateTimePickerModal
+          isVisible={showEndDate}
+          mode="date"
+          onConfirm={onPickEndDate}
+          onCancel={() => setShowEndDate(false)}
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+        />
+        <DateTimePickerModal
+          isVisible={showEndTime}
+          mode="time"
+          is24Hour
+          onConfirm={onPickEndTime}
+          onCancel={() => setShowEndTime(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  scrollContent: { paddingHorizontal: 22, paddingTop: 28 },
-  title: { fontSize: 28, fontWeight: '800', color: BLUE, marginBottom: 26 },
-  label: { fontSize: 16, color: TEXT, marginBottom: 8 },
-  underline: { borderBottomWidth: 2, borderBottomColor: BLUE, paddingBottom: 6, marginBottom: 18 },
-  inputText: { fontSize: 16, color: TEXT, padding: 0 },
-  pickerField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pickerValue: { fontSize: 16, color: TEXT },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-  col: { flex: 1 },
-  placeholder: { color: SUB },
-  chev: { fontSize: 18, color: BLUE },
-  sticky: {
-    position: 'absolute',
-    left: 0, right: 0, bottom: 0,
-    paddingHorizontal: 22, paddingVertical: 18, backgroundColor: BG,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#D6DEE6',
+  container: { flex: 1, backgroundColor: '#fff' },
+  wrap: { padding: 16, paddingBottom: 32 },
+  header: { fontSize: 22, fontWeight: '700', color: TEXT, marginBottom: 12 },
+  label: { fontSize: 14, color: SUB, marginTop: 12, marginBottom: 6 },
+  input: {
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 12, color: TEXT,
   },
-  saveButton: { width: '100%', paddingVertical: 16, borderRadius: 28, backgroundColor: BLUE, alignItems: 'center' },
-  saveText: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  modal: { justifyContent: 'flex-end', margin: 0 },
-  modalContent: { backgroundColor: BLUE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 30, alignItems: 'center' },
-  checkmark: { fontSize: 56, color: '#fff', marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  modalSub: { fontSize: 14, color: '#fff', marginTop: 6, marginBottom: 18 },
-  modalButton: { backgroundColor: '#fff', paddingHorizontal: 28, paddingVertical: 10, borderRadius: 24 },
-  modalButtonText: { color: BLUE, fontWeight: '700', fontSize: 16 },
-  selectorModal: { justifyContent: 'flex-end', margin: 0 },
-  selectorSheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 14, paddingHorizontal: 18, paddingBottom: 10 },
-  selectorTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 8, alignSelf: 'center' },
-  optionRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E1E7EE', justifyContent: 'space-between',
+  multiline: { height: 110, textAlignVertical: 'top' },
+  select: {
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 14,
   },
-  optionLabel: { fontSize: 16, color: TEXT },
-  tick: { fontSize: 18, color: BLUE },
-  selectorClose: { marginTop: 10, alignSelf: 'center', backgroundColor: BLUE, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 22 },
-  selectorCloseText: { color: '#fff', fontWeight: '700' },
+  selectText: { color: TEXT, fontSize: 16 },
+  submitBtn: {
+    marginTop: 22, backgroundColor: BLUE, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, elevation: 2,
+  },
+  btnDisabled: { opacity: 0.6 },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
 
 export default CreateProjectScreen;

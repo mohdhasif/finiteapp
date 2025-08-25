@@ -65,6 +65,7 @@ src/client/
 - **ProjectTaskListScreen.tsx** - Updated avatar display to use colored dots instead of image avatars for better visual consistency
 - **ProjectCard.tsx** - Updated to display real freelancer avatars from backend data instead of colored dots, with fallback to "No freelancers set up" text when no avatars available
 - **AdminProjectTaskListScreen.tsx** - Updated fallback to show "No freelancers set up yet" text instead of colored dots when no freelancers available
+- **AdminCreateProjectScreen.tsx** - Completely redesigned to match AddTaskScreen.tsx design with proper form validation, SelectionModal integration, and required field validation (project name, client, start/end dates)
 
 ### 📦 Usage
 ```typescript
