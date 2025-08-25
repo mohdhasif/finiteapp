@@ -59,6 +59,12 @@ src/client/
 - **AdminProjectTaskListScreen.tsx** - Updated freelancer data handling to match real API response structure with proper TypeScript types
 - **AdminProjectTaskListScreen.tsx** - Changed freelancer avatars to display actual images from avatar_url with fallback to user.png
 - **AdminProjectTaskListScreen.tsx** - Implemented working circular progress bar with dynamic rotation based on project completion percentage
+- **ProjectTaskListScreen.tsx** - Updated to match AdminProjectTaskListScreen.tsx with real data fetching, freelancer avatars, dynamic progress ring, and improved functionality
+- **AdminProjectListScreen.tsx** - Updated to fetch real project data from database using getProjectSummaries API with proper data structure mapping
+- **AdminProjectTaskListScreen.tsx** - Replaced custom progress ring with SVG-based circular progress ring for better visual consistency and performance
+- **ProjectTaskListScreen.tsx** - Updated avatar display to use colored dots instead of image avatars for better visual consistency
+- **ProjectCard.tsx** - Updated to display real freelancer avatars from backend data instead of colored dots, with fallback to "No freelancers set up" text when no avatars available
+- **AdminProjectTaskListScreen.tsx** - Updated fallback to show "No freelancers set up yet" text instead of colored dots when no freelancers available
 
 ### 📦 Usage
 ```typescript

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { ProjectSummary } from '../services/projectService';
+import { BASE_URL } from '../constants/apiConfig';
 
 type Props = { data: ProjectSummary; onPress?: () => void; width?: number };
 const BG = '#0A6FA7', WHITE = '#fff', WHITE70 = 'rgba(255,255,255,0.7)', TRACK = 'rgba(255,255,255,0.35)';
@@ -17,6 +18,15 @@ const ProjectCard: React.FC<Props> = ({ data, onPress, width = 220 }) => {
     ? new Date(data.due_date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
     : 'No due date';
 
+  const getAvatarSource = (avatarUrl: string | null) => {
+    if (!avatarUrl) {
+      return require('../assets/user.png');
+    }
+    // Construct full URL if it's a relative path
+    const fullUrl = avatarUrl.startsWith('http') ? avatarUrl : `${BASE_URL}${avatarUrl}`;
+    return { uri: fullUrl };
+  };
+
   return (
     <TouchableOpacity style={[styles.card, { width }]} activeOpacity={0.9} onPress={onPress}>
       <Text style={styles.title} numberOfLines={2}>{data.project_title}</Text>
@@ -31,12 +41,21 @@ const ProjectCard: React.FC<Props> = ({ data, onPress, width = 220 }) => {
         <Text style={styles.rowText}>{total} Tasks</Text>
       </View>
 
-      {/* <View style={[styles.row, { marginTop: 12 }]}>
-        <View style={[styles.dot, { backgroundColor: '#B0BEC5' }]} />
-        <View style={[styles.dot, { backgroundColor: WHITE, marginLeft: -8 }]} />
-        <View style={[styles.dot, { backgroundColor: '#03A9F4', marginLeft: -8 }]} />
-        <Text style={styles.plus}>+</Text>
-      </View> */}
+      <View style={[styles.row, { marginTop: 12 }]}>
+        {data.freelancer_avatars && data.freelancer_avatars.length > 0 ? (
+          data.freelancer_avatars.slice(0, 3).map((avatarUrl: string, index: number) => (
+            <Image
+              key={index}
+              source={getAvatarSource(avatarUrl)}
+              style={[styles.avatar, { marginLeft: index > 0 ? -8 : 0 }]}
+              resizeMode="cover"
+            />
+          ))
+        ) : (
+          <Text style={styles.noFreelancersText}>No freelancers set up yet</Text>
+        )}
+        {/* <Text style={styles.plus}>+</Text> */}
+      </View>
 
       <Text style={styles.bigPercent}>{percent}%</Text>
 
@@ -64,7 +83,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   rowText: { color: WHITE, fontSize: 14, marginLeft: 6 },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: BG },
+  avatar: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: BG },
   plus: { color: WHITE, fontSize: 18, marginLeft: 6, fontWeight: '600' },
+  noFreelancersText: { color: WHITE70, fontSize: 12, fontStyle: 'italic' },
   bigPercent: { position: 'absolute', right: 14, bottom: 34, color: WHITE, fontSize: 18, fontWeight: '800' },
   progressTrack: { height: 8, borderRadius: 8, backgroundColor: TRACK, marginTop: 10 },
   progressFill: { height: 8, borderRadius: 8, backgroundColor: WHITE },

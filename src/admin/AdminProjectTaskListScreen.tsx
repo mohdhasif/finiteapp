@@ -14,6 +14,7 @@ import { getProjectDetails, getProjectFreelancers } from '../services/projectSer
 import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminTaskCard from '../component/AdminTaskCard';
+import Svg, { G, Circle } from 'react-native-svg';
 
 // Type definitions for API responses
 type ProjectFreelancer = {
@@ -28,6 +29,18 @@ type ProjectFreelancer = {
 
 const { height, width } = Dimensions.get('window');
 type AdminProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'AdminProjectTaskListScreen'>;
+
+// SVG Progress Ring Constants
+const RING_SIZE = 80;
+const STROKE = 8;
+const RADIUS = (RING_SIZE - STROKE) / 2;
+const CIRC = 2 * Math.PI * RADIUS;
+
+const getRingColor = (p: number) => {
+    if (p >= 75) return '#4aa9ff';
+    if (p >= 40) return '#FFC107';
+    return '#DC3545';
+};
 
 const FILTERS = [
     { label: 'All Tasks', value: 'all' },
@@ -85,14 +98,16 @@ const AdminProjectTaskListScreen = () => {
 
     // Calculate progress percentage
     const progressPercentage = projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / Math.max(tasksAll.length, 1)) * 100) || 0;
-    const progressRotation = Math.min(progressPercentage * 3.6, 360);
+    const pct = Math.max(0, Math.min(100, progressPercentage));
+    const dash = CIRC * (1 - pct / 100);
     
     console.log('Progress Debug:', {
         projectProgress: projectDetails?.progress_percent,
         completedTasks: tasksAll.filter(t => t.status === 'completed').length,
         totalTasks: tasksAll.length,
         calculatedPercentage: progressPercentage,
-        rotationDegrees: progressRotation
+        pct: pct,
+        dash: dash
     });
 
     useEffect(() => {
@@ -277,11 +292,7 @@ const AdminProjectTaskListScreen = () => {
                                 />
                             ))
                         ) : (
-                            <>
-                                <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
-                                <View style={[styles.avatar, { backgroundColor: '#000' }]} />
-                                <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} />
-                            </>
+                            <Text style={styles.noFreelancersText}>No freelancers set up yet</Text>
                         )}
                     </View>
 
@@ -301,21 +312,35 @@ const AdminProjectTaskListScreen = () => {
                 </View>
 
                 <View style={styles.progressRing}>
-                    <View style={styles.circle}>
-                        <View style={styles.progressCircle}>
-                            <View style={styles.progressBackground} />
-                            <View style={[
-                                styles.progressArc,
-                                {
-                                    transform: [{
-                                        rotate: `${progressRotation}deg`
-                                    }]
-                                }
-                            ]} />
+                    <View style={styles.donutWrap}>
+                        <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                            <G rotation="-90" origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}>
+                                {/* track */}
+                                <Circle
+                                    cx={RING_SIZE / 2}
+                                    cy={RING_SIZE / 2}
+                                    r={RADIUS}
+                                    stroke="rgba(255, 255, 255, 0.3)"
+                                    strokeWidth={STROKE}
+                                    fill="none"
+                                />
+                                {/* progress */}
+                                <Circle
+                                    cx={RING_SIZE / 2}
+                                    cy={RING_SIZE / 2}
+                                    r={RADIUS}
+                                    stroke={getRingColor(pct)}
+                                    strokeWidth={STROKE}
+                                    strokeDasharray={`${CIRC} ${CIRC}`}
+                                    strokeDashoffset={dash}
+                                    strokeLinecap="round"
+                                    fill="none"
+                                />
+                            </G>
+                        </Svg>
+                        <View style={styles.centerLabel}>
+                            <Text style={styles.progressText}>{pct}%</Text>
                         </View>
-                        <Text style={styles.progressText}>
-                            {progressPercentage}%
-                        </Text>
                     </View>
                 </View>
                 
@@ -535,34 +560,23 @@ const styles = StyleSheet.create({
     subtitle: { fontSize: 14, color: '#e1e1e1', marginTop: 2, marginBottom: 10 },
     label: { color: '#fff', fontWeight: '600', marginTop: 10, marginBottom: 6 },
     avatarGroup: { flexDirection: 'row', marginBottom: 14 },
-    avatar: { width: 18, height: 18, borderRadius: 9, marginRight: -4, borderWidth: 1, borderColor: '#fff' },
+    avatar: { width: 50, height: 50, borderRadius: 50, marginRight: -4, borderWidth: 1, borderColor: '#fff' },
+    noFreelancersText: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 12, fontStyle: 'italic' },
     metaRow: { flexDirection: 'row', gap: 16 },
     metaItem: { flexDirection: 'row', alignItems: 'center', marginRight: 20 },
     metaText: { color: '#fff', fontSize: 13 },
     progressRing: { justifyContent: 'center', alignItems: 'center' },
-    circle: {
-        width: 80, height: 80, borderRadius: 40,
-        justifyContent: 'center', alignItems: 'center',
+    donutWrap: {
         position: 'relative',
+        width: RING_SIZE,
+        height: RING_SIZE,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    progressCircle: {
+    centerLabel: {
         position: 'absolute',
-        width: 80, height: 80, borderRadius: 40,
-    },
-    progressBackground: {
-        position: 'absolute',
-        width: 80, height: 80, borderRadius: 40,
-        borderWidth: 8, borderColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    progressArc: {
-        position: 'absolute',
-        width: 80, height: 80, borderRadius: 40,
-        borderWidth: 8, borderColor: 'transparent',
-        borderTopColor: '#4aa9ff',
-        borderRightColor: '#4aa9ff',
-        borderBottomColor: 'transparent',
-        borderLeftColor: 'transparent',
-        transform: [{ rotate: '0deg' }],
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     progressText: { fontWeight: 'bold', color: '#fff', fontSize: 16 },
 

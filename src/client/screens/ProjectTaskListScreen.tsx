@@ -1,17 +1,29 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, Animated, Dimensions, PanResponder, Alert, ActivityIndicator
+    ScrollView, Animated, Dimensions, PanResponder, Alert, ActivityIndicator, Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import LinearGradient from 'react-native-linear-gradient';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { getTasksByProjectPublic, updateTaskStatus } from '../../services/taskService';
+import { getProjectDetails, getProjectFreelancers } from '../../services/projectService';
+import { BASE_URL } from '../../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskCard from '../../component/TaskCard';
+
+// Type definitions for API responses
+type ProjectFreelancer = {
+    freelancer_id: number;
+    user_id: number;
+    avatar_url: string | null;
+    skillset: string;
+    freelancer_status: string;
+    freelancer_name: string;
+    freelancer_email: string;
+};
 
 const { height, width } = Dimensions.get('window');
 type ProjectTaskListScreenRouteProp = RouteProp<RootStackParamList, 'ProjectTaskListScreen'>;
@@ -40,6 +52,8 @@ const ProjectTaskListScreen = () => {
     // Data states
     const [tasksAll, setTasksAll] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [projectDetails, setProjectDetails] = useState<any>(null);
+    const [projectFreelancers, setProjectFreelancers] = useState<ProjectFreelancer[]>([]);
 
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
@@ -47,11 +61,34 @@ const ProjectTaskListScreen = () => {
     // Prevent double taps while pending
     const pendingIdsRef = useRef<Set<number>>(new Set());
 
+    // ================= Utils
+    const formatDate = (d?: string | null) =>
+        !d
+            ? 'No due date'
+            : new Date(d).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+
+    const getAvatarSource = (avatarUrl: string | null) => {
+        if (!avatarUrl) {
+            return require('../../assets/user.png');
+        }
+        // Construct full URL if it's a relative path
+        const fullUrl = avatarUrl.startsWith('http') ? avatarUrl : `${BASE_URL}${avatarUrl}`;
+        return { uri: fullUrl };
+    };
+
+    // Calculate progress percentage
+    const progressPercentage = projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / Math.max(tasksAll.length, 1)) * 100) || 0;
+    const progressRotation = Math.min(progressPercentage * 3.6, 360);
+
     useEffect(() => {
         slideAnim.setValue(BOTTOM_TOP);
     }, [BOTTOM_TOP, slideAnim]);
 
-    // Fetch tasks on mount
+    // Fetch tasks, project details, and freelancers on mount
     useEffect(() => {
         const run = async () => {
             try {
@@ -59,9 +96,17 @@ const ProjectTaskListScreen = () => {
                 const token = await AsyncStorage.getItem('userToken');
                 if (!token) throw new Error('Token tidak dijumpai');
 
-                const arr = await getTasksByProjectPublic(token, route.params.projectId);
+                // Fetch tasks, project details, and freelancers in parallel
+                const [arr, projectData, freelancersData] = await Promise.all([
+                    getTasksByProjectPublic(token, route.params.projectId),
+                    getProjectDetails(token, route.params.projectId),
+                    getProjectFreelancers(token, route.params.projectId)
+                ]);
+
                 const list = Array.isArray(arr) ? arr : [];
                 setTasksAll(list);
+                setProjectDetails(projectData);
+                setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
 
                 // init checkbox mengikut id (preserve bila re-fetch)
                 setCheckedById(() => {
@@ -75,7 +120,7 @@ const ProjectTaskListScreen = () => {
                     return next;
                 });
             } catch (err: any) {
-                console.error('Fetch tasks error:', err?.message || err);
+                console.error('Fetch data error:', err?.message || err);
             } finally {
                 setLoading(false);
             }
@@ -182,20 +227,35 @@ const ProjectTaskListScreen = () => {
             {/* Top Card */}
             <View style={styles.topCard}>
                 <View style={styles.cardLeft}>
-                    <Text style={styles.title}>{route.params.projectTitle}</Text>
-                    <Text style={styles.subtitle}>August postings</Text>
+                    <Text style={styles.title}>{projectDetails?.title || route.params.projectTitle}</Text>
+                    <Text style={styles.subtitle}>{projectDetails?.description || 'Project description'}</Text>
 
                     <Text style={styles.label}>Assigned to</Text>
                     <View style={styles.avatarGroup}>
-                        <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
-                        <View style={[styles.avatar, { backgroundColor: '#000' }]} />
-                        <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} />
+                        {projectFreelancers.length > 0 ? (
+                            projectFreelancers.slice(0, 3).map((freelancer: ProjectFreelancer, index: number) => (
+                                <Image
+                                    key={freelancer.freelancer_id || index}
+                                    source={getAvatarSource(freelancer.avatar_url)}
+                                    style={styles.avatar}
+                                    resizeMode="cover"
+                                />
+                            ))
+                        ) : (
+                            <>
+                                {/* <View style={[styles.avatar, { backgroundColor: '#0066a2' }]} />
+                                <View style={[styles.avatar, { backgroundColor: '#000' }]} />
+                                <View style={[styles.avatar, { backgroundColor: '#00aaff' }]} /> */}
+                            </>
+                        )}
                     </View>
 
                     <View style={styles.metaRow}>
                         <View style={styles.metaItem}>
                             <Icon name="calendar-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                            <Text style={styles.metaText}>Jan 13, 2025</Text>
+                            <Text style={styles.metaText}>
+                                {formatDate(projectDetails?.end_at)}
+                            </Text>
                         </View>
 
                         <View style={styles.metaItem}>
@@ -207,7 +267,20 @@ const ProjectTaskListScreen = () => {
 
                 <View style={styles.progressRing}>
                     <View style={styles.circle}>
-                        <Text style={styles.progressText}>50%</Text>
+                        <View style={styles.progressCircle}>
+                            <View style={styles.progressBackground} />
+                            <View style={[
+                                styles.progressArc,
+                                {
+                                    transform: [{
+                                        rotate: `${progressRotation}deg`
+                                    }]
+                                }
+                            ]} />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {progressPercentage}%
+                        </Text>
                     </View>
                 </View>
             </View>
@@ -392,15 +465,34 @@ const styles = StyleSheet.create({
     subtitle: { fontSize: 14, color: '#e1e1e1', marginTop: 2, marginBottom: 10 },
     label: { color: '#fff', fontWeight: '600', marginTop: 10, marginBottom: 6 },
     avatarGroup: { flexDirection: 'row', marginBottom: 14 },
-    avatar: { width: 18, height: 18, borderRadius: 9, marginRight: -4, borderWidth: 1, borderColor: '#fff' },
+    avatar: { width: 50, height: 50, borderRadius: 50, marginRight: -4, borderWidth: 1, borderColor: '#fff' },
     metaRow: { flexDirection: 'row', gap: 16 },
     metaItem: { flexDirection: 'row', alignItems: 'center', marginRight: 20 },
     metaText: { color: '#fff', fontSize: 13 },
     progressRing: { justifyContent: 'center', alignItems: 'center' },
     circle: {
-        width: 80, height: 80, borderRadius: 40, borderWidth: 8,
-        borderColor: '#004d7a', borderTopColor: '#4aa9ff',
+        width: 80, height: 80, borderRadius: 40,
         justifyContent: 'center', alignItems: 'center',
+        position: 'relative',
+    },
+    progressCircle: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+    },
+    progressBackground: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+        borderWidth: 8, borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    progressArc: {
+        position: 'absolute',
+        width: 80, height: 80, borderRadius: 40,
+        borderWidth: 8, borderColor: 'transparent',
+        borderTopColor: '#4aa9ff',
+        borderRightColor: '#4aa9ff',
+        borderBottomColor: 'transparent',
+        borderLeftColor: 'transparent',
+        transform: [{ rotate: '0deg' }],
     },
     progressText: { fontWeight: 'bold', color: '#fff', fontSize: 16 },
 });
