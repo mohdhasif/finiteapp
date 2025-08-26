@@ -40,10 +40,10 @@ const LoginScreen = () => {
     // useEffect(() => {
     //     if (isModalVisible) {
     //         const timer = setTimeout(() => {
-    //             navigation.navigate('LoadingScreen'); // ganti dengan nama screen sebenar
-    //             setModalVisible(false); // optional: tutup modal kalau perlu
-    //         }, 2000); // 2 saat selepas modal appear
-    //         return () => clearTimeout(timer); // clear bila unmount
+                //             navigation.navigate('LoadingScreen'); // replace with actual screen name
+            //             setModalVisible(false); // optional: close modal if needed
+            //         }, 2000); // 2 seconds after modal appears
+        //         return () => clearTimeout(timer); // clear when unmount
     //     }
     // }, [isModalVisible]);
 
@@ -68,7 +68,7 @@ const LoginScreen = () => {
     //         return;
     //     }
 
-    //     setvalidUsers(role); // kalau kau masih nak simpan ke state
+    //     setvalidUsers(role); // if you still want to save to state
     //     setModalVisible(true);
     // };
 
@@ -76,7 +76,7 @@ const LoginScreen = () => {
     // const handleNext = () => {
     //     setModalVisible(false);
     //     navigation.navigate('LoadingScreen', { role: validUsers }); // Navigate to the next screen
-    //     // Contoh hardcoded role untuk testing
+    //     // Example hardcoded role for testing
     //     // if (username === 'client') {
     //     //     login('client');
     //     // } else if (username === 'admin') {
@@ -101,12 +101,12 @@ const LoginScreen = () => {
     //     setIsLoading(true); // ✅ Start loading
 
     //     try {
-    //         // Panggil API login dan update AuthContext
+            //         // Call login API and update AuthContext
     //         console.log('Before login');
     //         await login(username, password);
     //         console.log('After login');
 
-    //         // Tunjukkan modal success
+            //         // Show success modal
     //         setModalVisible(true);
     //     } catch (error: any) {
     //         Alert.alert('Login Failed', error.message || 'Something went wrong');
@@ -120,21 +120,21 @@ const LoginScreen = () => {
             return;
         }
 
-        setIsLoading(true); // 🔄 Tunjuk spinner button
+        setIsLoading(true); // 🔄 Show spinner button
         try {
-            const role = await login(username, password); // ✅ panggil login dari AuthContext dan dapatkan role
-            setvalidUsers(role);                          // ✅ simpan role untuk dihantar ke LoadingScreen
-            setModalVisible(true);                        // ✅ tunjuk modal "Login Success!"
+            const role = await login(username, password); // ✅ call login from AuthContext and get role
+            setvalidUsers(role);                          // ✅ save role to send to LoadingScreen
+            setModalVisible(true);                        // ✅ show "Login Success!" modal
         } catch (error: any) {
             Alert.alert('Login Failed', error.message || 'Something went wrong');
         } finally {
-            setIsLoading(false); // ✅ tutup spinner button
+            setIsLoading(false); // ✅ close spinner button
         }
     };
 
     const handleNext = () => {
         setModalVisible(false);
-        navigation.navigate('LoadingScreen', { role: validUsers }); // ⬅️ hantar role ke LoadingScreen
+        navigation.navigate('LoadingScreen', { role: validUsers }); // ⬅️ send role to LoadingScreen
     };
 
     return (
@@ -204,7 +204,7 @@ const LoginScreen = () => {
                 style={styles.modal}
             >
                 <View style={styles.modalContent}>
-                    {/* ✅ Guna image atau unicode checkmark */}
+                    {/* ✅ Use image or unicode checkmark */}
                     {/* <Image source={require('../assets/checkmark.png')} style={{ width: 50, height: 50, marginBottom: 20 }} /> */}
                     <Text style={styles.checkmark}>✓</Text>
                     <Text style={styles.modalTitle}>Successfully Login!</Text>

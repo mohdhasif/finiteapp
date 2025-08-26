@@ -17,7 +17,7 @@ type Props = {
 
 const SelectionModal: React.FC<Props> = ({
     visible, title, items, value, onClose, onSelect,
-    showSearch = true, placeholder = 'Cari...'
+    showSearch = true, placeholder = 'Search...'
 }) => {
     const [q, setQ] = useState('');
 
@@ -65,7 +65,7 @@ const SelectionModal: React.FC<Props> = ({
                     })}
 
                     {filtered.length === 0 && (
-                        <Text style={styles.empty}>Tiada pilihan ditemui.</Text>
+                        <Text style={styles.empty}>No options found.</Text>
                     )}
                 </ScrollView>
 

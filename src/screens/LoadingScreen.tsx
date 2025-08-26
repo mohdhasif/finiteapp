@@ -48,7 +48,7 @@ const LoadingScreen = () => {
         if (role) {
           setUserRoleManual(role); // ✅ trigger AppNavigator
         }
-      }, 1000); // 2 saat
+      }, 1000); // 2 seconds
     };
 
     redirectAfterDelay();

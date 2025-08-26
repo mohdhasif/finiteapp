@@ -81,7 +81,7 @@ const FreelancersHomeScreen = () => {
     }, [activeTab])
   );
 
-  // Gabung carian + tabs
+      // Combine search + tabs
   const filteredTasks = useMemo(() => {
     const list = tasks;
 
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0F17' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // HERO full-bleed, radius hanya bawah
+      // HERO full-bleed, radius only bottom
   hero: {
     paddingHorizontal: 20,
     paddingTop: 50,

@@ -45,7 +45,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
                 const data = await getProjectsOptions(token);
                 setProjects(data);
             } catch (e: any) {
-                Alert.alert('Gagal', e.message || 'Gagal ambil senarai projek');
+                Alert.alert('Failed', e.message || 'Failed to get project list');
             }
         })();
     }, []);
@@ -61,7 +61,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
 
     const onSubmit = async () => {
         if (!canSubmit || !selectedProject) {
-            Alert.alert('Peringatan', 'Sila isi Title dan pilih Project');
+            Alert.alert('Warning', 'Please fill in Title and select Project');
             return;
         }
         try {
@@ -77,11 +77,11 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
                 project_id: selectedProject.id,
             });
 
-            Alert.alert('Berjaya', 'Task telah ditambah', [
+            Alert.alert('Success', 'Task has been added', [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
         } catch (e: any) {
-            Alert.alert('Ralat', e.message || 'Gagal menambah task');
+            Alert.alert('Error', e.message || 'Failed to add task');
         } finally {
             setLoading(false);
         }

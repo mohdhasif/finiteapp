@@ -91,7 +91,7 @@ const NotificationsScreen = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Auto refresh setiap kali screen fokus
+            // Auto refresh every time screen focuses
     useFocusEffect(
         useCallback(() => {
             refresh();
@@ -137,7 +137,7 @@ const NotificationsScreen = () => {
     const refresh = useCallback(async () => {
         try {
             setRefreshing(true);
-            // Ambil badge dulu (tak bergantung paging)
+            // Get badge first (doesn't depend on paging)
             const [badgeCount] = await Promise.all([getBadgeCount(tokenRef.current)]);
             setBadge(typeof badgeCount === 'number' ? badgeCount : (badgeCount?.count ?? 0));
 
@@ -182,7 +182,7 @@ const NotificationsScreen = () => {
             );
             setBadge(b => Math.max(0, b - 1));
         }
-        // TODO: navigate ikut it.type / it.data jika perlu
+        // TODO: navigate according to it.type / it.data if needed
     };
 
     const onMarkAll = async () => {

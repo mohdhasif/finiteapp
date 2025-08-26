@@ -119,7 +119,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             setTaskDetails(td ?? null);
             setAssignees(asg ?? []); // <-- baru
         } catch (e: any) {
-            Alert.alert('Gagal memuat', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed to load', e?.message || 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -141,7 +141,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             const tk = (await AsyncStorage.getItem('userToken')) || '';
             setToken(tk);
             if (!taskId) {
-                Alert.alert('Ralat', 'task_id tiada.');
+                Alert.alert('Error', 'task_id is missing.');
                 return;
             }
             await loadAll(tk);
@@ -165,10 +165,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
             const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
             setAttachments((prev) => [uploaded, ...prev]);
-            Alert.alert('Berjaya', 'Attachment dimuat naik.');
+            Alert.alert('Success', 'Attachment uploaded successfully.');
         } catch (err: any) {
             if (!DocumentPicker.isCancel(err)) {
-                Alert.alert('Gagal upload', err?.message || 'Ralat tidak diketahui');
+                Alert.alert('Upload failed', err?.message || 'Unknown error');
             }
         } finally {
             setUploading(false);
@@ -177,18 +177,18 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const handleDeleteAttachment = (id: number) => {
         if (!token) return;
-        Alert.alert('Padam lampiran?', 'Tindakan ini tidak boleh dipulihkan.', [
-            { text: 'Batal', style: 'cancel' },
+        Alert.alert('Delete attachment?', 'This action cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Padam',
+                text: 'Delete',
                 style: 'destructive',
                 onPress: async () => {
                     try {
                         const ok = await deleteAttachment(token, id);
                         if (ok) setAttachments((prev) => prev.filter((x) => x.id !== id));
-                        else Alert.alert('Gagal', 'Tidak dapat padam lampiran.');
+                        else Alert.alert('Failed', 'Cannot delete attachment.');
                     } catch (e: any) {
-                        Alert.alert('Gagal', e?.message || 'Ralat tidak diketahui');
+                        Alert.alert('Failed', e?.message || 'Unknown error');
                     }
                 },
             },
@@ -207,7 +207,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
         try {
             await Linking.openURL(url); // terus cuba
         } catch (e) {
-            Alert.alert('Link tidak sah', 'URL tidak boleh dibuka. Pastikan ada browser atau cuba lagi.');
+            Alert.alert('Invalid link', 'URL cannot be opened. Make sure you have a browser or try again.');
         }
     };
 
@@ -216,9 +216,9 @@ const AdminTaskDetailsScreen: React.FC = () => {
         setSavingLink(true);
         try {
             await setTaskLink(token, taskId, linkUrl.trim());
-            Alert.alert('Berjaya', 'Link telah disimpan.');
+            Alert.alert('Success', 'Link has been saved.');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed', e?.message || 'Unknown error');
         } finally {
             setSavingLink(false);
         }
@@ -249,7 +249,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 outerScrollRef.current?.scrollToEnd({ animated: true });
             });
         } catch (e: any) {
-            Alert.alert('Gagal hantar nota', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed to send note', e?.message || 'Unknown error');
         } finally {
             setSendingNote(false);
         }
@@ -259,16 +259,16 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const handleRemoveAssignee = (fid: number) => {
         if (!token) return;
-        Alert.alert('Buang freelancer?', 'Freelancer akan dibuang dari task ini.', [
-            { text: 'Batal', style: 'cancel' },
+        Alert.alert('Remove freelancer?', 'Freelancer will be removed from this task.', [
+            { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Buang', style: 'destructive',
+                text: 'Remove', style: 'destructive',
                 onPress: async () => {
                     try {
                         await removeTaskAssignee(token, taskId, fid);
                         setAssignees(prev => prev.filter(x => x.id !== fid));
                     } catch (e: any) {
-                        Alert.alert('Gagal', e?.message || 'Tidak dapat buang.');
+                        Alert.alert('Failed', e?.message || 'Cannot remove.');
                     }
                 }
             }
@@ -281,7 +281,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             await updateTaskAssigneeRole(token, taskId, fid, role);
             setAssignees(prev => prev.map(x => x.id === fid ? { ...x, role } : x));
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak dapat kemas kini role.');
+                                    Alert.alert('Failed', e?.message || 'Cannot update role.');
         }
     };
 
@@ -296,7 +296,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             setOptions([]);
             setSearchQ('');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak dapat assign.');
+            Alert.alert('Failed', e?.message || 'Cannot assign.');
         } finally {
             setAdding(false);
         }

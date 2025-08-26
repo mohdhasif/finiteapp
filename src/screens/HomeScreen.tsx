@@ -36,7 +36,7 @@ const HomeScreen = () => {
                 duration: 800, // slow fade out
                 useNativeDriver: true,
             }).start(() => {
-                // Tukar teks selepas fade out
+                // Change text after fade out
                 setTextIndex((prev) => (prev + 1) % texts.length);
 
                 // Fade in (slow)

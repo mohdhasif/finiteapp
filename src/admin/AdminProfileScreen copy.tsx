@@ -185,7 +185,7 @@ const AdminProfileScreen = () => {
             if (!ok) return;
             const c = await getCurrentCoordinates();
             if (!c) {
-                Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+                Alert.alert('Failed', 'Cannot get current location.');
                 return;
             }
             setCoords(c);
@@ -201,11 +201,11 @@ const AdminProfileScreen = () => {
         const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
 
         if (lat !== undefined && (isNaN(lat) || lat < -90 || lat > 90)) {
-            Alert.alert('Ralat', 'Latitude tidak sah (-90 hingga 90).');
+            Alert.alert('Error', 'Invalid latitude (-90 to 90).');
             return;
         }
         if (lng !== undefined && (isNaN(lng) || lng < -180 || lng > 180)) {
-            Alert.alert('Ralat', 'Longitude tidak sah (-180 hingga 180).');
+            Alert.alert('Error', 'Invalid longitude (-180 to 180).');
             return;
         }
 
@@ -218,9 +218,9 @@ const AdminProfileScreen = () => {
             }
             await saveSettings(payload);
             if (lat !== undefined && lng !== undefined) setCoords({ latitude: lat, longitude: lng });
-            Alert.alert('Berjaya', 'Prayer settings disimpan.');
+            Alert.alert('Success', 'Prayer settings saved.');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message ?? 'Tidak dapat simpan settings.');
+            Alert.alert('Failed', e?.message ?? 'Cannot save settings.');
         } finally {
             setSavingPrayer(false);
         }
@@ -247,14 +247,14 @@ const AdminProfileScreen = () => {
                 setLngInput(String(c.longitude));
                 await saveSettings({ enabled: prayerEnabled ? 1 : 0, latitude: c.latitude, longitude: c.longitude });
                 if (toast) {
-                    Alert.alert('Lokasi Dikemaskini', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
+                    Alert.alert('Location Updated', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
                 }
             } else {
                 await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
-                if (!quiet) Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+                if (!quiet) Alert.alert('Failed', 'Cannot get current location.');
             }
         } catch (e: any) {
-            if (!quiet) Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
+            if (!quiet) Alert.alert('Failed', e?.message ?? 'Unknown error');
         }
     }, [coords, prayerEnabled, userToken, installId]);
 

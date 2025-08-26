@@ -94,7 +94,7 @@ const ProjectTaskListScreen = () => {
             try {
                 setLoading(true);
                 const token = await AsyncStorage.getItem('userToken');
-                if (!token) throw new Error('Token tidak dijumpai');
+                if (!token) throw new Error('Token not found');
 
                 // Fetch tasks, project details, and freelancers in parallel
                 const [arr, projectData, freelancersData] = await Promise.all([
@@ -154,7 +154,7 @@ const ProjectTaskListScreen = () => {
         const token = (await AsyncStorage.getItem('userToken')) || '';
         if (!token) {
             pendingIdsRef.current.delete(taskId);
-            Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+            Alert.alert('Error', 'Token is missing. Please log in again.');
             return;
         }
 
@@ -193,7 +193,7 @@ const ProjectTaskListScreen = () => {
             // rollback
             setTasksAll(prevTasks);
             setCheckedById(prevChecked);
-            Alert.alert('Gagal', e?.message || 'Gagal mengemaskini status tugas');
+            Alert.alert('Failed', e?.message || 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(taskId);
         }

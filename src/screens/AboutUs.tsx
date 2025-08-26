@@ -89,7 +89,7 @@ const AboutUs = () => {
                             <Text style={styles.slide2Text}>Build Your{'\n'}Future,{'\n'}Build Your Dream</Text>
                         </View>
 
-                        {/* Subtitle bawah */}
+                        {/* Subtitle below */}
                         <View style={styles.slide2SubtitleWrap}>
                             <Text style={styles.slide2Subtitle}>
                                 {item.subtitle}

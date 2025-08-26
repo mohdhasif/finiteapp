@@ -61,7 +61,7 @@ const ProfileScreen = () => {
                 let inst = await AsyncStorage.getItem('install_id');
                 const token = await AsyncStorage.getItem('userToken');
 
-                // kalau tak jumpa, generate sekali
+                // if not found, generate once
                 if (!inst) {
                     inst = `inst_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
                     await AsyncStorage.setItem('install_id', inst);
@@ -70,7 +70,7 @@ const ProfileScreen = () => {
                 setInstallId(inst);
                 setUserToken(token);
 
-                // Prefill dari server (guna inst yang confirm wujud)
+                // Prefill from server (use inst that definitely exists)
                 await loadPrayerSettings(token, inst);
             } finally {
                 setLoading(false);
@@ -94,7 +94,7 @@ const ProfileScreen = () => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
         const bodyPayload: any = { ...payload };
 
-        // Prefer state; fallback ke storage
+        // Prefer state; fallback to storage
         const token = userToken ?? (await AsyncStorage.getItem('userToken'));
         const inst = installId ?? (await AsyncStorage.getItem('install_id'));
 
@@ -211,7 +211,7 @@ const ProfileScreen = () => {
             if (!ok) return;
             const c = await getCurrentCoordinates();
             if (!c) {
-                Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+                Alert.alert('Failed', 'Cannot get current location.');
                 return;
             }
             setCoords(c);
@@ -227,11 +227,11 @@ const ProfileScreen = () => {
         const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
 
         if (lat !== undefined && (isNaN(lat) || lat < -90 || lat > 90)) {
-            Alert.alert('Ralat', 'Latitude tidak sah (-90 hingga 90).');
+            Alert.alert('Error', 'Invalid latitude (-90 to 90).');
             return;
         }
         if (lng !== undefined && (isNaN(lng) || lng < -180 || lng > 180)) {
-            Alert.alert('Ralat', 'Longitude tidak sah (-180 hingga 180).');
+            Alert.alert('Error', 'Invalid longitude (-180 to 180).');
             return;
         }
 
@@ -244,9 +244,9 @@ const ProfileScreen = () => {
             }
             await saveSettings(payload);
             if (lat !== undefined && lng !== undefined) setCoords({ latitude: lat, longitude: lng });
-            Alert.alert('Berjaya', 'Prayer settings disimpan.');
+            Alert.alert('Success', 'Prayer settings saved.');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message ?? 'Tidak dapat simpan settings.');
+            Alert.alert('Failed', e?.message ?? 'Cannot save settings.');
         } finally {
             setSavingPrayer(false);
         }
@@ -273,20 +273,20 @@ const ProfileScreen = () => {
             setSavingPrayer(true);
             await saveSettings(payload);
         } catch (e: any) {
-            // Revert bila gagal
+            // Revert when failed
             setPrayerEnabled(!next);
-            Alert.alert('Gagal', e?.message ?? 'Tidak dapat kemaskini tetapan azan.');
+            Alert.alert('Failed', e?.message ?? 'Cannot update prayer settings.');
         } finally {
             setSavingPrayer(false);
         }
     };
 
-    // Sumber avatar default
+    // Default avatar source
     const avatarSrc = require('../assets/user.png');
 
     console.log('userInfo: ', userInfo);
     
-    // Sumber logo client (dari profile), fallback ke avatar default
+    // Client logo source (from profile), fallback to default avatar
     const logoSource =
         userInfo?.avatar_url
             ? (userInfo.avatar_url.startsWith('http')

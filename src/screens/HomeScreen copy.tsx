@@ -33,7 +33,7 @@ const HomeScreen = () => {
                 <Text style={styles.brand}>FINITE</Text>
             </ImageBackground>
 
-            {/* Logo dengan glow */}
+            {/* Logo with glow */}
             <View style={styles.centered}>
                 <View style={styles.ringContainer}>
                     <Image source={require('../assets/ring.png')} style={styles.ring} />

@@ -112,14 +112,14 @@ const ProjectTaskListScreen = () => {
                 setProjectDetails(projectData);
                 setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
 
-                // init checkbox mengikut id (preserve bila re-fetch)
+                // init checkbox according to id (preserve when re-fetch)
                 setCheckedById(() => {
                     const next: Record<number, boolean> = {};
                     for (const t of list) {
                         const id = Number(t.id);
                         const isCompleted =
                             String(t.status || '').toLowerCase() === 'completed';
-                        next[id] = isCompleted; // force ikut server
+                        next[id] = isCompleted; // force according to server
                     }
                     return next;
                 });
@@ -154,7 +154,7 @@ const ProjectTaskListScreen = () => {
         const token = (await AsyncStorage.getItem('userToken')) || '';
         if (!token) {
             pendingIdsRef.current.delete(taskId);
-            Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+            Alert.alert('Error', 'Token is missing. Please log in again.');
             return;
         }
 
@@ -193,7 +193,7 @@ const ProjectTaskListScreen = () => {
             // rollback
             setTasksAll(prevTasks);
             setCheckedById(prevChecked);
-            Alert.alert('Gagal', e?.message || 'Gagal mengemaskini status tugas');
+            Alert.alert('Failed', e?.message || 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(taskId);
         }

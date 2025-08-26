@@ -84,12 +84,12 @@ const AboutUs = () => {
                     <Image source={item.background.star2} style={styles.slide2Star2} />
                     <Image source={item.background.star3} style={styles.slide2Star3} />
 
-                    {/* TEXT ATAS CARD */}
+                    {/* TEXT ABOVE CARD */}
                     <View style={styles.slide2TextWrap}>
                         <Text style={styles.slide2Text}>Build Your{'\n'}Future,{'\n'}Build Your{'\n'}Dream</Text>
                     </View>
 
-                    {/* Button bawah */}
+                    {/* Button below */}
                     <View style={styles.overlaySlide2}>
                         {/* <TouchableOpacity style={styles.button}>
                             <Text style={styles.buttonText}>{item.button}</Text>

@@ -18,8 +18,8 @@ const HomeScreen = () => {
                     <LinearGradient
                         colors={['#6BCDF4', '#3F6DB5']}
                         style={styles.gradientCard}
-                        start={{ x: 0, y: 1 }}     // 👈 bawah
-                        end={{ x: 0, y: 0 }}   // 👈 atas
+                                start={{ x: 0, y: 1 }}     // 👈 bottom
+        end={{ x: 0, y: 0 }}   // 👈 top
                     >
                         <Text style={styles.welcomeText}>Welcome to</Text>
                         <Text style={styles.brandText}>FINITE</Text>

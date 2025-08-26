@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
         transform: [
-            { translateX: 55 }, // gerak 20px ke kanan
-            { translateY: -10 }, // gerak 10px ke atas
+                    { translateX: 55 }, // move 20px to the right
+        { translateY: -10 }, // move 10px up
         ]
     },
     welcome: {
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         transform: [
-            { translateY: -137 }, // gerak 10px ke atas
+            { translateY: -137 }, // move 10px up
         ]
     },
     ringContainer: {
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         transform: [
-            { translateY: -290 }, // gerak 10px ke atas
+            { translateY: -290 }, // move 10px up
         ]
     },
     subCardText: {

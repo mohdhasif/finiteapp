@@ -83,7 +83,7 @@ const ProjectListScreen = () => {
     }, [activeTab])
   );
 
-  // Gabung carian + tabs
+      // Combine search + tabs
   const filteredProjects = useMemo(() => {
     const list =
       activeTab === 'All'
@@ -192,7 +192,7 @@ const ProjectListScreen = () => {
       >
         {filteredProjects.length === 0 ? (
           <Text style={styles.emptyText}>
-            {query ? 'Tiada projek sepadan dengan carian.' : 'Tiada projek dijumpai.'}
+            {query ? 'No projects match your search.' : 'No projects found.'}
           </Text>
         ) : (
           filteredProjects.map(item => (
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0F17' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // HERO full-bleed, radius hanya bawah
+      // HERO full-bleed, radius only bottom
   hero: {
     paddingHorizontal: 20,
     paddingTop: 50,
