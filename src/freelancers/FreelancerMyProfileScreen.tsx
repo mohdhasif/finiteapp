@@ -240,7 +240,7 @@ const MyProfileScreen = () => {
                     />
 
                     <TouchableOpacity style={styles.editCircle} onPress={pickAvatar} />
-                    <Text style={styles.smallHint}>Tap white circle to choose avatar</Text>
+                    <Text style={styles.smallHint}>Tap the white circle to choose avatar</Text>
                 </View>
 
                 {/* Basic Details */}
@@ -362,30 +362,39 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         alignSelf: 'center',
     },
-    avatarContainer: {
-        alignItems: 'center',
+    avatarContainer: { 
+        alignItems: 'center', 
         marginBottom: 25,
+        position: 'relative',
     },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+    avatar: { 
+        width: 100, 
+        height: 100, 
+        borderRadius: 50, 
+        backgroundColor: '#DDD' 
     },
     editCircle: {
-        width: 20,
-        height: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        position: 'absolute',
-        bottom: 5,
-        right: width / 2 - 105,
-        borderWidth: 1,
-        borderColor: '#CCC',
+        width: 24, 
+        height: 24, 
+        backgroundColor: '#fff', 
+        borderRadius: 12,
+        position: 'absolute', 
+        bottom: 18, 
+        right: width / 2 - 102, 
+        borderWidth: 2, 
+        borderColor: '#0072B5',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
-    smallHint: {
-        marginTop: 6,
-        fontSize: 12,
-        color: '#666'
+    smallHint: { 
+        marginTop: 12, 
+        fontSize: 12, 
+        color: '#666',
+        textAlign: 'center',
+        paddingHorizontal: 20,
     },
     sectionTitle: {
         fontSize: 16,
