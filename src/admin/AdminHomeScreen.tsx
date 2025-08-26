@@ -231,7 +231,7 @@ const AdminHomeScreen = () => {
         const token = (await AsyncStorage.getItem('userToken')) || '';
         if (!token) {
             pendingIdsRef.current.delete(id);
-            Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+            Alert.alert('Error', 'Token is missing. Please log in again.');
             return;
         }
 
@@ -256,7 +256,7 @@ const AdminHomeScreen = () => {
             // rollback
             setTasks(prevTasks);
             setCheckedStates(prevChecked);
-            Alert.alert('Gagal', e?.message || 'Gagal mengemaskini status tugas');
+            Alert.alert('Failed', e?.message || 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(id);
         }
@@ -378,9 +378,7 @@ const AdminHomeScreen = () => {
                                             })}
                                     />
                                     {/* ringkasan kecil (optional) */}
-                                    <Text style={{ marginTop: 6, color: '#607D8B' }}>
-                                        📅 {formatDate(p.due_date)}   •   ✅ {p.total_tasks} tasks
-                                    </Text>
+
                                 </View>
                             ))}
                         </ScrollView>

@@ -36,7 +36,7 @@ const MyProfileScreen = () => {
                 const tk = (await AsyncStorage.getItem('userToken')) || '';
                 setToken(tk);
                 if (!tk) {
-                    Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+                    Alert.alert('Error', 'Token is missing. Please log in again.');
                     setLoading(false);
                     return;
                 }
@@ -89,7 +89,7 @@ const MyProfileScreen = () => {
                     }
                 }
             } catch (e: any) {
-                Alert.alert('Gagal', e?.message || 'Gagal memuat profil');
+                Alert.alert('Failed', e?.message || 'Failed to load profile');
             } finally {
                 setLoading(false);
             }
@@ -185,7 +185,7 @@ const MyProfileScreen = () => {
                 setModalVisible(true);
             }
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak berjaya menyimpan profil.');
+            Alert.alert('Failed', e?.message || 'Failed to save profile.');
         } finally {
             setSaving(false);
         }

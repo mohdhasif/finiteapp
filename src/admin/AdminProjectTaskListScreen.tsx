@@ -176,7 +176,7 @@ const AdminProjectTaskListScreen = () => {
         const token = (await AsyncStorage.getItem('userToken')) || '';
         if (!token) {
             pendingIdsRef.current.delete(taskId);
-            Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+            Alert.alert('Error', 'Token is missing. Please log in again.');
             return;
         }
 
@@ -215,7 +215,7 @@ const AdminProjectTaskListScreen = () => {
             // rollback
             setTasksAll(prevTasks);
             setCheckedById(prevChecked);
-            Alert.alert('Gagal', e?.message || 'Gagal mengemaskini status tugas');
+            Alert.alert('Failed', e?.message || 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(taskId);
         }

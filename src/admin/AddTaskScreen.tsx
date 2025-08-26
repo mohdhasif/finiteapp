@@ -68,7 +68,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
         const data = await getProjectsOptions(token);
         setProjects(data);
       } catch (e: any) {
-        Alert.alert('Gagal', e.message || 'Gagal ambil senarai projek');
+        Alert.alert('Failed', e.message || 'Failed to get project list');
       }
     })();
   }, []);
@@ -122,17 +122,17 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
 
   const onSubmit = async () => {
     if (!canSubmit || !selectedProject) {
-      Alert.alert('Peringatan', 'Sila isi Title dan pilih Project');
+              Alert.alert('Warning', 'Please fill in Title and select Project');
       return;
     }
     if (!startAt || !endAt) {
-      Alert.alert('Maklumat tidak lengkap', 'Sila pilih tarikh mula dan tamat.');
+              Alert.alert('Incomplete information', 'Please select start and end dates.');
       return;
     }
 
     if (startAt && endAt) {
       if (new Date(startAt) > new Date(endAt)) {
-        Alert.alert('Ralat', 'End time mesti selepas Start time');
+        Alert.alert('Error', 'End time must be after Start time');
         return;
       }
     }
@@ -151,11 +151,11 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
         project_id: selectedProject.id,
       });
 
-      Alert.alert('Berjaya', 'Task telah ditambah', [
+              Alert.alert('Success', 'Task has been added', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e: any) {
-      Alert.alert('Ralat', e.message || 'Gagal menambah task');
+              Alert.alert('Error', e.message || 'Failed to add task');
     } finally {
       setLoading(false);
     }

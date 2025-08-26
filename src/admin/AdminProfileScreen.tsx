@@ -291,7 +291,7 @@ const AdminProfileScreen = () => {
             if (!ok) return;
             const c = await getCurrentCoordinates();
             if (!c) {
-                Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+                Alert.alert('Failed', 'Cannot get current location.');
                 return;
             }
             setCoords(c);
@@ -307,11 +307,11 @@ const AdminProfileScreen = () => {
         const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
 
         if (lat !== undefined && (isNaN(lat) || lat < -90 || lat > 90)) {
-            Alert.alert('Ralat', 'Latitude tidak sah (-90 hingga 90).');
+            Alert.alert('Error', 'Invalid latitude (-90 to 90).');
             return;
         }
         if (lng !== undefined && (isNaN(lng) || lng < -180 || lng > 180)) {
-            Alert.alert('Ralat', 'Longitude tidak sah (-180 hingga 180).');
+            Alert.alert('Error', 'Invalid longitude (-180 to 180).');
             return;
         }
 

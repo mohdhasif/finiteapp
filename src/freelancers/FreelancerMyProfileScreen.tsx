@@ -36,7 +36,7 @@ const MyProfileScreen = () => {
                 const tk = (await AsyncStorage.getItem('userToken')) || '';
                 setToken(tk);
                 if (!tk) {
-                    Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+                    Alert.alert('Error', 'Token not found. Please log in again.');
                     setLoading(false);
                     return;
                 }
@@ -95,7 +95,7 @@ const MyProfileScreen = () => {
                 //     name: e?.name
                 // });
 
-                Alert.alert('Gagal', `Error: ${e?.message}\n\nPlease check console for details.`);
+                Alert.alert('Failed', `Error: ${e?.message}\n\nPlease check console for details.`);
             } finally {
                 setLoading(false);
             }
@@ -191,7 +191,7 @@ const MyProfileScreen = () => {
                 setModalVisible(true);
             }
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak berjaya menyimpan profil.');
+            Alert.alert('Failed', e?.message || 'Failed to save profile.');
         } finally {
             setSaving(false);
         }
@@ -240,7 +240,7 @@ const MyProfileScreen = () => {
                     />
 
                     <TouchableOpacity style={styles.editCircle} onPress={pickAvatar} />
-                    <Text style={styles.smallHint}>Tap bulat putih untuk pilih avatar</Text>
+                    <Text style={styles.smallHint}>Tap white circle to choose avatar</Text>
                 </View>
 
                 {/* Basic Details */}

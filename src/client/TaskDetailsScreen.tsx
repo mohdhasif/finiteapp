@@ -37,14 +37,14 @@ import Modal from 'react-native-modal';
 const { width } = Dimensions.get('window');
 type TaskDetailsScreenRouteProp = RouteProp<RootStackParamList, 'TaskDetailsScreen'>;
 
-// Normalise tarikh → milliseconds (handle "YYYY-MM-DD HH:mm:ss" atau ISO)
+    // Normalize date → milliseconds (handle "YYYY-MM-DD HH:mm:ss" or ISO)
 const toMs = (s?: string) => {
     if (!s) return 0;
     const iso = s.includes('T') ? s : s.replace(' ', 'T') + 'Z';
     const t = Date.parse(iso);
     return Number.isFinite(t) ? t : 0;
 };
-// Sort helper: oldest → newest (guna masa load sahaja)
+    // Sort helper: oldest → newest (use load time only)
 const sortOldest = (arr: TaskNote[]) => arr.slice().sort((a, b) => toMs(a.created_at) - toMs(b.created_at));
 
 const TaskDetailsScreen = () => {
@@ -71,8 +71,8 @@ const TaskDetailsScreen = () => {
     const [sendingNote, setSendingNote] = useState(false);
     const canSend = useMemo(() => noteText.trim().length > 0, [noteText]);
 
-    const outerScrollRef = useRef<ScrollView>(null); // scroll keseluruhan
-    const notesBottomAnchor = useRef<View>(null);     // anchor untuk scroll ke bawah
+    const outerScrollRef = useRef<ScrollView>(null); // overall scroll
+    const notesBottomAnchor = useRef<View>(null);     // anchor for scroll to bottom
 
     const [taskDetails, setTaskDetails] = useState<any>(null);
 
@@ -96,7 +96,7 @@ const TaskDetailsScreen = () => {
             setNotes(sortOldest(ns ?? []));
             setTaskDetails(td ?? null);
         } catch (e: any) {
-            Alert.alert('Gagal memuat', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed to load', e?.message || 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -117,7 +117,7 @@ const TaskDetailsScreen = () => {
             const tk = (await AsyncStorage.getItem('userToken')) || '';
             setToken(tk);
             if (!taskId) {
-                Alert.alert('Ralat', 'taskId tiada.');
+                Alert.alert('Error', 'taskId is missing.');
                 return;
             }
             await loadAll(tk);
@@ -129,7 +129,7 @@ const TaskDetailsScreen = () => {
         if (!token) return;
         try {
             const res = await DocumentPicker.pickSingle({
-                type: [types.allFiles], // semua jenis file
+                type: [types.allFiles], // all file types
             });
 
             const uri = res.uri;
@@ -141,10 +141,10 @@ const TaskDetailsScreen = () => {
 
             const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
             setAttachments((prev) => [uploaded, ...prev]);
-            Alert.alert('Berjaya', 'Attachment dimuat naik.');
+            Alert.alert('Success', 'Attachment uploaded successfully.');
         } catch (err: any) {
             if (!DocumentPicker.isCancel(err)) {
-                Alert.alert('Gagal upload', err?.message || 'Ralat tidak diketahui');
+                Alert.alert('Upload failed', err?.message || 'Unknown error');
             }
         } finally {
             setUploading(false);
@@ -153,18 +153,18 @@ const TaskDetailsScreen = () => {
 
     const handleDeleteAttachment = (id: number) => {
         if (!token) return;
-        Alert.alert('Padam lampiran?', 'Tindakan ini tidak boleh dipulihkan.', [
-            { text: 'Batal', style: 'cancel' },
+        Alert.alert('Delete attachment?', 'This action cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Padam',
+                text: 'Delete',
                 style: 'destructive',
                 onPress: async () => {
                     try {
                         const ok = await deleteAttachment(token, id);
                         if (ok) setAttachments((prev) => prev.filter((x) => x.id !== id));
-                        else Alert.alert('Gagal', 'Tidak dapat padam lampiran.');
+                        else Alert.alert('Failed', 'Cannot delete attachment.');
                     } catch (e: any) {
-                        Alert.alert('Gagal', e?.message || 'Ralat tidak diketahui');
+                        Alert.alert('Failed', e?.message || 'Unknown error');
                     }
                 },
             },
@@ -181,9 +181,9 @@ const TaskDetailsScreen = () => {
         const url = normalizeUrl(linkUrl);
 
         try {
-            await Linking.openURL(url); // terus cuba
+            await Linking.openURL(url); // keep trying
         } catch (e) {
-            Alert.alert('Link tidak sah', 'URL tidak boleh dibuka. Pastikan ada browser atau cuba lagi.');
+            Alert.alert('Invalid link', 'URL cannot be opened. Make sure you have a browser or try again.');
         }
     };
 
@@ -192,9 +192,9 @@ const TaskDetailsScreen = () => {
         setSavingLink(true);
         try {
             await setTaskLink(token, taskId, linkUrl.trim());
-            Alert.alert('Berjaya', 'Link telah disimpan.');
+            Alert.alert('Success', 'Link has been saved.');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed', e?.message || 'Unknown error');
         } finally {
             setSavingLink(false);
         }
@@ -210,22 +210,22 @@ const TaskDetailsScreen = () => {
                 message: noteText.trim(),
             });
 
-            // Fallback created_at kalau server tak bagi, supaya tak tersort pelik
+            // Fallback created_at if server doesn't provide, so it doesn't sort weirdly
             const safeNote: TaskNote = {
                 ...note,
                 created_at: note.created_at && note.created_at.trim() ? note.created_at : new Date().toISOString(),
             };
 
-            // JANGAN sort di sini — terus APPEND untuk kekalkan di bawah
+            // DON'T sort here — just APPEND to keep at bottom
             setNotes((prev) => [...prev, safeNote]);
             setNoteText('');
 
-            // Auto-scroll ke bawah supaya nampak nota baru
+            // Auto-scroll to bottom to show new note
             requestAnimationFrame(() => {
                 outerScrollRef.current?.scrollToEnd({ animated: true });
             });
         } catch (e: any) {
-            Alert.alert('Gagal hantar nota', e?.message || 'Ralat tidak diketahui');
+            Alert.alert('Failed to send note', e?.message || 'Unknown error');
         } finally {
             setSendingNote(false);
         }
@@ -249,7 +249,7 @@ const TaskDetailsScreen = () => {
                         <Text style={styles.bullet}>● </Text>Description
                     </Text>
                     <Text style={styles.description}>
-                        {taskDetails?.description || 'Tiada deskripsi.'}
+                        {taskDetails?.description || 'No description.'}
                     </Text>
                 </View>
 
@@ -297,7 +297,7 @@ const TaskDetailsScreen = () => {
                     <Text style={styles.cardTitle}>● Link</Text>
                     <View style={styles.linkRow}>
                         <TextInput
-                            placeholder="https://contoh.com/doc"
+                            placeholder="https://example.com/doc"
                             placeholderTextColor="#9dc9e4"
                             style={styles.input}
                             value={linkUrl}

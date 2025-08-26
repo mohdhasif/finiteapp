@@ -129,13 +129,13 @@ const CreateProjectScreen = () => {
 
   const onSubmit = async () => {
     if (!canSubmit || !selectedClient) {
-      Alert.alert('Peringatan', 'Sila isi Project Name, pilih Client, dan set Start/End date');
+              Alert.alert('Warning', 'Please fill in Project Name, select Client, and set Start/End date');
       return;
     }
 
     if (startDate && endDate) {
       if (new Date(startDate) > new Date(endDate)) {
-        Alert.alert('Ralat', 'End time mesti selepas Start time');
+        Alert.alert('Error', 'End time must be after Start time');
         return;
       }
     }
@@ -157,11 +157,11 @@ const CreateProjectScreen = () => {
       };
 
       await createProject(token, payload);
-      Alert.alert('Berjaya', 'Project telah dicipta', [
+              Alert.alert('Success', 'Project has been created', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e: any) {
-      Alert.alert('Ralat', e?.message || 'Gagal mencipta project');
+              Alert.alert('Error', e?.message || 'Failed to create project');
     } finally {
       setLoading(false);
     }

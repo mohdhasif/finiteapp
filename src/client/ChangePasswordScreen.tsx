@@ -29,25 +29,25 @@ const ChangePasswordScreen = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isModalVisible, setModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { logout } = useAuth?.() || {}; // optional, kalau ada context
+    const { logout } = useAuth?.() || {}; // optional, if context exists
 
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const validate = () => {
         if (!oldPassword || !newPassword || !confirmPassword) {
-            Alert.alert('Ralat', 'Sila isi semua medan.');
+            Alert.alert('Error', 'Please fill in all fields.');
             return false;
         }
         if (newPassword.length < 8) {
-            Alert.alert('Ralat', 'Kata laluan baharu mesti sekurang-kurangnya 8 aksara.');
+            Alert.alert('Error', 'New password must be at least 8 characters.');
             return false;
         }
         if (newPassword !== confirmPassword) {
-            Alert.alert('Ralat', 'Sahkan kata laluan tidak sepadan.');
+            Alert.alert('Error', 'Confirm password does not match.');
             return false;
         }
         if (newPassword === oldPassword) {
-            Alert.alert('Ralat', 'Kata laluan baharu tidak boleh sama dengan yang lama.');
+            Alert.alert('Error', 'New password cannot be the same as the old password.');
             return false;
         }
         return true;
@@ -59,17 +59,17 @@ const ChangePasswordScreen = () => {
         try {
             const token = (await AsyncStorage.getItem('userToken')) || '';
             if (!token) {
-                Alert.alert('Ralat', 'Token tiada. Sila log masuk semula.');
+                Alert.alert('Error', 'Token is missing. Please log in again.');
                 return;
             }
             await changePassword(token, oldPassword, newPassword);
-            // Kosongkan input dan tunjuk modal berjaya
+            // Clear input and show success modal
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
             setModalVisible(true);
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Gagal menukar kata laluan.');
+            Alert.alert('Failed', e?.message || 'Failed to change password.');
         } finally {
             setLoading(false);
         }
@@ -77,7 +77,7 @@ const ChangePasswordScreen = () => {
 
     const handleNext = () => {
         setModalVisible(false);
-        logout(); // dalam logout() kau dah clear AsyncStorage & navigate
+        logout(); // in logout() you already clear AsyncStorage & navigate
     };
 
     const disableSave =
