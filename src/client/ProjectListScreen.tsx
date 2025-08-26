@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getProjectSummaries } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ProjectCardScreen from '../component/ProjectCardScreen';
+import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +29,7 @@ type Project = {
   status?: 'Ongoing' | 'Completed' | 'Pending' | string;
   start_at?: string | null;
   end_at?: string | null;
+  due_date?: string | null;
   total_tasks?: number;
   completed_tasks?: number;
   freelancer_count?: number;
@@ -56,6 +57,7 @@ const ProjectListScreen = () => {
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
       if (!isRefreshing) setLoading(true);
       const result = await getProjectSummaries(token);
+      
       setProjects(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Fetch projects error:', error);
@@ -194,7 +196,7 @@ const ProjectListScreen = () => {
           </Text>
         ) : (
           filteredProjects.map(item => (
-            <ProjectCardScreen
+            <ClientProjectCardScreen
               key={item.project_id}
               id={item.project_id}
               title={item.project_title}
@@ -203,7 +205,7 @@ const ProjectListScreen = () => {
               progress={item.progress_percent ?? 0}
               status={item.status}
               start_date={item.start_at}
-              due_date={item.end_at}
+              due_date={item.due_date}
               logo_url={undefined}
               total_tasks={item.total_tasks ?? undefined}
               assignees={item.freelancer_avatars?.map((avatar, index) => ({ id: index, avatar_url: avatar })) ?? []}
