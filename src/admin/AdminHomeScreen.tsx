@@ -115,7 +115,7 @@ const AdminHomeScreen = () => {
                 getProjectSummaries(token),
             ]);
 
-            console.log('freelancerData: ', freelancerData);
+            // console.log('freelancerData: ', freelancerData);
 
             setClients(clientData);
             setFreelancers(freelancerData);

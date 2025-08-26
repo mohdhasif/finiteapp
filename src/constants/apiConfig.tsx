@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
     me: buildUrl('/get_my_profile.php'),
     updateMe: buildUrl('/update_my_profile.php'),
     uploadAvatar: buildUrl('/upload_avatar.php'),
+    getUserDetails: buildUrl('get_user_details.php'),
 
 
     changePassword: buildUrl('/change_password.php'),

@@ -10,7 +10,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ENDPOINTS } from '../constants/apiConfig';
+import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 
@@ -286,8 +286,10 @@ const ProfileScreen = () => {
 
     // Sumber logo client (dari profile), fallback ke avatar default
     const logoSource =
-        userInfo?.avatar_url && /^https?:\/\//.test(userInfo.avatar_url)
-            ? { uri: userInfo.avatar_url }
+        userInfo?.avatar_url
+            ? (userInfo.avatar_url.startsWith('http')
+                ? { uri: userInfo.avatar_url }
+                : { uri: `${BASE_URL}${userInfo.avatar_url}` })
             : avatarSrc;
 
     if (loading) {

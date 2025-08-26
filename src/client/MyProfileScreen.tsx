@@ -9,6 +9,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { getUserDetails, updateUserDetails, type UserDetails } from '../services/authService';
+import { BASE_URL, API_ENDPOINTS } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -19,14 +21,14 @@ const MyProfileScreen = () => {
     const [saving, setSaving] = useState(false);
     const [token, setToken] = useState<string>('');
 
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<UserDetails | null>(null);
     const [name, setName] = useState('');
     const [dob, setDob] = useState('');      // YYYY-MM-DD
     const [gender, setGender] = useState<'male' | 'female' | ''>('');
     const [phone, setPhone] = useState('');
     const [avatarUriLocal, setAvatarUriLocal] = useState<{ uri: string; fileName?: string; type?: string } | string | null>(null);
     const [myId, setMyId] = useState<number | null>(null);
-    const [me, setMe] = useState<any>(null);
+    const [me, setMe] = useState<UserDetails | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -39,20 +41,53 @@ const MyProfileScreen = () => {
                     return;
                 }
                 
-                // Load user info from AsyncStorage for now
-                const userInfoRaw = await AsyncStorage.getItem('userInfo');
-                const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
-                
-                // console.log(userInfo?.avatar_url);
-                
-                setMe(userInfo);
-                setMyId(userInfo?.id ?? null);
-                setProfile(userInfo);
-                setName(userInfo?.name || '');
-                setDob(userInfo?.dob || '');
-                setGender((userInfo?.gender as any) || '');
-                setPhone(userInfo?.phone || '');
-                setAvatarUriLocal(userInfo?.avatar_url || null);
+                // Try to fetch user details from API first
+                try {
+                    const userDetails = await getUserDetails(tk);
+                    
+                    console.log('userDetails: ', userDetails);
+                    
+                    setMe(userDetails);
+                    setMyId(userDetails.id);
+                    setProfile(userDetails);
+                    setName(userDetails.name || '');
+                    setDob(userDetails.dob || '');
+                    setGender(userDetails.gender || '');
+                    setPhone(userDetails.phone || '');
+                    setAvatarUriLocal(userDetails.avatar_url
+                        ? (userDetails.avatar_url.startsWith('http')
+                            ? userDetails.avatar_url
+                            : `${BASE_URL}${userDetails.avatar_url}`)
+                        : null
+                    );
+                } catch (apiError) {
+                    // console.log('API failed, falling back to AsyncStorage:', apiError);
+                    
+                    // Fallback to AsyncStorage
+                    const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                    const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+                    
+                    if (userInfo) {
+                        setMe(userInfo);
+                        setMyId(userInfo?.id ?? null);
+                        setProfile(userInfo);
+                        setName(userInfo?.name || '');
+                        setDob(userInfo?.dob || '');
+                        setGender((userInfo?.gender as any) || '');
+                        setPhone(userInfo?.phone || '');
+                        setAvatarUriLocal(userInfo?.avatar_url || null);
+                    } else {
+                        // Set default values if no user info found
+                        setMe(null);
+                        setMyId(null);
+                        setProfile(null);
+                        setName('');
+                        setDob('');
+                        setGender('');
+                        setPhone('');
+                        setAvatarUriLocal(null);
+                    }
+                }
             } catch (e: any) {
                 Alert.alert('Gagal', e?.message || 'Gagal memuat profil');
             } finally {
@@ -66,19 +101,85 @@ const MyProfileScreen = () => {
         try {
             setSaving(true);
 
-            // For now, just update local storage
-            const updatedUserInfo = {
-                ...me,
-                name,
-                dob,
-                gender,
-                phone,
-                avatar_url: avatarUriLocal
-            };
+            // Create FormData for multipart upload
+            const formData = new FormData();
             
-            await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
-            setProfile(updatedUserInfo);
-            setModalVisible(true);
+            formData.append('name', name);
+            formData.append('dob', dob);
+            formData.append('gender', gender);
+            formData.append('phone', phone);
+
+            // Handle avatar upload
+            if (avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri) {
+                const fileName = avatarUriLocal.fileName || `avatar_${myId || 'user'}.jpg`;
+                const fileType = avatarUriLocal.type || 'image/jpeg';
+
+                formData.append('avatar', {
+                    uri: avatarUriLocal.uri,
+                    name: fileName,
+                    type: fileType,
+                } as any); // TypeScript workaround
+            } else if (typeof avatarUriLocal === 'string' && avatarUriLocal) {
+                // If using existing avatar URL
+                formData.append('avatar_url', avatarUriLocal);
+            }
+
+            // Try API first, fallback to AsyncStorage
+            try {
+                const response = await fetch(API_ENDPOINTS.updateMe, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    body: formData,
+                });
+
+                const text = await response.text();
+                let result;
+                
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    throw new Error('Invalid server response');
+                }
+
+                if (response.ok && result.success) {
+                    // Refresh user details from API
+                    const updatedUserDetails = await getUserDetails(token);
+                    setMe(updatedUserDetails);
+                    setProfile(updatedUserDetails);
+                    setModalVisible(true);
+                } else {
+                    throw new Error(result.error || result.message || 'Update failed');
+                }
+            } catch (apiError: any) {
+                console.log('API update failed, using AsyncStorage:', apiError);
+                
+                // Fallback to AsyncStorage
+                const updateData = {
+                    name,
+                    dob,
+                    gender,
+                    phone,
+                    avatar_url: typeof avatarUriLocal === 'string' 
+                        ? (avatarUriLocal.startsWith('http') 
+                            ? avatarUriLocal.replace(BASE_URL, '') 
+                            : avatarUriLocal)
+                        : avatarUriLocal?.uri || null
+                };
+                
+                const updatedUserInfo = {
+                    ...me,
+                    ...updateData,
+                    id: me?.id || 0 // Ensure id is always a number
+                };
+                
+                await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+                setMe(updatedUserInfo as UserDetails);
+                setProfile(updatedUserInfo as UserDetails);
+                setModalVisible(true);
+            }
         } catch (e: any) {
             Alert.alert('Gagal', e?.message || 'Tidak berjaya menyimpan profil.');
         } finally {
@@ -92,11 +193,19 @@ const MyProfileScreen = () => {
     };
 
     const pickAvatar = () => {
-        launchImageLibrary({ mediaType: 'photo' }, (response) => {
+        launchImageLibrary({ 
+            mediaType: 'photo',
+            includeBase64: false,
+            quality: 0.8,
+        }, (response) => {
             if (response.assets && response.assets.length > 0) {
                 const selected = response.assets[0];
                 if (selected.uri) {
-                    setAvatarUriLocal({ uri: selected.uri }); // pastikan bentuk { uri: '...' }
+                    setAvatarUriLocal({
+                        uri: selected.uri,
+                        fileName: selected.fileName || `avatar_${myId || 'user'}.jpg`,
+                        type: selected.type || 'image/jpeg',
+                    });
                 }
             }
         });

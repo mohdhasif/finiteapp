@@ -1,6 +1,18 @@
 // src/services/authService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
 
+export type UserDetails = {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    dob?: string;
+    gender?: 'male' | 'female' | '';
+    avatar_url?: string | null;
+    created_at?: string;
+    updated_at?: string;
+};
+
 type ChangePasswordResponse = {
     success: boolean;
     message?: string;
@@ -36,4 +48,74 @@ export const changePassword = async (
     }
 
     return json as ChangePasswordResponse;
+};
+
+export const getUserDetails = async (token: string): Promise<UserDetails> => {
+    const res = await fetch(API_ENDPOINTS.me, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    const raw = await res.text();
+    // console.log('API Response Status:', res.status);
+    // console.log('API Response Headers:', res.headers);
+    // console.log('Raw Response:', raw);
+
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch (e) {
+        // console.log('JSON Parse Error:', e);
+        throw new Error('Server mengembalikan respons tidak sah.');
+    }
+
+    // console.log('Parsed JSON:', json);
+    // console.log('JSON keys:', Object.keys(json));
+
+    // Only check HTTP status, not success field (like other services)
+    if (!res.ok) {
+        throw new Error(json?.message || json?.error || `Gagal dapatkan maklumat pengguna (HTTP ${res.status})`);
+    }
+
+    // Try different possible data structures
+    const userData = json.data || json.user || json;
+    
+    // Validate that we have the required fields
+    if (!userData || !userData.id || !userData.name) {
+        // console.log('Invalid user data structure:', userData);
+        throw new Error('Data pengguna tidak lengkap');
+    }
+
+    return userData as UserDetails;
+};
+
+export const updateUserDetails = async (
+    token: string,
+    userData: Partial<UserDetails>
+): Promise<{ success: boolean; message?: string }> => {
+    const res = await fetch(API_ENDPOINTS.updateMe, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch (e) {
+        throw new Error('Server mengembalikan respons tidak sah.');
+    }
+
+    if (!res.ok || json?.success !== true) {
+        throw new Error(json?.message || `Gagal kemaskini maklumat pengguna (HTTP ${res.status})`);
+    }
+
+    return json;
 };
