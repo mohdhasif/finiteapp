@@ -465,7 +465,7 @@ const AdminProjectTaskListScreen = () => {
                 <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
                     <Icon name="home" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminCalendarScreen')}>
                     <Icon name="calendar" size={26} color="#fff" />
                 </TouchableOpacity>
 
@@ -473,7 +473,7 @@ const AdminProjectTaskListScreen = () => {
                     <Icon name="add" size={32} color="#0072B5" />
                 </TouchableOpacity>
 
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminNotificationsScreen')}>
                     <Icon name="notifications" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>

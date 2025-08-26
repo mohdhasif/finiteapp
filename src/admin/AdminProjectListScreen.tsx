@@ -322,7 +322,7 @@ const AdminProjectListScreen = () => {
           <Icon name="home" size={26} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('AdminCalendarScreen')}>
           <Icon name="calendar" size={26} color="#fff" />
         </TouchableOpacity>
 
@@ -330,11 +330,11 @@ const AdminProjectListScreen = () => {
           <Icon name="add" size={32} color="#0072B5" />
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('AdminNotificationsScreen')}>
           <Icon name="notifications" size={26} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
           <Icon name="person" size={26} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -484,5 +484,6 @@ const styles = StyleSheet.create({
   option: { paddingVertical: 12, paddingHorizontal: 20 },
   optionText: { fontSize: 14, fontWeight: '600', color: '#0072B5' },
 });
+
 
 
