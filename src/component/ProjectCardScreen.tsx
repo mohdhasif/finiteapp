@@ -58,7 +58,7 @@ const ProjectCardScreen: React.FC<ProjectCardScreenProps> = ({
     const pct = Math.max(0, Math.min(100, progress));
     const dash = CIRC * (1 - pct / 100);
 
-    console.log('assignees:', JSON.stringify(assignees, null, 2));
+    // console.log('assignees:', JSON.stringify(assignees, null, 2));
 
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.wrap}>

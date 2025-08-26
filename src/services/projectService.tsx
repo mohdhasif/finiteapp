@@ -58,7 +58,7 @@ export const getProjectDetails = async (token: string, projectId: number) => {
 export const getProjectFreelancers = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectFreelancers(projectId), { headers: auth(token) });
     const text = await res.text();
-    console.log('projectFreelancers', text);
+    // console.log('projectFreelancers', text);
     
     if (!res.ok) {
         const json = parseText(text);
@@ -88,12 +88,12 @@ export const getProjectSummaries = async (userToken: string): Promise<ProjectSum
         extra_freelancers: project.extra_freelancers || 0,
     }));
     
-    // console.log('Projects with avatars:', projectsWithAvatars.map(p => ({
-    //     project_id: p.project_id,
-    //     project_title: p.project_title,
-    //     freelancer_count: p.freelancer_count,
-    //     freelancer_avatars: p.freelancer_avatars,
-    // })));
+    console.log('Projects with avatars:', projectsWithAvatars.map(p => ({
+        project_id: p.project_id,
+        project_title: p.project_title,
+        freelancer_count: p.freelancer_count,
+        freelancer_avatars: p.freelancer_avatars,
+    })));
     
     return projectsWithAvatars;
 };

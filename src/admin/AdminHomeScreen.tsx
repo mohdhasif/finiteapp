@@ -22,7 +22,7 @@ import AdminTaskCard from '../component/AdminTaskCard';
 import { getAllTasks, updateTaskStatus, type Task } from '../services/taskService';
 
 import ProjectCard from '../component/ProjectCard';
-import { getProjectSummaries, type ProjectSummary } from '../services/projectService';
+import { getProjectSummaries, getProjectFreelancers, type ProjectSummary } from '../services/projectService';
 
 
 const { width } = Dimensions.get('window');
@@ -47,6 +47,16 @@ export type Freelancer = {
     availability: boolean;
     avatar: string | null;
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
+};
+
+type ProjectFreelancer = {
+    freelancer_id: number;
+    user_id: number;
+    avatar_url: string | null;
+    skillset: string;
+    freelancer_status: string;
+    freelancer_name: string;
+    freelancer_email: string;
 };
 
 const AdminHomeScreen = () => {
@@ -107,7 +117,52 @@ const AdminHomeScreen = () => {
 
             setClients(clientData);
             setFreelancers(freelancerData);
-            setProjects(Array.isArray(projectData) ? projectData : []);
+            // setProjects(Array.isArray(projectData) ? projectData : []);
+            const projectsWithFreelancers = await Promise.all(
+                projectData.map(async (project) => {
+                    try {
+                        const freelancersData = await getProjectFreelancers(token, project.project_id);
+                        const freelancers = Array.isArray(freelancersData?.freelancers)
+                            ? freelancersData.freelancers
+                            : [];
+
+                        // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
+                        const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
+                            if (!f.avatar_url) return null; // Will be handled by ProjectCardScreen with default image
+                            // If it's already a full URL, use as is, otherwise prepend BASE_URL
+                            return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
+                        });
+
+                        // console.log('Project', project.project_id, 'freelancers:', freelancers.length);
+                        // console.log('Avatar URLs for project', project.project_id, ':', avatarUrls);
+
+                        return {
+                            ...project,
+                            projectFreelancers: freelancers,
+                            // Update freelancer_avatars with full URLs (for backward compatibility)
+                            freelancer_avatars: avatarUrls,
+                            freelancer_count: freelancers.length,
+                        };
+                    } catch (error) {
+                        console.error(`Error fetching freelancers for project ${project.project_id}:`, error);
+                        return {
+                            ...project,
+                            projectFreelancers: [],
+                            freelancer_avatars: [],
+                            freelancer_count: 0,
+                        };
+                    }
+                })
+            );
+
+            // console.log('Projects with freelancers:', projectsWithFreelancers.map(p => ({
+            //   project_id: p.project_id,
+            //   project_title: p.project_title,
+            //   freelancer_count: p.freelancer_count,
+            //   freelancer_avatars: p.freelancer_avatars,
+            // })));
+
+            setProjects(projectsWithFreelancers);
 
         } catch (e: any) {
             setProjError(e?.message || 'Failed to load projects');

@@ -103,8 +103,8 @@ const AdminProjectListScreen = () => {
               return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
             });
 
-            console.log('Project', project.project_id, 'freelancers:', freelancers.length);
-            console.log('Avatar URLs for project', project.project_id, ':', avatarUrls);
+            // console.log('Project', project.project_id, 'freelancers:', freelancers.length);
+            // console.log('Avatar URLs for project', project.project_id, ':', avatarUrls);
 
             return {
               ...project,
@@ -281,7 +281,7 @@ const AdminProjectListScreen = () => {
               avatar_url: freelancer.avatar_url 
             })) ?? [];
             
-            console.log('Sending assignees for project', item.project_id, ':', JSON.stringify(assigneesData, null, 2));
+            // console.log('Sending assignees for project', item.project_id, ':', JSON.stringify(assigneesData, null, 2));
             
             return (
               <ProjectCardScreen
