@@ -10,10 +10,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ENDPOINTS } from '../constants/apiConfig';
+import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
-import { getMyProfile, type MyProfile } from '../services/adminService'; // contoh path
+
 
 type Coords = { latitude: number; longitude: number } | null;
 
@@ -55,8 +55,6 @@ const AdminProfileScreen = () => {
 
     const [userInfo, setUserInfo] = useState<any>(null);
 
-    const [profile, setProfile] = useState<MyProfile | null>(null);
-
     const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
@@ -65,7 +63,7 @@ const AdminProfileScreen = () => {
                 let inst = await AsyncStorage.getItem('install_id');
                 const token = await AsyncStorage.getItem('userToken');
 
-                // kalau tak jumpa, generate sekali
+                // if not found, generate once
                 if (!inst) {
                     inst = `inst_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
                     await AsyncStorage.setItem('install_id', inst);
@@ -74,7 +72,7 @@ const AdminProfileScreen = () => {
                 setInstallId(inst);
                 setUserToken(token);
 
-                // Prefill dari server (guna inst yang confirm wujud)
+                // Prefill from server (use inst that definitely exists)
                 await loadPrayerSettings(token, inst);
             } finally {
                 setLoading(false);
@@ -103,7 +101,7 @@ const AdminProfileScreen = () => {
             if (now - lastAutoRunRef.current < 30000) return; // throttle 30s
             lastAutoRunRef.current = now;
 
-            // auto save senyap (tanpa alert)
+            // auto save silently (without alert)
         }, [loading, userToken, installId])
     );
 
@@ -119,41 +117,7 @@ const AdminProfileScreen = () => {
         }, [])
     );
 
-    useFocusEffect(
-        useCallback(() => {
-            let isActive = true;
 
-            const run = async () => {
-                try {
-                    const now = Date.now();
-                    if (now - lastAutoRunRef.current < 30_000) {
-                        // console.log('[PROFILE] throttled');
-                        return;
-                    }
-                    lastAutoRunRef.current = now;
-
-                    const tokenRaw = await AsyncStorage.getItem('userToken'); // string | null
-                    if (!tokenRaw) {
-                        // console.log('[PROFILE] token tiada, skip');
-                        return;
-                    }
-
-                    const me = await getMyProfile(tokenRaw); // tokenRaw confirmed string
-                    if (!isActive) return;
-
-                    // console.log(me);
-                    setProfile(me);
-                    setUserInfo(me);
-                } catch (err: any) {
-                    if (!isActive) return;
-                    // console.log('[PROFILE][ERR]', err?.message || err);
-                }
-            };
-
-            run();
-            return () => { isActive = false; };
-        }, [])
-    );
 
     // useFocusEffect(
     //     useCallback(() => {
@@ -173,7 +137,7 @@ const AdminProfileScreen = () => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
         const bodyPayload: any = { ...payload };
 
-        // Prefer state; fallback ke storage
+        // Prefer state; fallback to storage
         const token = userToken ?? (await AsyncStorage.getItem('userToken'));
         const inst = installId ?? (await AsyncStorage.getItem('install_id'));
 
@@ -183,7 +147,7 @@ const AdminProfileScreen = () => {
         } else if (inst) {
             bodyPayload.install_id = inst;
         } else {
-            throw new Error('install_id tiada. Buka app sekali untuk generate.');
+            throw new Error('install_id not found. Open app once to generate.');
         }
 
         const controller = new AbortController();
@@ -199,7 +163,7 @@ const AdminProfileScreen = () => {
                 });
         } catch (err: any) {
             clearTimeout(tm);
-            if (err?.name === 'AbortError') throw new Error('Request timeout. Sila cuba lagi.');
+            if (err?.name === 'AbortError') throw new Error('Request timeout. Please try again.');
             throw new Error(err?.message || 'Network error');
         } finally {
             clearTimeout(tm);
@@ -258,10 +222,10 @@ const AdminProfileScreen = () => {
         if (res === RESULTS.BLOCKED) {
             Alert.alert(
                 'Location Disabled',
-                'Sila benarkan lokasi dalam Settings untuk kemaskini waktu solat.',
+                'Please allow location access in Settings to update prayer times.',
                 [
-                    { text: 'Buka Settings', onPress: () => { openSettings().catch(() => { }); } },
-                    { text: 'Batal', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => { openSettings().catch(() => { }); } },
+                    { text: 'Cancel', style: 'cancel' },
                 ]
             );
             return false;
@@ -324,9 +288,9 @@ const AdminProfileScreen = () => {
             }
             await saveSettings(payload);
             if (lat !== undefined && lng !== undefined) setCoords({ latitude: lat, longitude: lng });
-            Alert.alert('Berjaya', 'Prayer settings disimpan.');
+            Alert.alert('Success', 'Prayer settings saved.');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message ?? 'Tidak dapat simpan settings.');
+            Alert.alert('Failed', e?.message ?? 'Cannot save settings.');
         } finally {
             setSavingPrayer(false);
         }
@@ -368,8 +332,8 @@ const AdminProfileScreen = () => {
         // Optimistic UI
         setPrayerEnabled(next);
 
-        // Sediakan payload — hantar enabled sahaja pun cukup
-        // (optional) kalau nak hantar lat/lng sekali bila wujud & sah
+        // Prepare payload — sending enabled only is sufficient
+        // (optional) if you want to send lat/lng together when available & valid
         const lat = latInput.trim() === '' ? undefined : Number(latInput);
         const lng = lngInput.trim() === '' ? undefined : Number(lngInput);
         const payload: SaveSettingsPayload = { enabled: next ? 1 : 0 };
@@ -384,24 +348,28 @@ const AdminProfileScreen = () => {
 
         try {
             setSavingPrayer(true);
-            await saveSettings(payload); // <-- terus update DB
-            // (optional) boleh tambah toast/snackbar ringan jika perlu
+            await saveSettings(payload); // <-- directly update DB
+            // (optional) can add light toast/snackbar if needed
         } catch (e: any) {
-            // Revert bila gagal
+            // Revert when failed
             setPrayerEnabled(!next);
-            Alert.alert('Gagal', e?.message ?? 'Tidak dapat kemaskini tetapan azan.');
+            Alert.alert('Failed', e?.message ?? 'Cannot update prayer settings.');
         } finally {
             setSavingPrayer(false);
         }
     };
 
-    // Sumber avatar default
+    // Default avatar source
     const avatarSrc = require('../assets/user.png');
 
-    // Sumber logo client (dari profile), fallback ke avatar default
+    console.log('userInfo: ', userInfo);
+    
+    // Client logo source (from profile), fallback to default avatar
     const logoSource =
-        profile?.avatar_url && /^https?:\/\//.test(profile.avatar_url)
-            ? { uri: profile.avatar_url }
+        userInfo?.avatar_url
+            ? (userInfo.avatar_url.startsWith('http')
+                ? { uri: userInfo.avatar_url }
+                : { uri: `${BASE_URL}${userInfo.avatar_url}` })
             : avatarSrc;
 
     if (loading) {
@@ -443,9 +411,9 @@ const AdminProfileScreen = () => {
                     />
 
                     <View>
-                        <Text style={styles.name}>{userInfo.name}</Text>
-                        <Text style={styles.email}>{userInfo.email}</Text>
-                        <Text style={styles.role}>{userInfo.role}</Text>
+                        <Text style={styles.name}>{userInfo?.name || 'Admin User'}</Text>
+                        <Text style={styles.email}>{userInfo?.email || 'admin@email.com'}</Text>
+                        <Text style={styles.role}>{userInfo?.role || 'Admin'}</Text>
                     </View>
                 </View>
 

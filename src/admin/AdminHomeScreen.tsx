@@ -165,11 +165,12 @@ const AdminHomeScreen = () => {
         }
     }, []);
 
-    const loadTasks = useCallback(async () => {
+    const loadTasks = useCallback(async (filter?: FilterValue) => {
         setLoadingTasks(true);
         try {
             const token = (await AsyncStorage.getItem('userToken')) || '';
-            const status = resolveStatus(selectedFilter);
+            const currentFilter = filter || selectedFilter;
+            const status = resolveStatus(currentFilter);
             const data = await getAllTasks(token, status ? { status } : {});
 
             setTasks(data);
@@ -180,24 +181,25 @@ const AdminHomeScreen = () => {
         } finally {
             setLoadingTasks(false);
         }
-    }, [selectedFilter]);
+    }, []); // Remove selectedFilter dependency since we control it separately
 
     // ================= Refresh setiap kali screen FOKUS
     useFocusEffect(
         useCallback(() => {
             // bila masuk screen / kembali fokus -> tarik data latest
             loadMasters();
-            loadTasks();
+            loadTasks(); // Will use current selectedFilter
 
             // tiada cleanup khas diperlukan di sini
             return () => { };
-        }, [loadMasters, loadTasks])
+        }, [loadMasters]) // Remove loadTasks from dependency to prevent reloading on filter change
     );
 
     // ================= Bila filter berubah (semasa screen aktif), refresh tasks sahaja
     useEffect(() => {
-        loadTasks();
-    }, [loadTasks]);
+        // Only reload tasks when filter changes, not the entire screen
+        loadTasks(selectedFilter);
+    }, [selectedFilter]); // Only depend on selectedFilter, not loadTasks
 
 
     ///////////////////////////// START
@@ -479,7 +481,7 @@ export default AdminHomeScreen;
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#f0f4f7' },
-    scrollContent: { paddingBottom: 100 },
+    scrollContent: { paddingBottom: 200 },
 
     // Header
     header: { padding: 20, paddingTop: 30, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
