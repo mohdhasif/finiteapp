@@ -33,6 +33,7 @@ type Client = {
     approved_at: string | null;
     progress?: number;
     logo_url?: string | null;
+    avatar_url?: string | null;
 };
 
 type ProjectSummary = {
@@ -252,19 +253,14 @@ const ClientListScreen = () => {
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={styles.headerRow}>
-                                {item.logo_url ? (
-                                    <Image
-                                        source={{ uri: BASE_URL.replace(/\/+$/, '') + item.logo_url }}
-                                        style={styles.avatarImage}
-                                        resizeMode="contain"
-                                    />
-                                ) : (
-                                    <View style={styles.avatarCircle}>
-                                        <Text style={styles.avatarInitial}>
-                                            {item.name?.charAt(0)?.toUpperCase() ?? '?'}
-                                        </Text>
-                                    </View>
-                                )}
+                                <Image
+                                    source={item.avatar_url
+                                        ? { uri: BASE_URL.replace(/\/+$/, '') + item.avatar_url }
+                                        : require('../assets/user.png')
+                                    }
+                                    style={styles.avatarImage}
+                                    resizeMode="contain"
+                                />
 
                                 <View style={styles.nameStatusBlock}>
                                     <Text style={styles.cardTitle}>{item.name}</Text>

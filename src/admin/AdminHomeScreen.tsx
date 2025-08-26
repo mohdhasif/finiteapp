@@ -35,7 +35,7 @@ import { BASE_URL } from '../constants/apiConfig';
 type Client = {
     client_id: string;
     name: string;
-    logo_url: string | null;
+    avatar_url: string | null;
 };
 
 export type Freelancer = {
@@ -115,6 +115,8 @@ const AdminHomeScreen = () => {
                 getProjectSummaries(token),
             ]);
 
+            console.log('freelancerData: ', freelancerData);
+
             setClients(clientData);
             setFreelancers(freelancerData);
             // setProjects(Array.isArray(projectData) ? projectData : []);
@@ -132,9 +134,6 @@ const AdminHomeScreen = () => {
                             // If it's already a full URL, use as is, otherwise prepend BASE_URL
                             return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
                         });
-
-                        // console.log('Project', project.project_id, 'freelancers:', freelancers.length);
-                        // console.log('Avatar URLs for project', project.project_id, ':', avatarUrls);
 
                         return {
                             ...project,
@@ -154,13 +153,6 @@ const AdminHomeScreen = () => {
                     }
                 })
             );
-
-            // console.log('Projects with freelancers:', projectsWithFreelancers.map(p => ({
-            //   project_id: p.project_id,
-            //   project_title: p.project_title,
-            //   freelancer_count: p.freelancer_count,
-            //   freelancer_avatars: p.freelancer_avatars,
-            // })));
 
             setProjects(projectsWithFreelancers);
 
@@ -310,8 +302,8 @@ const AdminHomeScreen = () => {
                             <View key={c.client_id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
-                                        source={typeof c.logo_url === 'string'
-                                            ? { uri: BASE_URL.replace(/\/+$/, '') + c.logo_url }
+                                        source={typeof c.avatar_url === 'string'
+                                            ? { uri: BASE_URL.replace(/\/+$/, '') + c.avatar_url }
                                             : require('../assets/user.png')}
                                         style={styles.clientLogo}
                                         resizeMode="contain"

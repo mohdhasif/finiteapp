@@ -29,19 +29,30 @@ const ProjectCard: React.FC<Props> = ({ data, onPress, width = 220 }) => {
 
   return (
     <TouchableOpacity style={[styles.card, { width }]} activeOpacity={0.9} onPress={onPress}>
-      <Text style={styles.title} numberOfLines={2}>{data.project_title}</Text>
-      <Text style={styles.client} numberOfLines={1}>{data.client_name}</Text>
-
-      <View style={[styles.row, { marginTop: 10 }]}>
-        <Ionicons name="calendar-clear-outline" size={16} color={WHITE} />
-        <Text style={styles.rowText}>{due}</Text>
-      </View>
-      <View style={[styles.row, { marginTop: 6 }]}>
-        <Ionicons name="checkmark-done-circle-outline" size={16} color={WHITE} />
-        <Text style={styles.rowText}>{total} Tasks</Text>
+      {/* Title and Client Section - Fixed Height */}
+      <View style={styles.headerSection}>
+        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+          {data.project_title}
+        </Text>
+        <Text style={styles.client} numberOfLines={1} ellipsizeMode="tail">
+          {data.client_name || 'No client assigned'}
+        </Text>
       </View>
 
-      <View style={[styles.row, { marginTop: 12 }]}>
+      {/* Date and Tasks Section - Fixed Height */}
+      <View style={styles.infoSection}>
+        <View style={styles.row}>
+          <Ionicons name="calendar-clear-outline" size={16} color={WHITE} />
+          <Text style={styles.rowText} numberOfLines={1} ellipsizeMode="tail">{due}</Text>
+        </View>
+        <View style={styles.row}>
+          <Ionicons name="checkmark-done-circle-outline" size={16} color={WHITE} />
+          <Text style={styles.rowText} numberOfLines={1} ellipsizeMode="tail">{total} Tasks</Text>
+        </View>
+      </View>
+
+      {/* Freelancers Section - Fixed Height */}
+      <View style={styles.freelancersSection}>
         {data.freelancer_avatars && data.freelancer_avatars.length > 0 ? (
           data.freelancer_avatars.slice(0, 3).map((avatarUrl: string, index: number) => (
             <Image
@@ -52,13 +63,14 @@ const ProjectCard: React.FC<Props> = ({ data, onPress, width = 220 }) => {
             />
           ))
         ) : (
-          <Text style={styles.noFreelancersText}>No freelancers set up yet</Text>
+          <Text style={styles.noFreelancersText} numberOfLines={1} ellipsizeMode="tail">
+            No freelancers assigned
+          </Text>
         )}
-        {/* <Text style={styles.plus}>+</Text> */}
       </View>
 
+      {/* Progress Section - Fixed Position */}
       <Text style={styles.bigPercent}>{percent}%</Text>
-
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${percent}%` }]} />
       </View>
@@ -77,18 +89,80 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     elevation: 3,
     overflow: 'hidden',
+    height: 200, // Fixed height for consistency
   },
-  title: { color: WHITE, fontSize: 18, fontWeight: '800', lineHeight: 22 },
-  client: { color: WHITE70, fontSize: 14, marginTop: 2 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  rowText: { color: WHITE, fontSize: 14, marginLeft: 6 },
-  dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: BG },
-  avatar: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: BG },
-  plus: { color: WHITE, fontSize: 18, marginLeft: 6, fontWeight: '600' },
-  noFreelancersText: { color: WHITE70, fontSize: 12, fontStyle: 'italic' },
-  bigPercent: { position: 'absolute', right: 14, bottom: 34, color: WHITE, fontSize: 18, fontWeight: '800' },
-  progressTrack: { height: 8, borderRadius: 8, backgroundColor: TRACK, marginTop: 10 },
-  progressFill: { height: 8, borderRadius: 8, backgroundColor: WHITE },
+  headerSection: {
+    height: 50, // Fixed height for title and client
+    justifyContent: 'center',
+  },
+  title: { 
+    color: WHITE, 
+    fontSize: 18, 
+    fontWeight: '800', 
+    lineHeight: 22,
+    marginBottom: 2,
+  },
+  client: { 
+    color: WHITE70, 
+    fontSize: 14,
+  },
+  infoSection: {
+    height: 50, // Fixed height for date and tasks
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  row: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    height: 20,
+  },
+  rowText: { 
+    color: WHITE, 
+    fontSize: 14, 
+    marginLeft: 6,
+    flex: 1,
+  },
+  freelancersSection: {
+    height: 30, // Fixed height for freelancers
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  avatar: { 
+    width: 22, 
+    height: 22, 
+    borderRadius: 11, 
+    borderWidth: 2, 
+    borderColor: BG 
+  },
+  noFreelancersText: { 
+    color: WHITE70, 
+    fontSize: 12, 
+    fontStyle: 'italic',
+    flex: 1,
+  },
+  bigPercent: { 
+    position: 'absolute', 
+    right: 14, 
+    bottom: 34, 
+    color: WHITE, 
+    fontSize: 18, 
+    fontWeight: '800' 
+  },
+  progressTrack: { 
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    right: 14,
+    height: 8, 
+    borderRadius: 8, 
+    backgroundColor: TRACK,
+  },
+  progressFill: { 
+    height: 8, 
+    borderRadius: 8, 
+    backgroundColor: WHITE 
+  },
 });
 
 export default ProjectCard;

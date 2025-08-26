@@ -185,19 +185,14 @@ const FreelancerListScreen = () => {
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={styles.headerRow}>
-                                {freelancer.avatar ? (
-                                    <Image
-                                        source={{ uri: BASE_URL.replace(/\/+$/, '') + freelancer.avatar }}
-                                        style={styles.avatarImage}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
-                                    <View style={styles.avatarCircle}>
-                                        <Text style={styles.avatarInitial}>
-                                            {freelancer.name?.charAt(0).toUpperCase()}
-                                        </Text>
-                                    </View>
-                                )}
+                                <Image
+                                    source={freelancer.avatar 
+                                        ? { uri: BASE_URL.replace(/\/+$/, '') + freelancer.avatar }
+                                        : require('../assets/user.png')
+                                    }
+                                    style={styles.avatarImage}
+                                    resizeMode="cover"
+                                />
 
                                 <View style={styles.nameBlock}>
                                     <Text style={styles.cardTitle}>{freelancer.name}</Text>
