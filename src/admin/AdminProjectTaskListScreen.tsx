@@ -101,14 +101,14 @@ const AdminProjectTaskListScreen = () => {
     const pct = Math.max(0, Math.min(100, progressPercentage));
     const dash = CIRC * (1 - pct / 100);
     
-    console.log('Progress Debug:', {
-        projectProgress: projectDetails?.progress_percent,
-        completedTasks: tasksAll.filter(t => t.status === 'completed').length,
-        totalTasks: tasksAll.length,
-        calculatedPercentage: progressPercentage,
-        pct: pct,
-        dash: dash
-    });
+    // console.log('Progress Debug:', {
+    //     projectProgress: projectDetails?.progress_percent,
+    //     completedTasks: tasksAll.filter(t => t.status === 'completed').length,
+    //     totalTasks: tasksAll.length,
+    //     calculatedPercentage: progressPercentage,
+    //     pct: pct,
+    //     dash: dash
+    // });
 
     useEffect(() => {
         slideAnim.setValue(BOTTOM_TOP);

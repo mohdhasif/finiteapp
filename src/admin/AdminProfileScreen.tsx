@@ -141,7 +141,7 @@ const AdminProfileScreen = () => {
                     const me = await getMyProfile(tokenRaw); // tokenRaw confirmed string
                     if (!isActive) return;
 
-                    console.log(me);
+                    // console.log(me);
                     setProfile(me);
                     setUserInfo(me);
                 } catch (err: any) {

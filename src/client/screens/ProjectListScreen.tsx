@@ -15,22 +15,25 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { getClientProjects } from '../../services/projectService';
+import { getProjectSummaries } from '../../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProjectCardScreen from '../../component/ProjectCardScreen';
 
 const { width } = Dimensions.get('window');
 
 type Project = {
-  id: number;
-  title: string;
-  subtitle?: string | null;
+  project_id: number;
+  project_title: string;
   client_name?: string | null;
-  progress?: number; // 0..100
+  progress_percent?: number; // 0..100
   status?: 'Ongoing' | 'Completed' | 'Pending' | string;
-  start_date?: string | null;
-  due_date?: string | null;
-  logo_url?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  total_tasks?: number;
+  completed_tasks?: number;
+  freelancer_count?: number;
+  freelancer_avatars?: string[];
+  extra_freelancers?: number;
 };
 
 const tabs = ['All', 'Ongoing', 'Completed'] as const;
@@ -52,10 +55,10 @@ const ProjectListScreen = () => {
     try {
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
       if (!isRefreshing) setLoading(true);
-      const result = await getClientProjects(token);
+      const result = await getProjectSummaries(token);
       setProjects(Array.isArray(result) ? result : []);
-    } catch {
-      // silent
+    } catch (error) {
+      console.error('Fetch projects error:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -91,14 +94,14 @@ const ProjectListScreen = () => {
 
     const q = query.trim().toLowerCase();
     return list.filter(p => {
-      const title = (p.title || '').toLowerCase();
+      const title = (p.project_title || '').toLowerCase();
       const client = (p.client_name || '').toLowerCase();
       return title.includes(q) || client.includes(q);
     });
   }, [projects, activeTab, query]);
 
   const goToTasks = (p: Project) => {
-    navigation.navigate('ProjectTaskListScreen', { projectId: p.id, projectTitle: p.title });
+    navigation.navigate('ProjectTaskListScreen', { projectId: p.project_id, projectTitle: p.project_title });
   };
 
   if (loading && !refreshing) {
@@ -192,18 +195,18 @@ const ProjectListScreen = () => {
         ) : (
           filteredProjects.map(item => (
             <ProjectCardScreen
-              key={item.id}
-              id={item.id}
-              title={item.title}
-              subtitle={item.subtitle ?? ' '}
+              key={item.project_id}
+              id={item.project_id}
+              title={item.project_title}
+              subtitle={item.client_name ?? ' '}
               client_name={item.client_name}
-              progress={item.progress ?? 0}
+              progress={item.progress_percent ?? 0}
               status={item.status}
-              start_date={item.start_date}
-              due_date={item.due_date}
-              logo_url={item.logo_url}
-              total_tasks={(item as any).total_tasks ?? undefined}
-              assignees={(item as any).assignees ?? []}
+              start_date={item.start_at}
+              due_date={item.end_at}
+              logo_url={undefined}
+              total_tasks={item.total_tasks ?? undefined}
+              assignees={item.freelancer_avatars?.map((avatar, index) => ({ id: index, avatar_url: avatar })) ?? []}
               onPress={() => goToTasks(item)}
             />
           ))

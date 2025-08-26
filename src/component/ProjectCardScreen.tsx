@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { G, Circle } from 'react-native-svg';
+import { BASE_URL } from '../constants/apiConfig';
 
 export type ProjectCardScreenProps = {
     id: number;
@@ -57,6 +58,8 @@ const ProjectCardScreen: React.FC<ProjectCardScreenProps> = ({
     const pct = Math.max(0, Math.min(100, progress));
     const dash = CIRC * (1 - pct / 100);
 
+    console.log('assignees:', JSON.stringify(assignees, null, 2));
+
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.wrap}>
             <LinearGradient
@@ -78,22 +81,23 @@ const ProjectCardScreen: React.FC<ProjectCardScreenProps> = ({
                     <Text numberOfLines={1} style={styles.title}>{title}</Text>
                     {!!subtitle && <Text numberOfLines={1} style={styles.subtitle}>{subtitle}</Text>}
 
-                    {!!client_name && (
+                    {/* {!!client_name && (
                         <Text numberOfLines={1} style={styles.clientName}>{client_name}</Text>
-                    )}
+                    )} */}
 
                     <Text style={styles.assignedLabel}>Assigned to</Text>
                     <View style={styles.assigneesRow}>
-                        {assignees.slice(0, 3).map((a, i) =>
-                            a.avatar_url ? (
-                                <Image key={String(a.id)} source={{ uri: a.avatar_url }} style={[styles.avatar, { left: i * 18 }]} />
-                            ) : (
-                                <View key={String(a.id)} style={[styles.avatar, styles.avatarFallback, { left: i * 18 }]} />
+                        {assignees && assignees.length > 0 ? (
+                            assignees.slice(0, 3).map((a, i) =>
+                                <Image
+                                    key={String(a.id)}
+                                    source={a.avatar_url ? { uri: `${BASE_URL}${a.avatar_url}` } : require('../assets/user.png')}
+                                    style={[styles.avatar, { marginLeft: i > 0 ? -8 : 0 }]}
+                                />
                             )
+                        ) : (
+                            <Text style={styles.noFreelancersText}>No freelancers set up yet</Text>
                         )}
-                        <View style={[styles.avatar, styles.plus, { left: Math.min(assignees.length, 3) * 18 }]}>
-                            <Text style={styles.plusText}>+</Text>
-                        </View>
                     </View>
 
                     <View style={styles.bottomRow}>
@@ -194,6 +198,7 @@ const styles = StyleSheet.create({
     avatarFallback: { backgroundColor: '#1f6ea5' },
     plus: { backgroundColor: '#2b8cc4', justifyContent: 'center', alignItems: 'center' },
     plusText: { color: '#fff', fontWeight: '800', fontSize: 16, marginTop: -1 },
+    noFreelancersText: { color: '#5f7488', fontSize: 12, fontStyle: 'italic' },
 
     bottomRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 14 },
     bottomItem: { flexDirection: 'row', alignItems: 'center' },

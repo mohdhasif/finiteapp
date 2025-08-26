@@ -66,6 +66,13 @@ src/client/
 - **ProjectCard.tsx** - Updated to display real freelancer avatars from backend data instead of colored dots, with fallback to "No freelancers set up" text when no avatars available
 - **AdminProjectTaskListScreen.tsx** - Updated fallback to show "No freelancers set up yet" text instead of colored dots when no freelancers available
 - **AdminCreateProjectScreen.tsx** - Completely redesigned to match AddTaskScreen.tsx design with proper form validation, SelectionModal integration, and required field validation (project name, client, start/end dates)
+- **ProjectListScreen.tsx** - Updated to use getProjectSummaries API with proper data structure mapping to match AdminProjectListScreen.tsx functionality
+- **AdminProjectListScreen.tsx** - Updated to use ProjectCard component instead of ProjectCardScreen for proper avatar display and end_at data handling
+- **ProjectCardScreen.tsx** - Updated avatar display to match ProjectCard.tsx pattern with fallback text and proper spacing
+- **projectService.tsx** - Added debugging and data validation for freelancer_avatars in getProjectSummaries to ensure proper avatar data handling
+- **AdminProjectListScreen.tsx** - **MAJOR UPDATE**: Completely refactored to fetch individual project freelancer data using getProjectFreelancers API for each project, similar to AdminProjectTaskListScreen.tsx approach. Added ProjectFreelancer type, getAvatarSource utility, and parallel data fetching for accurate freelancer avatar display. **FIXED**: Added BASE_URL construction for avatar URLs to ensure complete image retrieval. **ENHANCED**: Added default avatar (assets/user.png) for freelancers without avatars. **CRITICAL FIX**: Fixed image source type error by returning null for missing avatars and letting ProjectCardScreen handle fallback display.
+- **ProjectCardScreen.tsx** - **ENHANCED**: Updated avatar display logic to use default user.png image for freelancers without avatars instead of fallback View, ensuring all freelancers have visual representation. **FIXED**: Added BASE_URL construction for avatar URLs to ensure complete image retrieval when avatar_url exists.
+- **AdminProjectListScreen.tsx** - **FIXED**: Updated assignees prop to use projectFreelancers data instead of freelancer_avatars array, ensuring all freelancers (with or without avatars) are displayed correctly. **ENHANCED**: Added detailed logging to debug assignees data structure and transmission.
 
 ### 📦 Usage
 ```typescript

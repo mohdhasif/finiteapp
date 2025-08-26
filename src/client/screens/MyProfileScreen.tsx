@@ -43,7 +43,7 @@ const MyProfileScreen = () => {
                 const userInfoRaw = await AsyncStorage.getItem('userInfo');
                 const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
                 
-                console.log(userInfo?.avatar_url);
+                // console.log(userInfo?.avatar_url);
                 
                 setMe(userInfo);
                 setMyId(userInfo?.id ?? null);

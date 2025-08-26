@@ -166,7 +166,7 @@ const AdminProfileScreen = () => {
         const ct = res.headers.get('content-type') || '';
         const json = ct.includes('application/json') ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
         if (!res.ok) {
-            console.log('saveSettings error:', { status: res.status, body: text });
+            // console.log('saveSettings error:', { status: res.status, body: text });
             throw new Error(json?.error || text || `HTTP ${res.status}`);
         }
         return json ?? {};

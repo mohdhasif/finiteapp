@@ -47,7 +47,7 @@ export const getClientProjects = async (token: string) => {
 export const getProjectDetails = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectDetails(projectId), { headers: auth(token) });
     const text = await res.text();
-    console.log(text);
+    // console.log(text);
     if (!res.ok) {
         const json = parseText(text);
         throw new Error(json?.error || `HTTP ${res.status}`);
@@ -76,7 +76,26 @@ export const fetchProjectTasks = async (token: string, projectId: number) => {
 export const getProjectSummaries = async (userToken: string): Promise<ProjectSummary[]> => {
     const res = await fetch(API_ENDPOINTS.projectSummaries, { headers: auth(userToken) });
     const json = await parse(res);
-    return Array.isArray(json) ? json as ProjectSummary[] : (json ? [json as ProjectSummary] : []);
+    // console.log('getProjectSummaries raw response:', JSON.stringify(json, null, 2));
+    
+    const projects = Array.isArray(json) ? json as ProjectSummary[] : (json ? [json as ProjectSummary] : []);
+    
+    // Ensure freelancer_avatars is properly set for each project
+    const projectsWithAvatars = projects.map(project => ({
+        ...project,
+        freelancer_avatars: project.freelancer_avatars || [],
+        freelancer_count: project.freelancer_count || 0,
+        extra_freelancers: project.extra_freelancers || 0,
+    }));
+    
+    // console.log('Projects with avatars:', projectsWithAvatars.map(p => ({
+    //     project_id: p.project_id,
+    //     project_title: p.project_title,
+    //     freelancer_count: p.freelancer_count,
+    //     freelancer_avatars: p.freelancer_avatars,
+    // })));
+    
+    return projectsWithAvatars;
 };
 
 export const getProjectSummaryById = async (userToken: string, projectId: number): Promise<ProjectSummary> => {

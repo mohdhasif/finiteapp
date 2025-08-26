@@ -17,7 +17,7 @@ export const fetchClients = async (token: string) => {
         const result = JSON.parse(text);
         return result;
     } catch (error) {
-        console.log('Error parsing JSON:', error);
+        // console.log('Error parsing JSON:', error);
     }
     // return parse(res);
 };
@@ -31,7 +31,7 @@ export const fetchFreelancers = async (token: string) => {
         const result = JSON.parse(text);
         return result;
     } catch (error) {
-        console.log('Error parsing JSON:', error);
+        // console.log('Error parsing JSON:', error);
     }
     // return parse(res);
 };
@@ -176,7 +176,7 @@ export async function updateMyProfile(
         body: JSON.stringify(payload),
     });
     const raw = await res.text();
-    console.log('raw:', raw);
+    // console.log('raw:', raw);
 
     let json: any;
     try { json = JSON.parse(raw); } catch { throw new Error('JSON tidak sah'); }
@@ -242,7 +242,7 @@ export async function updateMyProfileForm(
     });
 
     const text = await res.text();
-    console.log(text);
+    // console.log(text);
 
     let json: any;
     try {

@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     AsyncStorage.getItem('userRole'),
                 ]);
 
-                console.log('LOADING USER:', token, storedRole);
+                // console.log('LOADING USER:', token, storedRole);
 
                 if (!token || !storedRole) {
                     await AsyncStorage.clear(); // 🔒 Auto logout if data is incomplete
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         if (installId) {
                             const claimedKey = `install_claimed_${installId}`;
                             const already = await AsyncStorage.getItem(claimedKey);
-                            console.log('Already claimed?', already);
+                            // console.log('Already claimed?', already);
 
                             if (already !== '1') {
                                 const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                                     throw new Error(t || `HTTP ${res.status}`);
                                 }
                                 await AsyncStorage.setItem(claimedKey, '1');
-                                console.log('Install ID claimed successfully at loadUser()');
+                                // console.log('Install ID claimed successfully at loadUser()');
                             }
                         }
                     } catch (e) {
@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (installId) {
                     const claimedKey = `install_claimed_${installId}`;
                     const already = await AsyncStorage.getItem(claimedKey);
-                    console.log('Already claimed?', already);
+                    // console.log('Already claimed?', already);
 
                     if (already !== '1') {
                         const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             throw new Error(t || `HTTP ${res.status}`);
                         }
                         await AsyncStorage.setItem(claimedKey, '1');
-                        console.log('Install ID claimed successfully at loadUser()');
+                        // console.log('Install ID claimed successfully at loadUser()');
                     }
                 }
             } catch (e) {
