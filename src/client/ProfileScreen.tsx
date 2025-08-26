@@ -7,10 +7,10 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
-import { useAuth } from '../../context/AuthContext';
+import type { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ENDPOINTS } from '../../constants/apiConfig';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 
@@ -282,7 +282,7 @@ const ProfileScreen = () => {
     };
 
     // Sumber avatar default
-    const avatarSrc = require('../../assets/user.png');
+    const avatarSrc = require('../assets/user.png');
 
     // Sumber logo client (dari profile), fallback ke avatar default
     const logoSource =

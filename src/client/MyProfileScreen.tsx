@@ -6,7 +6,7 @@ import {
 import Modal from 'react-native-modal';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
 
@@ -114,7 +114,7 @@ const MyProfileScreen = () => {
                                 ? typeof avatarUriLocal === 'string'
                                     ? { uri: avatarUriLocal }
                                     : avatarUriLocal // { uri: ... }
-                                : require('../../assets/user.png')
+                                : require('../assets/user.png')
                         }
                         style={styles.avatar}
                         resizeMode="contain"

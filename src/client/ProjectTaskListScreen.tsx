@@ -7,12 +7,12 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
-import { getTasksByProjectPublic, updateTaskStatus } from '../../services/taskService';
-import { getProjectDetails, getProjectFreelancers } from '../../services/projectService';
-import { BASE_URL } from '../../constants/apiConfig';
+import type { RootStackParamList } from '../navigation/types';
+import { getTasksByProjectPublic, updateTaskStatus } from '../services/taskService';
+import { getProjectDetails, getProjectFreelancers } from '../services/projectService';
+import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import TaskCard from '../../component/TaskCard';
+import TaskCard from '../component/TaskCard';
 
 // Type definitions for API responses
 type ProjectFreelancer = {
@@ -73,7 +73,7 @@ const ProjectTaskListScreen = () => {
 
     const getAvatarSource = (avatarUrl: string | null) => {
         if (!avatarUrl) {
-            return require('../../assets/user.png');
+            return require('../assets/user.png');
         }
         // Construct full URL if it's a relative path
         const fullUrl = avatarUrl.startsWith('http') ? avatarUrl : `${BASE_URL}${avatarUrl}`;

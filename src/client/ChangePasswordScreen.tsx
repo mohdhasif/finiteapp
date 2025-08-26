@@ -16,10 +16,10 @@ import {
 import Modal from 'react-native-modal';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { changePassword } from '../../services/authService';
-import { useAuth } from '../../context/AuthContext';
+import { changePassword } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 const BLUE = '#0074c1';
 

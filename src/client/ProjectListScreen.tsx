@@ -14,10 +14,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
-import { getProjectSummaries } from '../../services/projectService';
+import type { RootStackParamList } from '../navigation/types';
+import { getProjectSummaries } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ProjectCardScreen from '../../component/ProjectCardScreen';
+import ProjectCardScreen from '../component/ProjectCardScreen';
 
 const { width } = Dimensions.get('window');
 

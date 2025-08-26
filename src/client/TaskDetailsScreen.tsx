@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     listAttachments,
@@ -27,11 +27,11 @@ import {
     addNote,
     type TaskAttachment,
     type TaskNote,
-} from '../../services/taskDetailsService';
-import { BASE_URL } from '../../constants/apiConfig';
+} from '../services/taskDetailsService';
+import { BASE_URL } from '../constants/apiConfig';
 import { launchImageLibrary } from 'react-native-image-picker';
 import DocumentPicker, { types } from 'react-native-document-picker';
-import { getTaskDetails } from '../../services/taskService';
+import { getTaskDetails } from '../services/taskService';
 import Modal from 'react-native-modal';
 
 const { width } = Dimensions.get('window');

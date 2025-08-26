@@ -1,12 +1,12 @@
 // Client Screens
-export { default as ProjectListScreen } from './screens/ProjectListScreen';
-export { default as ProjectTaskListScreen } from './screens/ProjectTaskListScreen';
-export { default as TaskDetailsScreen } from './screens/TaskDetailsScreen';
-export { default as NotificationsScreen } from './screens/NotificationsScreen';
-export { default as ProfileScreen } from './screens/ProfileScreen';
-export { default as MyProfileScreen } from './screens/MyProfileScreen';
-export { default as ChangePasswordScreen } from './screens/ChangePasswordScreen';
-export { default as FAQScreen } from './screens/FAQScreen';
+export { default as ProjectListScreen } from './ProjectListScreen';
+export { default as ProjectTaskListScreen } from './ProjectTaskListScreen';
+export { default as TaskDetailsScreen } from './TaskDetailsScreen';
+export { default as NotificationsScreen } from './NotificationsScreen';
+export { default as ProfileScreen } from './ProfileScreen';
+export { default as MyProfileScreen } from './MyProfileScreen';
+export { default as ChangePasswordScreen } from './ChangePasswordScreen';
+export { default as FAQScreen } from './FAQScreen';
 
 // Client Components (if any)
 // export { default as ClientComponent } from './components/ClientComponent';

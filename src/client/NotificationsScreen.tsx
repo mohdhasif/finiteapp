@@ -18,10 +18,10 @@ import {
     markAsRead,
     markAllAsRead,
     type NotificationItem,
-} from '../../services/notificationService';
+} from '../services/notificationService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 
 const BLUE = '#0B7EBE';
 const SUB = '#6B7C8F';
