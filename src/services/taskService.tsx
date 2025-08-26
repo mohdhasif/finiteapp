@@ -169,7 +169,32 @@ export const getAllTasks = async (
     return Array.isArray(json?.data) ? (json.data as Task[]) : [];
 };
 
+export const getAllTasksFreelancer = async (
+    token: string,
+    opts: GetAllTasksOptions = {}
+): Promise<Task[]> => {
+    const t = (token ?? '').trim();
+    if (!t) throw new Error('Missing userToken');
 
+    // Kekal guna API_ENDPOINTS (string). Kita hanya tambah query di sini.
+    const url = appendQuery(API_ENDPOINTS.allTasksFreelancer, {
+        status: opts.status,
+        project_id: opts.projectId,
+    });
+
+    const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
+    });
+
+    const { json } = await safeJson(res);
+
+    if (json && json.success === false) {
+        throw new Error(json.error || 'Server returned an error');
+    }
+    if (!res.ok) throw new Error((json && json.error) || `HTTP ${res.status}`);
+
+    return Array.isArray(json?.data) ? (json.data as Task[]) : [];
+};
 
 
 

@@ -54,4 +54,18 @@ export type RootStackParamList = {
   AdminNotificationsScreen: undefined;
 
   AdminCalendarScreen: undefined;
+  
+  // Freelancer screens
+  FreelancersHomeScreen: undefined;
+  FreelancerProjectListScreen: undefined;
+  FreelancerProjectTaskListScreen: {
+    projectId: number;
+    projectTitle: string;
+  };
+  FreelancerTaskDetailsScreen: { task_title: string, task_id: number };
+  FreelancerNotificationsScreen: undefined;
+  FreelancerProfileScreen: undefined;
+  FreelancerMyProfileScreen: undefined;
+  FreelancerChangePasswordScreen: undefined;
+  FreelancerFAQScreen: undefined;
 };

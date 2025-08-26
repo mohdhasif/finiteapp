@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { getProjectSummaries } from '../services/projectService';
+import { getProjectSummariesClient } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
 
@@ -56,7 +56,7 @@ const ProjectListScreen = () => {
     try {
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
       if (!isRefreshing) setLoading(true);
-      const result = await getProjectSummaries(token);
+      const result = await getProjectSummariesClient(token);
       
       setProjects(Array.isArray(result) ? result : []);
     } catch (error) {

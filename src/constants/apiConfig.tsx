@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
 
     // ---- Tasks list (admin/client)
     allTasks: buildUrl('tasks_all.php'),
+    allTasksFreelancer: buildUrl('tasks_all_freelancer.php'),
 
     // ---- Task details features
     listAttachments: buildUrl('list_attachments.php'),
@@ -60,6 +61,7 @@ export const API_ENDPOINTS = {
     listNotes: buildUrl('list_notes.php'),
     addNote: buildUrl('add_note.php'),
 
+    projectSummariesClient: buildUrl('get_project_summaries_client.php'),
     projectSummaries: buildUrl('get_project_summaries.php'),
     projectSummary: (projectId: number) => buildUrl('get_project_summaries.php', { project_id: projectId }), // ❌ buang space + guna params
 

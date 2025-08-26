@@ -359,13 +359,13 @@ const ProjectTaskListScreen = () => {
 
             {/* Bottom Navigation */}
             <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('FreelancerNotificationsScreen')}>
                     <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('FreelancersHomeScreen')}>
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('FreelancerProfileScreen')}>
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>

@@ -15,20 +15,36 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { getAllTasksFreelancer, type Task } from '../services/taskService';
+import { getProjectSummaries } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AdminTaskCard from '../component/AdminTaskCard';
+import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
 
 const { width } = Dimensions.get('window');
 
-const tabs = ['All', 'Pending', 'in_progress', 'completed'] as const;
+type Project = {
+  project_id: number;
+  project_title: string;
+  client_name?: string | null;
+  progress_percent?: number; // 0..100
+  status?: 'Ongoing' | 'Completed' | 'Pending' | string;
+  start_at?: string | null;
+  end_at?: string | null;
+  due_date?: string | null;
+  total_tasks?: number;
+  completed_tasks?: number;
+  freelancer_count?: number;
+  freelancer_avatars?: string[];
+  extra_freelancers?: number;
+};
+
+const tabs = ['All', 'Ongoing', 'Completed'] as const;
 type Tab = (typeof tabs)[number];
 
-const FreelancersHomeScreen = () => {
+const ProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -36,29 +52,15 @@ const FreelancersHomeScreen = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Filter mapping
-  const resolveStatus = (
-    f: Tab
-  ): 'pending' | 'in_progress' | 'completed' | undefined => {
-    if (f === 'All') return undefined;
-    if (f === 'Pending') return 'pending';
-    return f;
-  };
-
   const fetchData = async (isRefreshing = false) => {
     try {
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
       if (!isRefreshing) setLoading(true);
+      const result = await getProjectSummaries(token);
       
-      const status = resolveStatus(activeTab);
-      const result = await getAllTasksFreelancer(token, status ? { status } : {});
-      
-      // Filter tasks to only show tasks assigned to this freelancer
-      // This assumes the API returns all tasks and we filter client-side
-      // You might want to modify the API to return only freelancer's tasks
-      setTasks(Array.isArray(result) ? result : []);
+      setProjects(Array.isArray(result) ? result : []);
     } catch (error) {
-      console.error('Fetch tasks error:', error);
+      console.error('Fetch projects error:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,7 +72,7 @@ const FreelancersHomeScreen = () => {
     (async () => {
       const userInfoString = await AsyncStorage.getItem('userInfo');
       const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
-      const name = userInfo?.freelancer?.name || userInfo?.name || 'User';
+      const name = userInfo?.client?.company_name || 'User';
       setDisplayName(name);
     })();
   }, []);
@@ -82,20 +84,27 @@ const FreelancersHomeScreen = () => {
   );
 
   // Gabung carian + tabs
-  const filteredTasks = useMemo(() => {
-    const list = tasks;
+  const filteredProjects = useMemo(() => {
+    const list =
+      activeTab === 'All'
+        ? projects
+        : projects.filter(
+            p => (p.status || '').toLowerCase() === activeTab.toLowerCase()
+          );
 
     if (!query.trim()) return list;
 
     const q = query.trim().toLowerCase();
-    return list.filter(t => {
-      const title = (t.title || '').toLowerCase();
-      const description = (t.description || '').toLowerCase();
-      return title.includes(q) || description.includes(q);
+    return list.filter(p => {
+      const title = (p.project_title || '').toLowerCase();
+      const client = (p.client_name || '').toLowerCase();
+      return title.includes(q) || client.includes(q);
     });
-  }, [tasks, query]);
+  }, [projects, activeTab, query]);
 
-
+  const goToTasks = (p: Project) => {
+    navigation.navigate('FreelancerProjectTaskListScreen', { projectId: p.project_id, projectTitle: p.project_title });
+  };
 
   if (loading && !refreshing) {
     return (
@@ -121,14 +130,14 @@ const FreelancersHomeScreen = () => {
           style={styles.heroSearchBtn}
           onPress={() => setShowSearch(s => !s)}
           accessibilityRole="button"
-          accessibilityLabel="Search tasks"
+          accessibilityLabel="Search projects"
         >
           <Icon name={showSearch ? 'close' : 'search'} size={22} color="#fff" />
         </TouchableOpacity>
       </LinearGradient>
 
       {/* Section title */}
-      <Text style={styles.sectionTitle}>My Tasks</Text>
+      <Text style={styles.sectionTitle}>Projects</Text>
 
       {/* Search bar (show/hide) */}
       {showSearch && (
@@ -137,7 +146,7 @@ const FreelancersHomeScreen = () => {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search tasks…"
+            placeholder="Search by title or client…"
             placeholderTextColor="#98A6B8"
             style={styles.searchInput}
             returnKeyType="search"
@@ -168,7 +177,7 @@ const FreelancersHomeScreen = () => {
         })}
       </View>
 
-      {/* Tasks List */}
+      {/* List */}
       <ScrollView
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -181,27 +190,28 @@ const FreelancersHomeScreen = () => {
           />
         }
       >
-        {filteredTasks.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <Text style={styles.emptyText}>
-            {query ? 'Tiada task sepadan dengan carian.' : 'Tiada task dijumpai.'}
+            {query ? 'Tiada projek sepadan dengan carian.' : 'Tiada projek dijumpai.'}
           </Text>
         ) : (
-          filteredTasks.map((task, idx) => {
-            const isCompleted = (task.status || '').toLowerCase() === 'completed';
-            return (
-              <AdminTaskCard
-                key={task.id ?? idx}
-                task={task}
-                checked={isCompleted}
-                onToggleCheck={() => {}}
-                onPress={() =>
-                  navigation.navigate('FreelancerTaskDetailsScreen', {
-                    task_title: task.title ?? 'Task',
-                    task_id: task.id,
-                  })}
-              />
-            );
-          })
+          filteredProjects.map(item => (
+            <ClientProjectCardScreen
+              key={item.project_id}
+              id={item.project_id}
+              title={item.project_title}
+              subtitle={item.client_name ?? ' '}
+              client_name={item.client_name}
+              progress={item.progress_percent ?? 0}
+              status={item.status}
+              start_date={item.start_at}
+              due_date={item.due_date}
+              logo_url={undefined}
+              total_tasks={item.total_tasks ?? undefined}
+              assignees={item.freelancer_avatars?.map((avatar, index) => ({ id: index, avatar_url: avatar })) ?? []}
+              onPress={() => goToTasks(item)}
+            />
+          ))
         )}
       </ScrollView>
 
@@ -221,7 +231,7 @@ const FreelancersHomeScreen = () => {
   );
 };
 
-export default FreelancersHomeScreen;
+export default ProjectListScreen;
 
 const styles = StyleSheet.create({
   // LAYOUT
