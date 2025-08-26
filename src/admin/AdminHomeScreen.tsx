@@ -57,6 +57,7 @@ type ProjectFreelancer = {
     freelancer_status: string;
     freelancer_name: string;
     freelancer_email: string;
+    freelancer_avatar_url: string | null;
 };
 
 const AdminHomeScreen = () => {
@@ -130,9 +131,9 @@ const AdminHomeScreen = () => {
 
                         // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
                         const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
-                            if (!f.avatar_url) return null; // Will be handled by ProjectCardScreen with default image
+                            if (!f.freelancer_avatar_url) return null; // Will be handled by ProjectCardScreen with default image
                             // If it's already a full URL, use as is, otherwise prepend BASE_URL
-                            return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
+                            return f.freelancer_avatar_url.startsWith('http') ? f.freelancer_avatar_url : `${BASE_URL}${f.freelancer_avatar_url}`;
                         });
 
                         return {

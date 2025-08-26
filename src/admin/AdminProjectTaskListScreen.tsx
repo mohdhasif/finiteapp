@@ -20,7 +20,7 @@ import Svg, { G, Circle } from 'react-native-svg';
 type ProjectFreelancer = {
     freelancer_id: number;
     user_id: number;
-    avatar_url: string | null;
+    freelancer_avatar_url: string | null;
     skillset: string;
     freelancer_status: string;
     freelancer_name: string;
@@ -286,7 +286,7 @@ const AdminProjectTaskListScreen = () => {
                             projectFreelancers.slice(0, 3).map((freelancer: ProjectFreelancer, index: number) => (
                                 <Image
                                     key={freelancer.freelancer_id || index}
-                                    source={getAvatarSource(freelancer.avatar_url)}
+                                    source={getAvatarSource(freelancer.freelancer_avatar_url)}
                                     style={styles.avatar}
                                     resizeMode="cover"
                                 />
