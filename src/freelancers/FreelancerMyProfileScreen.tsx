@@ -153,6 +153,10 @@ const MyProfileScreen = () => {
                 if (response.ok && result.success) {
                     // Refresh user details from API
                     const updatedUserDetails = await getUserDetails(token);
+                    
+                    // Update local storage with latest data
+                    await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserDetails));
+                    
                     setMe(updatedUserDetails);
                     setProfile(updatedUserDetails);
                     setModalVisible(true);
