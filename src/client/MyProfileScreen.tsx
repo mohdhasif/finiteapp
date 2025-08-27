@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
-    ScrollView, Dimensions, SafeAreaView, Alert,
+    ScrollView, Dimensions, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useNavigation } from '@react-navigation/native';
@@ -216,7 +216,12 @@ const MyProfileScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+            style={styles.container} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+            <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.header}>My Profile</Text>
 
@@ -289,7 +294,8 @@ const MyProfileScreen = () => {
                     </TouchableOpacity>
                 </View>
             </Modal>
-        </SafeAreaView>
+            </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 };
 

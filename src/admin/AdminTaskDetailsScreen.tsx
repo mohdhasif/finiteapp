@@ -12,6 +12,8 @@ import {
     TextInput,
     RefreshControl,
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -333,8 +335,11 @@ const AdminTaskDetailsScreen: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-
+        <KeyboardAvoidingView 
+            style={styles.container} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
             {/* Quick Add dropdown */}
             {showDropdown && (
                 <View style={styles.dropdown}>
@@ -356,6 +361,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
 
                 {/* Header */}
@@ -543,7 +549,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     <View ref={notesBottomAnchor} />
                 </View>
 
-                <View style={{ height: 90 }} />
+                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Bottom Tab */}
@@ -612,7 +618,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 </View>
             </Modal>
 
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -754,8 +760,12 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         position: 'absolute',
         bottom: 0,
+        left: 0,
+        right: 0,
         width: '100%',
         alignItems: 'center',
+        zIndex: 1000,
+        elevation: 10,
     },
     fab: {
         backgroundColor: '#fff',

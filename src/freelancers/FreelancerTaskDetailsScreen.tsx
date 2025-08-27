@@ -11,6 +11,8 @@ import {
     TextInput,
     RefreshControl,
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -232,12 +234,17 @@ const TaskDetailsScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView 
+            style={styles.container} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
             <ScrollView
                 ref={outerScrollRef}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
                 {/* Header */}
                 <Text style={styles.header}>Task Details</Text>
@@ -284,7 +291,7 @@ const TaskDetailsScreen = () => {
                     </View>
                 </View>
 
-                <View style={{ height: 90 }} />
+                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Bottom Nav */}
@@ -307,7 +314,7 @@ const TaskDetailsScreen = () => {
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -451,6 +458,8 @@ const styles = StyleSheet.create({
     bottomNav: {
         position: 'absolute',
         bottom: 0,
+        left: 0,
+        right: 0,
         width: width,
         height: 70,
         backgroundColor: '#007baf',
@@ -460,6 +469,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
         alignItems: 'center',
         paddingBottom: 10,
+        zIndex: 1000,
+        elevation: 10,
     },
     navItem: {
         position: 'relative',
