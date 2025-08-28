@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView
@@ -11,6 +11,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { createProject } from '../services/projectService';
 import { getClientsOptions } from '../services/adminService';
 import SelectionModal from '../component/SelectionModal';
+import { performanceMonitor } from '../utils/performance';
 
 const BLUE = '#0B7EBE';
 const BG = '#EFEFEF';
@@ -73,23 +74,27 @@ const CreateProjectScreen = () => {
     `${toMySQLDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 
   // Load clients from API
-  useEffect(() => {
-    (async () => {
-      setLoadingClients(true);
-      try {
-        const token = await AsyncStorage.getItem('userToken');
-        const options = await getClientsOptions(token ?? undefined, {
-          statusIn: ['approved', 'active'],
-          sort: 'label',
-        });
-        setClients(options.map(o => ({ label: o.label, value: o.value })));
-      } catch {
-        setClients([]);
-      } finally {
-        setLoadingClients(false);
-      }
-    })();
+  const loadClients = useCallback(async () => {
+    setLoadingClients(true);
+    try {
+      performanceMonitor.startTimer('loadClients');
+      const token = await AsyncStorage.getItem('userToken');
+      const options = await getClientsOptions(token ?? undefined, {
+        statusIn: ['approved', 'active'],
+        sort: 'label',
+      });
+      setClients(options.map(o => ({ label: o.label, value: o.value })));
+    } catch {
+      setClients([]);
+    } finally {
+      setLoadingClients(false);
+      performanceMonitor.endTimer('loadClients');
+    }
   }, []);
+
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
 
   // handlers — start_at (date -> time)
   const onPickStartDate = (date: Date) => {

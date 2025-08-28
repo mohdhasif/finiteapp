@@ -47,6 +47,7 @@ import {
 } from '../services/taskAssigneesService';
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { performanceMonitor } from '../utils/performance';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
 const { width } = Dimensions.get('window');
 type ScreenRoute = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
@@ -82,7 +83,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const [savingLink, setSavingLink] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [sendingNote, setSendingNote] = useState(false);
-    const [showDropdown, setShowDropdown] = useState(false);
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [adding, setAdding] = useState(false);
     const [options, setOptions] = useState<NewAssignee[]>([]);
@@ -162,9 +163,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
     }, [taskId, loadAll]);
 
     // ===== Actions =====
-    const handlePickAndUpload = async () => {
+    const handlePickAndUpload = useCallback(async () => {
         if (!token) return;
         try {
+            performanceMonitor.startTimer('uploadAttachment');
             const res = await DocumentPicker.pickSingle({
                 type: [types.allFiles], // semua jenis file
             });
@@ -189,8 +191,9 @@ const AdminTaskDetailsScreen: React.FC = () => {
             }
         } finally {
             setUploading(false);
+            performanceMonitor.endTimer('uploadAttachment');
         }
-    };
+    }, [token, taskId, fetchAttachments]);
 
     const handleDeleteAttachment = (id: number) => {
         if (!token) return;
@@ -372,21 +375,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            {/* Quick Add dropdown */}
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+
 
             <ScrollView
                 ref={outerScrollRef}
@@ -584,24 +573,46 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 <View style={{ height: 120 }} />
             </ScrollView>
 
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity>
-                    <Icon name="calendar" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-                <TouchableOpacity>
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            {/* Optimized Bottom Tab */}
+            <OptimizedBottomTab
+                tabs={[
+                    {
+                        id: 'home',
+                        icon: 'home',
+                        screen: 'AdminHomeScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'calendar',
+                        icon: 'calendar',
+                        screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'notifications',
+                        icon: 'notifications',
+                        screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'profile',
+                        icon: 'person',
+                        screen: 'AdminProfileScreen' as keyof RootStackParamList,
+                    },
+                ]}
+                quickActions={[
+                    {
+                        id: 'new-project',
+                        title: 'New Project',
+                        icon: 'folder-open',
+                        onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+                    },
+                    {
+                        id: 'new-task',
+                        title: 'New Task',
+                        icon: 'add-circle',
+                        onPress: () => navigation.navigate('AddTaskScreen'),
+                    },
+                ]}
+                activeTab="task-details"
+            />
 
             <Modal isVisible={showAddModal} onBackdropPress={() => setShowAddModal(false)} backdropOpacity={0.4} useNativeDriver>
                 <View style={{ backgroundColor: '#12668C', borderRadius: 12, padding: 12 }}>
@@ -783,56 +794,5 @@ const styles = StyleSheet.create({
     noteText: { color: '#fff', fontSize: 14 },
     muted: { color: '#cfe7f6', opacity: 0.7 },
 
-    bottomTab: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        backgroundColor: '#0072B5',
-        paddingVertical: 14,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
-        alignItems: 'center',
-        zIndex: 1000,
-        elevation: 10,
-    },
-    fab: {
-        backgroundColor: '#fff',
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: -40,
-    },
 
-
-    dropdown: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        paddingVertical: 4,
-        width: 160,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 10,
-        zIndex: 10,
-    },
-
-    option: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#0072B5',
-    },
 });

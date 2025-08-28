@@ -1,5 +1,5 @@
 // src/screens/AdminCalendarScreen.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
+import { performanceMonitor } from '../utils/performance';
 
 const BLUE = '#0B7EBE';
 const BG = '#F4F7FB';
@@ -39,7 +41,7 @@ type CalendarItem = AgendaEntry & {
 const AdminCalendarScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    const [showDropdown, setShowDropdown] = useState(false);
+
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [events, setEvents] = useState<ProjectCalendarEvent[]>([]);
@@ -48,6 +50,7 @@ const AdminCalendarScreen: React.FC = () => {
 
     const fetchData = useCallback(async (centerDate?: string) => {
         try {
+            performanceMonitor.startTimer('fetchCalendarData');
             const token = (await AsyncStorage.getItem('userToken')) || '';
             const refDate = centerDate ? new Date(centerDate) : new Date();
 
@@ -66,6 +69,7 @@ const AdminCalendarScreen: React.FC = () => {
             // console.log('[CAL][ERR]', e?.message || e);
         } finally {
             setLoading(false);
+            performanceMonitor.endTimer('fetchCalendarData');
         }
     }, []);
 
@@ -128,13 +132,13 @@ const AdminCalendarScreen: React.FC = () => {
         setItems(buildAgendaItems(events));
     }, [events, buildAgendaItems]);
 
-    const onRefresh = async () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await fetchData(selectedDay);
         setRefreshing(false);
-    };
+    }, [fetchData, selectedDay]);
 
-    const renderItem = (item: CalendarItem) => {
+    const renderItem = useCallback((item: CalendarItem) => {
         const statusStyle = getStatusStyle(item.status);
         return (
             <TouchableOpacity style={styles.card} activeOpacity={0.85}>
@@ -156,32 +160,18 @@ const AdminCalendarScreen: React.FC = () => {
                 </Text>
             </TouchableOpacity>
         );
-    };
+    }, []);
 
-    const renderEmptyDate = () => (
+    const renderEmptyDate = useCallback(() => (
         <View style={styles.emptyWrap}>
             <Text style={styles.emptyText}>Tiada projek pada tarikh ini.</Text>
         </View>
-    );
+    ), []);
 
     return (
         <View style={styles.container}>
 
-            {/* Quick Add dropdown */}
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+
 
             <View style={styles.header}>
                 <Text style={styles.h1}>Project Calendar</Text>
@@ -219,26 +209,47 @@ const AdminCalendarScreen: React.FC = () => {
                 />
             )}
 
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
-                    <Icon name="calendar" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            {/* Optimized Bottom Tab */}
+            <OptimizedBottomTab
+                tabs={[
+                    {
+                        id: 'home',
+                        icon: 'home',
+                        screen: 'AdminHomeScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'calendar',
+                        icon: 'calendar',
+                        screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+                        isActive: true,
+                    },
+                    {
+                        id: 'notifications',
+                        icon: 'notifications',
+                        screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'profile',
+                        icon: 'person',
+                        screen: 'AdminProfileScreen' as keyof RootStackParamList,
+                    },
+                ]}
+                quickActions={[
+                    {
+                        id: 'new-project',
+                        title: 'New Project',
+                        icon: 'folder-open',
+                        onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+                    },
+                    {
+                        id: 'new-task',
+                        title: 'New Task',
+                        icon: 'add-circle',
+                        onPress: () => navigation.navigate('AddTaskScreen'),
+                    },
+                ]}
+                activeTab="calendar"
+            />
         </View>
     );
 };
@@ -315,42 +326,7 @@ const styles = StyleSheet.create({
     emptyText: { color: MUTED, fontSize: 13 },
 
 
-    // Bottom tab
-    bottomTab: {
-        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
-    },
-    fab: {
-        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
-        alignItems: 'center', justifyContent: 'center', marginTop: -40,
-    },
 
-    dropdown: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        paddingVertical: 4,
-        width: 160,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 10,
-        zIndex: 10,
-    },
-
-    option: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#0072B5',
-    },
 });
 
 export default AdminCalendarScreen;

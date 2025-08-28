@@ -26,6 +26,7 @@ import { getProjectSummaries, getProjectFreelancers, type ProjectSummary } from 
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { performanceMonitor } from '../utils/performance';
 import { api } from '../services/apiClient';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
 
 const { width } = Dimensions.get('window');
@@ -68,7 +69,6 @@ const AdminHomeScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     // ================= UI states
-    const [showDropdown, setShowDropdown] = useState(false);
     const [filterVisible, setFilterVisible] = useState(false);
     type FilterValue = 'All' | 'Pending' | 'in_progress' | 'completed';
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('All');
@@ -79,12 +79,21 @@ const AdminHomeScreen = () => {
     const { data: projects, loading: loadingProjects, error: projError, execute: fetchProjectsData } = useAsyncState<ProjectSummary[]>([]);
     const { data: tasks, loading: loadingTasks, execute: fetchTasksData } = useAsyncState<Task[]>([]);
     
+    // User profile data
+    const [userInfo, setUserInfo] = useState<any>(null);
+    const [userAvatar, setUserAvatar] = useState<string | null>(null);
+    
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
     
     // Performance monitoring
     const renderCount = useRef(0);
     renderCount.current++;
+
+    // Memoized user avatar source for better performance
+    const userAvatarSource = useMemo(() => {
+        return userAvatar ? { uri: userAvatar } : require('../assets/user.png');
+    }, [userAvatar]);
 
     // ================= Utils
     const formatDate = (d?: string | null) =>
@@ -95,6 +104,30 @@ const AdminHomeScreen = () => {
                 day: 'numeric',
                 year: 'numeric',
             });
+
+    // Load user profile data
+    const loadUserData = useCallback(async () => {
+        try {
+            performanceMonitor.startTimer('loadUserData');
+            const userInfoRaw = await AsyncStorage.getItem('userInfo');
+            if (userInfoRaw) {
+                const parsedUserInfo = JSON.parse(userInfoRaw);
+                setUserInfo(parsedUserInfo);
+                
+                // Set avatar URL
+                if (parsedUserInfo.avatar_url) {
+                    const avatarUrl = parsedUserInfo.avatar_url.startsWith('http')
+                        ? parsedUserInfo.avatar_url
+                        : `${BASE_URL}${parsedUserInfo.avatar_url}`;
+                    setUserAvatar(avatarUrl);
+                }
+            }
+        } catch (error) {
+            console.log('Error loading user data:', error);
+        } finally {
+            performanceMonitor.endTimer('loadUserData');
+        }
+    }, []);
 
     // ================= Filter mapping
     const resolveStatus = (
@@ -211,10 +244,11 @@ const AdminHomeScreen = () => {
             // bila masuk screen / kembali fokus -> tarik data latest
             loadMasters();
             loadTasks(); // Will use current selectedFilter
+            loadUserData(); // Load user profile data
 
             // tiada cleanup khas diperlukan di sini
             return () => { };
-        }, [loadMasters]) // Remove loadTasks from dependency to prevent reloading on filter change
+        }, [loadMasters, loadUserData]) // Remove loadTasks from dependency to prevent reloading on filter change
     );
 
     // ================= Bila filter berubah (semasa screen aktif), refresh tasks sahaja
@@ -283,31 +317,60 @@ const AdminHomeScreen = () => {
         }
     }, [tasks, checkedById, refetchProjectsOnly, loadTasks]);
 
+    // Define tab configuration
+    const tabConfig = [
+        {
+            id: 'home',
+            icon: 'home',
+            screen: 'AdminHomeScreen' as keyof RootStackParamList,
+            isActive: true,
+        },
+        {
+            id: 'calendar',
+            icon: 'calendar',
+            screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+        },
+        {
+            id: 'notifications',
+            icon: 'notifications',
+            screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+        },
+        {
+            id: 'profile',
+            icon: 'person',
+            screen: 'AdminProfileScreen' as keyof RootStackParamList,
+        },
+    ];
+
+    // Define quick actions
+    const quickActions = [
+        {
+            id: 'new-project',
+            title: 'New Project',
+            icon: 'folder-open',
+            onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+        },
+        {
+            id: 'new-task',
+            title: 'New Task',
+            icon: 'add-circle',
+            onPress: () => navigation.navigate('AddTaskScreen'),
+        },
+    ];
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            {/* Quick Add dropdown */}
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <LinearGradient colors={['#003865', '#0072B5']} style={styles.header}>
                     <View style={styles.userRow}>
-                        <Image source={require('../assets/user.png')} style={styles.avatar} />
+                        <Image 
+                            source={userAvatarSource} 
+                            style={styles.avatar} 
+                        />
                         <View>
-                            <Text style={styles.username}>User 1</Text>
+                            <Text style={styles.username}>{userInfo?.name || 'Admin User'}</Text>
                             <Text style={styles.welcome}>Welcome Back!</Text>
                         </View>
                     </View>
@@ -472,26 +535,12 @@ const AdminHomeScreen = () => {
                 </View>
             </ScrollView>
 
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
-                    <Icon name="calendar" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            {/* Optimized Bottom Tab */}
+            <OptimizedBottomTab
+                tabs={tabConfig}
+                quickActions={quickActions}
+                activeTab="home"
+            />
         </SafeAreaView>
     );
 };
@@ -530,17 +579,6 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 18, fontWeight: 'bold' },
     seeAll: { fontSize: 14, color: '#0072B5', fontWeight: '500' },
 
-    // Bottom tab
-    bottomTab: {
-        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
-    },
-    fab: {
-        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
-        alignItems: 'center', justifyContent: 'center', marginTop: -40,
-    },
-
     // Filter/dropdown (Tasks)
     taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     taskHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: '#073B61' },
@@ -549,35 +587,6 @@ const styles = StyleSheet.create({
     dropdownMenu: {
         position: 'absolute', top: 45, right: 20, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 4,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, width: 160, zIndex: 10,
-    },
-
-
-
-
-    dropdown: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        paddingVertical: 4,
-        width: 160,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 10,
-        zIndex: 10,
-    },
-
-    option: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#0072B5',
     },
 
     dropdownItem: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: 'transparent' },

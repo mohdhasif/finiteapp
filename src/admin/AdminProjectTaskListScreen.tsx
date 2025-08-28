@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, Animated, Dimensions, PanResponder, Alert, Image
@@ -15,6 +15,7 @@ import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminTaskCard from '../component/AdminTaskCard';
 import Svg, { G, Circle } from 'react-native-svg';
+import { performanceMonitor } from '../utils/performance';
 
 // Type definitions for API responses
 type ProjectFreelancer = {

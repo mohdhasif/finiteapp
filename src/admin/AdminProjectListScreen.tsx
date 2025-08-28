@@ -24,6 +24,7 @@ import { BASE_URL } from '../constants/apiConfig';
 import { useDebouncedState } from '../hooks/useOptimizedState';
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { performanceMonitor } from '../utils/performance';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
 const { width } = Dimensions.get('window');
 
@@ -66,7 +67,45 @@ const AdminProjectListScreen = () => {
   // Performance optimized state management
   const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
+  // Define tab configuration
+  const tabConfig = [
+    {
+      id: 'home',
+      icon: 'home',
+      screen: 'AdminHomeScreen' as keyof RootStackParamList,
+    },
+    {
+      id: 'calendar',
+      icon: 'calendar',
+      screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+    },
+    {
+      id: 'notifications',
+      icon: 'notifications',
+      screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+    },
+    {
+      id: 'profile',
+      icon: 'person',
+      screen: 'AdminProfileScreen' as keyof RootStackParamList,
+    },
+  ];
+
+  // Define quick actions
+  const quickActions = [
+    {
+      id: 'new-project',
+      title: 'New Project',
+      icon: 'folder-open',
+      onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+    },
+    {
+      id: 'new-task',
+      title: 'New Task',
+      icon: 'add-circle',
+      onPress: () => navigation.navigate('AddTaskScreen'),
+    },
+  ];
 
   // Debounced search for better performance
   const [query, setQuery, debouncedQuery] = useDebouncedState('', 300);
@@ -316,40 +355,12 @@ const AdminProjectListScreen = () => {
         )}
       </ScrollView>
 
-      {/* FAB dropdown */}
-      {showOptions && (
-        <View style={styles.dropdown}>
-          <TouchableOpacity style={styles.option} onPress={() => setShowOptions(false)}>
-            <Text style={styles.optionText}>New Project</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => setShowOptions(false)}>
-            <Text style={styles.optionText}>New Task</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom Tab (sticky) */}
-      <View style={styles.bottomTab}>
-        <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-          <Icon name="home" size={26} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('AdminCalendarScreen')}>
-          <Icon name="calendar" size={26} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.fab} onPress={() => setShowOptions(prev => !prev)}>
-          <Icon name="add" size={32} color="#0072B5" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('AdminNotificationsScreen')}>
-          <Icon name="notifications" size={26} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-          <Icon name="person" size={26} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      {/* Optimized Bottom Tab */}
+      <OptimizedBottomTab
+        tabs={tabConfig}
+        quickActions={quickActions}
+        activeTab="projects"
+      />
     </View>
   );
 };
@@ -454,47 +465,7 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, paddingBottom: 110, paddingTop: 8 },
   emptyText: { textAlign: 'center', color: '#96A1B2', marginTop: 24 },
 
-  // BOTTOM TAB + FAB
-  bottomTab: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#0072B5',
-    paddingVertical: 14,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    alignItems: 'center',
-  },
-  fab: {
-    backgroundColor: '#fff',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -40,
-  },
 
-  // DROPDOWN (FAB menu)
-  dropdown: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 4,
-    width: 160,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 10,
-    zIndex: 10,
-  },
-  option: { paddingVertical: 12, paddingHorizontal: 20 },
-  optionText: { fontSize: 14, fontWeight: '600', color: '#0072B5' },
 });
 
 

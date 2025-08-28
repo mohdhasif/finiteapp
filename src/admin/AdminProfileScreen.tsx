@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
 
 type Coords = { latitude: number; longitude: number } | null;
@@ -55,7 +56,7 @@ const AdminProfileScreen = () => {
 
     const [userInfo, setUserInfo] = useState<any>(null);
 
-    const [showDropdown, setShowDropdown] = useState(false);
+
 
     useEffect(() => {
         (async () => {
@@ -385,21 +386,7 @@ const AdminProfileScreen = () => {
     return (
         <SafeAreaView style={styles.safe}>
 
-            {/* Quick Add dropdown */}
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+
 
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={styles.title}>Profile</Text>
@@ -526,25 +513,47 @@ const AdminProfileScreen = () => {
                 </TouchableOpacity> */}
             </ScrollView>
 
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminCalendarScreen')}>
-                    <Icon name="calendar" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            {/* Optimized Bottom Tab */}
+            <OptimizedBottomTab
+                tabs={[
+                    {
+                        id: 'home',
+                        icon: 'home',
+                        screen: 'AdminHomeScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'calendar',
+                        icon: 'calendar',
+                        screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'notifications',
+                        icon: 'notifications',
+                        screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'profile',
+                        icon: 'person',
+                        screen: 'AdminProfileScreen' as keyof RootStackParamList,
+                        isActive: true,
+                    },
+                ]}
+                quickActions={[
+                    {
+                        id: 'new-project',
+                        title: 'New Project',
+                        icon: 'folder-open',
+                        onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+                    },
+                    {
+                        id: 'new-task',
+                        title: 'New Task',
+                        icon: 'add-circle',
+                        onPress: () => navigation.navigate('AddTaskScreen'),
+                    },
+                ]}
+                activeTab="profile"
+            />
         </SafeAreaView>
     );
 };
@@ -583,31 +592,7 @@ function distanceMeters(a: { latitude: number; longitude: number }, b: { latitud
 
 const styles = StyleSheet.create({
 
-    dropdown: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        paddingVertical: 4,
-        width: 160,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 10,
-        zIndex: 10,
-    },
 
-    option: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#0072B5',
-    },
 
     safe: { flex: 1, backgroundColor: '#d4d4d4' },
     container: {
@@ -645,16 +630,7 @@ const styles = StyleSheet.create({
 
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-    // Bottom tab
-    bottomTab: {
-        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
-    },
-    fab: {
-        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
-        alignItems: 'center', justifyContent: 'center', marginTop: -40,
-    },
+
 });
 
 export default AdminProfileScreen;

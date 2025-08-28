@@ -1,5 +1,5 @@
 // src/screens/AddTaskScreen.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView
@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SelectionModal from '../component/SelectionModal';
 import { getProjectsOptions, type ProjectOption } from '../services/projectService';
 import { createTask } from '../services/taskService';
+import { performanceMonitor } from '../utils/performance';
 
 const BLUE = '#0B7EBE';
 const BG = '#EFEFEF';
@@ -59,19 +60,24 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   // Load senarai projek utk dropdown
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = await AsyncStorage.getItem('userToken'); // kekalkan key ini
-        if (!token) throw new Error('Tiada token. Sila log masuk semula.');
+  const loadProjects = useCallback(async () => {
+    try {
+      performanceMonitor.startTimer('loadProjects');
+      const token = await AsyncStorage.getItem('userToken'); // kekalkan key ini
+      if (!token) throw new Error('Tiada token. Sila log masuk semula.');
 
-        const data = await getProjectsOptions(token);
-        setProjects(data);
-      } catch (e: any) {
-        Alert.alert('Failed', e.message || 'Failed to get project list');
-      }
-    })();
+      const data = await getProjectsOptions(token);
+      setProjects(data);
+    } catch (e: any) {
+      Alert.alert('Failed', e.message || 'Failed to get project list');
+    } finally {
+      performanceMonitor.endTimer('loadProjects');
+    }
   }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // handlers — due date
   const onPickDueDate = (date: Date) => {

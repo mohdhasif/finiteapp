@@ -1,5 +1,5 @@
 // src/screens/AdminNotificationsScreen.tsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -23,6 +23,8 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import OptimizedBottomTab from '../components/OptimizedBottomTab';
+import { performanceMonitor } from '../utils/performance';
 
 const BLUE = '#0B7EBE';
 const SUB = '#6B7C8F';
@@ -44,8 +46,10 @@ const timeAgo = (iso?: string | null) => {
 const NotificationRow: React.FC<{
     item: NotificationItem;
     onPress: () => void;
-}> = ({ item, onPress }) => {
+}> = React.memo(({ item, onPress }) => {
     const unread = !item.read_at;
+    const timeAgoText = useMemo(() => timeAgo(item.created_at), [item.created_at]);
+    
     return (
         <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.8}>
             <View style={styles.avatar}>
@@ -57,18 +61,18 @@ const NotificationRow: React.FC<{
                     {item.title || 'Notification'}
                 </Text>
                 {!!item.body && <Text style={styles.body} numberOfLines={2}>{item.body}</Text>}
-                {!!item.created_at && <Text style={styles.time}>{timeAgo(item.created_at)}</Text>}
+                {!!item.created_at && <Text style={styles.time}>{timeAgoText}</Text>}
             </View>
 
             {unread && <View style={styles.dot} />}
         </TouchableOpacity>
     );
-};
+});
 
 const AdminNotificationsScreen: React.FC = () => {
 
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const [showDropdown, setShowDropdown] = useState(false);
+
 
     const [list, setList] = useState<NotificationItem[]>([]);
     const [loadingFirst, setLoadingFirst] = useState(true);
@@ -104,14 +108,13 @@ const AdminNotificationsScreen: React.FC = () => {
 
     const loadPage = useCallback(
         async (p: number) => {
-            // console.log('[SCREEN] before getNotifications', { p, tokenLen: tokenRef.current?.length || 0 });
             try {
+                performanceMonitor.startTimer('loadNotifications');
                 const resp = await getNotifications(tokenRef.current, {
                     page: p,
                     per_page: perPage,
                     status: 'all',
                 });
-                // console.log('[SCREEN] after getNotifications', { p, len: resp?.data?.length, total: resp?.total });
 
                 const data = Array.isArray(resp?.data) ? resp.data : [];
                 const total: number | null = typeof resp?.total === 'number' ? resp.total : null;
@@ -132,9 +135,10 @@ const AdminNotificationsScreen: React.FC = () => {
 
                 return true;
             } catch (e: any) {
-                // console.log('[SCREEN][loadPage][ERROR]', e?.message || e);   // ✅ penting
                 setHasMore(false);
                 return false;
+            } finally {
+                performanceMonitor.endTimer('loadNotifications');
             }
         },
         [perPage]
@@ -169,7 +173,7 @@ const AdminNotificationsScreen: React.FC = () => {
         }
     }, [hasMore, loadPage, loadingMore, noData, page]);
 
-    const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
         const pad = 120;
         const nearBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - pad;
@@ -178,9 +182,9 @@ const AdminNotificationsScreen: React.FC = () => {
             lastLoadTsRef.current = now;
             loadMore().catch(() => { });
         }
-    };
+    }, [loadMore]);
 
-    const onPressItem = async (it: NotificationItem) => {
+    const onPressItem = useCallback(async (it: NotificationItem) => {
         if (!it.read_at) {
             await markAsRead(tokenRef.current, it.id);
             setList(prev =>
@@ -189,31 +193,18 @@ const AdminNotificationsScreen: React.FC = () => {
             setBadge(b => Math.max(0, b - 1));
         }
         // TODO: navigate ikut it.type / it.data jika perlu
-    };
+    }, []);
 
-    const onMarkAll = async () => {
+    const onMarkAll = useCallback(async () => {
         await markAllAsRead(tokenRef.current);
         setList(prev => prev.map(x => ({ ...x, read_at: x.read_at ?? new Date().toISOString() })));
         setBadge(0);
-    };
+    }, []);
 
     return (
         <View style={styles.container}>
 
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AdminCreateProjectScreen'); }}>
-                        <Text style={styles.optionText}>New Project</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => { setShowDropdown(false); navigation.navigate('AddTaskScreen'); }}>
-                        <Text style={styles.optionText}>New Task</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+
 
             <View style={styles.header}>
                 <Text style={styles.h1}>Notifications</Text>
@@ -268,25 +259,47 @@ const AdminNotificationsScreen: React.FC = () => {
                 </ScrollView>
             )}
 
-            {/* Bottom Tab */}
-            <View style={styles.bottomTab}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminHomeScreen')}>
-                    <Icon name="home" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity>
-                    <Icon name="calendar" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fab} onPress={() => setShowDropdown(v => !v)}>
-                    <Icon name="add" size={32} color="#0072B5" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('AdminNotificationsScreen')} >
-                    <Icon name="notifications" size={26} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminProfileScreen')}>
-                    <Icon name="person" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            {/* Optimized Bottom Tab */}
+            <OptimizedBottomTab
+                tabs={[
+                    {
+                        id: 'home',
+                        icon: 'home',
+                        screen: 'AdminHomeScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'calendar',
+                        icon: 'calendar',
+                        screen: 'AdminCalendarScreen' as keyof RootStackParamList,
+                    },
+                    {
+                        id: 'notifications',
+                        icon: 'notifications',
+                        screen: 'AdminNotificationsScreen' as keyof RootStackParamList,
+                        isActive: true,
+                    },
+                    {
+                        id: 'profile',
+                        icon: 'person',
+                        screen: 'AdminProfileScreen' as keyof RootStackParamList,
+                    },
+                ]}
+                quickActions={[
+                    {
+                        id: 'new-project',
+                        title: 'New Project',
+                        icon: 'folder-open',
+                        onPress: () => navigation.navigate('AdminCreateProjectScreen'),
+                    },
+                    {
+                        id: 'new-task',
+                        title: 'New Task',
+                        icon: 'add-circle',
+                        onPress: () => navigation.navigate('AddTaskScreen'),
+                    },
+                ]}
+                activeTab="notifications"
+            />
         </View>
     );
 };
@@ -339,39 +352,5 @@ const styles = StyleSheet.create({
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     emptyText: { color: SUB, marginTop: 8, fontSize: 16 },
 
-    bottomTab: {
-        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-        backgroundColor: '#0072B5', height: 60, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-        position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 10,
-    },
-    fab: {
-        backgroundColor: '#fff', width: 64, height: 64, borderRadius: 32,
-        alignItems: 'center', justifyContent: 'center', marginTop: -40,
-    },
 
-    dropdown: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        paddingVertical: 4,
-        width: 160,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 10,
-        zIndex: 10,
-    },
-
-    option: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#0072B5',
-    },
 });
