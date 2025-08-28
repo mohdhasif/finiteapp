@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, Animated, Dimensions, PanResponder, Alert, ActivityIndicator, Image
@@ -13,6 +13,8 @@ import { getProjectDetails, getProjectFreelancers } from '../services/projectSer
 import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskCard from '../component/TaskCard';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { performanceMonitor } from '../utils/performance';
 
 // Type definitions for API responses
 type ProjectFreelancer = {
@@ -49,11 +51,10 @@ const ProjectTaskListScreen = () => {
     const [filterVisible, setFilterVisible] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('all');
 
-    // Data states
-    const [tasksAll, setTasksAll] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [projectDetails, setProjectDetails] = useState<any>(null);
-    const [projectFreelancers, setProjectFreelancers] = useState<ProjectFreelancer[]>([]);
+    // Performance optimized data states
+    const { data: tasksAll, loading, error, execute: fetchTasks } = useAsyncState<any[]>([]);
+    const { data: projectDetails, execute: fetchProjectDetails } = useAsyncState<any>(null);
+    const { data: projectFreelancers, execute: fetchFreelancers } = useAsyncState<ProjectFreelancer[]>([]);
 
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
@@ -81,7 +82,8 @@ const ProjectTaskListScreen = () => {
     };
 
     // Calculate progress percentage
-    const progressPercentage = projectDetails?.progress_percent || Math.round((tasksAll.filter(t => t.status === 'completed').length / Math.max(tasksAll.length, 1)) * 100) || 0;
+    const tasksList = tasksAll || [];
+    const progressPercentage = projectDetails?.progress_percent || Math.round((tasksList.filter(t => t.status === 'completed').length / Math.max(tasksList.length, 1)) * 100) || 0;
     const progressRotation = Math.min(progressPercentage * 3.6, 360);
 
     useEffect(() => {
@@ -91,56 +93,59 @@ const ProjectTaskListScreen = () => {
     // Fetch tasks, project details, and freelancers on mount
     useEffect(() => {
         const run = async () => {
+            performanceMonitor.startTimer('fetchProjectData');
+            
             try {
-                setLoading(true);
                 const token = await AsyncStorage.getItem('userToken');
                 if (!token) throw new Error('Token tidak dijumpai');
 
                 // Fetch tasks, project details, and freelancers in parallel
-                const [arr, projectData, freelancersData] = await Promise.all([
-                    getTasksByProjectPublic(token, route.params.projectId),
-                    getProjectDetails(token, route.params.projectId),
-                    getProjectFreelancers(token, route.params.projectId)
+                await Promise.all([
+                    fetchTasks(async () => {
+                        const arr = await getTasksByProjectPublic(token, route.params.projectId);
+                        const list = Array.isArray(arr) ? arr : [];
+                        
+                        // init checkbox according to id (preserve when re-fetch)
+                        setCheckedById(() => {
+                            const next: Record<number, boolean> = {};
+                            for (const t of list) {
+                                const id = Number(t.id);
+                                const isCompleted = String(t.status || '').toLowerCase() === 'completed';
+                                next[id] = isCompleted; // force according to server
+                            }
+                            return next;
+                        });
+                        
+                        return list;
+                    }),
+                    fetchProjectDetails(async () => {
+                        return await getProjectDetails(token, route.params.projectId);
+                    }),
+                    fetchFreelancers(async () => {
+                        const freelancersData = await getProjectFreelancers(token, route.params.projectId);
+                        return Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : [];
+                    }),
                 ]);
-
-                // console.log('arr: ', arr);
-                // console.log('projectData: ', projectData);
-                // console.log('freelancersData: ', freelancersData);
-                
-                const list = Array.isArray(arr) ? arr : [];
-                setTasksAll(list);
-                setProjectDetails(projectData);
-                setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
-
-                // init checkbox according to id (preserve when re-fetch)
-                setCheckedById(() => {
-                    const next: Record<number, boolean> = {};
-                    for (const t of list) {
-                        const id = Number(t.id);
-                        const isCompleted =
-                            String(t.status || '').toLowerCase() === 'completed';
-                        next[id] = isCompleted; // force according to server
-                    }
-                    return next;
-                });
             } catch (err: any) {
                 console.error('Fetch data error:', err?.message || err);
             } finally {
-                setLoading(false);
+                performanceMonitor.endTimer('fetchProjectData');
             }
         };
         run();
-    }, [route.params.projectId]);
+    }, [route.params.projectId, fetchTasks, fetchProjectDetails, fetchFreelancers]);
 
     // Filtered tasks (client-side)
     const tasks = useMemo(() => {
-        if (selectedFilter === 'all') return tasksAll;
-        return tasksAll.filter(t => (t.status || '').toLowerCase() === selectedFilter);
+        const tasksList = tasksAll || [];
+        if (selectedFilter === 'all') return tasksList;
+        return tasksList.filter(t => (t.status || '').toLowerCase() === selectedFilter);
     }, [tasksAll, selectedFilter]);
 
     // Handle checkbox toggle with API update
-    const handleToggleCheck = async (taskId: number) => {
-        const task = tasksAll.find(t => t.id === taskId);
+    const handleToggleCheck = useCallback(async (taskId: number) => {
+        const tasksList = tasksAll || [];
+        const task = tasksList.find(t => t.id === taskId);
         if (!task) return;
 
         // if already completed, ignore
@@ -159,45 +164,37 @@ const ProjectTaskListScreen = () => {
         }
 
         // --- Optimistic UI ---
-        const prevTasks = [...tasksAll];
-        const prevChecked = { ...checkedById };
-
         const nextChecked = { ...checkedById, [taskId]: true }; // checking means completed
         setCheckedById(nextChecked);
 
-        const nextTasks = tasksAll.map(t => 
-            t.id === taskId ? { ...t, status: 'completed' } : t
-        );
-        setTasksAll(nextTasks);
-
         try {
             await updateTaskStatus(token, taskId, 'completed');
-            // success: keep optimistic state
-            // Optionally refetch tasks to ensure consistency
-            const arr = await getTasksByProjectPublic(token, route.params.projectId);
-            const list = Array.isArray(arr) ? arr : [];
-            setTasksAll(list);
-            
-            // Update checkbox states based on new data
-            setCheckedById(() => {
-                const next: Record<number, boolean> = {};
-                for (const t of list) {
-                    const id = Number(t.id);
-                    const isCompleted = String(t.status || '').toLowerCase() === 'completed';
-                    next[id] = isCompleted;
-                }
-                return next;
+            // success: refetch tasks to ensure consistency
+            await fetchTasks(async () => {
+                const arr = await getTasksByProjectPublic(token, route.params.projectId);
+                const list = Array.isArray(arr) ? arr : [];
+                
+                // Update checkbox states based on new data
+                setCheckedById(() => {
+                    const next: Record<number, boolean> = {};
+                    for (const t of list) {
+                        const id = Number(t.id);
+                        const isCompleted = String(t.status || '').toLowerCase() === 'completed';
+                        next[id] = isCompleted;
+                    }
+                    return next;
+                });
+                
+                return list;
             });
-
-        } catch (e: any) {
-            // rollback
-            setTasksAll(prevTasks);
-            setCheckedById(prevChecked);
-            Alert.alert('Failed', e?.message || 'Failed to update task status');
+        } catch (error) {
+            // Revert optimistic update on error
+            setCheckedById(prev => ({ ...prev, [taskId]: false }));
+            Alert.alert('Error', 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(taskId);
         }
-    };
+    }, [tasksAll, checkedById, fetchTasks, route.params.projectId]);
 
     // Drawer pan responder
     const panResponder = useRef(
@@ -244,7 +241,7 @@ const ProjectTaskListScreen = () => {
 
                         <View style={styles.metaItem}>
                             <Icon name="checkmark-circle" size={16} color="#4aa9ff" style={{ marginRight: 6 }} />
-                            <Text style={styles.metaText}>{tasksAll.length} Tasks</Text>
+                            <Text style={styles.metaText}>{(tasksAll || []).length} Tasks</Text>
                         </View>
                     </View>
                 </View>

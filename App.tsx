@@ -39,7 +39,9 @@ async function getOrCreateInstallId() {
 export default function App() {
 
   // Enable verbose logging for debugging (remove in production)
-  OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+  if (__DEV__) {
+    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+  }
   // Initialize with your OneSignal App ID
   OneSignal.initialize('eff1e397-c7ae-468d-9cd5-c673ba80821d');
   // Use this method to prompt for push notifications.

@@ -47,7 +47,7 @@ const AdminMyProfileScreen = () => {
                 try {
                     const userDetails = await getUserDetails(tk);
                     
-                    console.log('userDetails: ', userDetails);
+                    // console.log('userDetails: ', userDetails);
                     
                     setMe(userDetails);
                     setMyId(userDetails.id);
@@ -160,7 +160,7 @@ const AdminMyProfileScreen = () => {
                     throw new Error(result.error || result.message || 'Update failed');
                 }
             } catch (apiError: any) {
-                console.log('API update failed, using AsyncStorage:', apiError);
+                // console.log('API update failed, using AsyncStorage:', apiError);
                 
                 // Fallback to AsyncStorage
                 const updateData = {

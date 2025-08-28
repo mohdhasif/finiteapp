@@ -59,7 +59,7 @@ export const getProjectDetails = async (token: string, projectId: number) => {
 export const getProjectFreelancers = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectFreelancers(projectId), { headers: auth(token) });
     const text = await res.text();
-    console.log('projectFreelancers', text);
+    // console.log('projectFreelancers', text);
 
     if (!res.ok) {
         const json = parseText(text);

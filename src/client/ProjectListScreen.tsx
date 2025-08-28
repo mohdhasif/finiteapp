@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,10 @@ import type { RootStackParamList } from '../navigation/types';
 import { getProjectSummariesClient } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
+import { useDebouncedState } from '../hooks/useOptimizedState';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { api } from '../services/apiClient';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 
@@ -44,28 +48,38 @@ const ProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Performance optimized state management
+  const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Search
+  
+  // Debounced search for better performance
+  const [query, setQuery, debouncedQuery] = useDebouncedState('', 300);
   const [showSearch, setShowSearch] = useState(false);
-  const [query, setQuery] = useState('');
+  
+  // Performance monitoring
+  const renderCount = useRef(0);
+  renderCount.current++;
 
-  const fetchData = async (isRefreshing = false) => {
+  const fetchData = useCallback(async (isRefreshing = false) => {
+    performanceMonitor.startTimer('fetchProjects');
+    
     try {
-      const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
-      if (!isRefreshing) setLoading(true);
-      const result = await getProjectSummariesClient(token);
+      if (!isRefreshing) setRefreshing(true);
       
-      setProjects(Array.isArray(result) ? result : []);
+      const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+      const result = await fetchProjects(async () => {
+        return await getProjectSummariesClient(token);
+      });
+      
+      return result;
     } catch (error) {
       console.error('Fetch projects error:', error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
+      performanceMonitor.endTimer('fetchProjects');
     }
-  };
+  }, [fetchProjects]);
 
   useEffect(() => {
     fetchData();
@@ -85,22 +99,23 @@ const ProjectListScreen = () => {
 
       // Combine search + tabs
   const filteredProjects = useMemo(() => {
+    const projectsList = projects || [];
     const list =
       activeTab === 'All'
-        ? projects
-        : projects.filter(
+        ? projectsList
+        : projectsList.filter(
             p => (p.status || '').toLowerCase() === activeTab.toLowerCase()
           );
 
-    if (!query.trim()) return list;
+    if (!debouncedQuery.trim()) return list;
 
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     return list.filter(p => {
       const title = (p.project_title || '').toLowerCase();
       const client = (p.client_name || '').toLowerCase();
       return title.includes(q) || client.includes(q);
     });
-  }, [projects, activeTab, query]);
+  }, [projects, activeTab, debouncedQuery]);
 
   const goToTasks = (p: Project) => {
     navigation.navigate('ProjectTaskListScreen', { projectId: p.project_id, projectTitle: p.project_title });
@@ -190,12 +205,12 @@ const ProjectListScreen = () => {
           />
         }
       >
-        {filteredProjects.length === 0 ? (
+        {(filteredProjects || []).length === 0 ? (
           <Text style={styles.emptyText}>
-            {query ? 'No projects match your search.' : 'No projects found.'}
+            {debouncedQuery ? 'No projects match your search.' : 'No projects found.'}
           </Text>
         ) : (
-          filteredProjects.map(item => (
+          (filteredProjects || []).map(item => (
             <ClientProjectCardScreen
               key={item.project_id}
               id={item.project_id}

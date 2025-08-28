@@ -284,7 +284,7 @@ const ProfileScreen = () => {
     // Default avatar source
     const avatarSrc = require('../assets/user.png');
 
-    console.log('userInfo: ', userInfo);
+    // console.log('userInfo: ', userInfo);
     
     // Client logo source (from profile), fallback to default avatar
     const logoSource =
