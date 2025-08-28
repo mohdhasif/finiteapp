@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -10,9 +10,11 @@ import {
   Text,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBadgeCount } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +37,7 @@ interface OptimizedBottomTabProps {
   quickActions: QuickAction[];
   activeTab?: string;
   onTabPress?: (tabId: string) => void;
+  onNotificationBadgeUpdate?: (badgeCount: number) => void;
 }
 
 const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
@@ -42,9 +45,11 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
   quickActions,
   activeTab,
   onTabPress,
+  onNotificationBadgeUpdate,
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [showQuickActions, setShowQuickActions] = React.useState(false);
+  const [notificationBadge, setNotificationBadge] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -69,6 +74,60 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
   const handleBackdropPress = useCallback(() => {
     setShowQuickActions(false);
   }, []);
+
+  // Load notification badge count
+  const loadNotificationBadge = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        const badgeCount = await getBadgeCount(token);
+        setNotificationBadge(badgeCount);
+        onNotificationBadgeUpdate?.(badgeCount);
+      }
+    } catch (error) {
+      console.log('Error loading notification badge:', error);
+    }
+  }, [onNotificationBadgeUpdate]);
+
+  // Load notification badge on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadNotificationBadge();
+    }, [loadNotificationBadge])
+  );
+
+  // Helper function to render tab with badge
+  const renderTabWithBadge = useCallback((tab: TabItem, index: number) => {
+    const isNotificationTab = tab.icon === 'notifications' || tab.screen === 'AdminNotificationsScreen';
+    const showBadge = isNotificationTab && notificationBadge > 0;
+    
+    return (
+      <TouchableOpacity
+        key={tab.id}
+        style={[
+          styles.tabItem,
+          tab.isActive && styles.activeTabItem,
+        ]}
+        onPress={() => handleTabPress(tab)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.tabIconContainer}>
+          <Icon
+            name={tab.icon as any}
+            size={26}
+            color={tab.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
+          />
+          {showBadge && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {notificationBadge > 99 ? '99+' : notificationBadge}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }, [handleTabPress, notificationBadge]);
 
   // Animate modal appearance
   useEffect(() => {
@@ -106,35 +165,8 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
     <>
       {/* Bottom Tab */}
       <View style={styles.bottomTab}>
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            tabs[0]?.isActive && styles.activeTabItem,
-          ]}
-          onPress={() => handleTabPress(tabs[0])}
-          activeOpacity={0.7}
-        >
-          <Icon
-            name={tabs[0]?.icon as any}
-            size={26}
-            color={tabs[0]?.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            tabs[1]?.isActive && styles.activeTabItem,
-          ]}
-          onPress={() => handleTabPress(tabs[1])}
-          activeOpacity={0.7}
-        >
-          <Icon
-            name={tabs[1]?.icon as any}
-            size={26}
-            color={tabs[1]?.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
-          />
-        </TouchableOpacity>
+        {renderTabWithBadge(tabs[0], 0)}
+        {renderTabWithBadge(tabs[1], 1)}
         
         {/* FAB Button - Center */}
         <TouchableOpacity
@@ -145,35 +177,8 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
           <Icon name="add" size={32} color="#0072B5" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            tabs[2]?.isActive && styles.activeTabItem,
-          ]}
-          onPress={() => handleTabPress(tabs[2])}
-          activeOpacity={0.7}
-        >
-          <Icon
-            name={tabs[2]?.icon as any}
-            size={26}
-            color={tabs[2]?.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            tabs[3]?.isActive && styles.activeTabItem,
-          ]}
-          onPress={() => handleTabPress(tabs[3])}
-          activeOpacity={0.7}
-        >
-          <Icon
-            name={tabs[3]?.icon as any}
-            size={26}
-            color={tabs[3]?.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
-          />
-        </TouchableOpacity>
+        {renderTabWithBadge(tabs[2], 2)}
+        {renderTabWithBadge(tabs[3], 3)}
       </View>
 
       {/* Quick Actions Modal */}
@@ -242,6 +247,28 @@ const styles = StyleSheet.create({
   },
   activeTabItem: {
     // Active state styling if needed
+  },
+  tabIconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FF4757',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   fab: {
     backgroundColor: '#fff',
