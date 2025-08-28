@@ -46,7 +46,7 @@ type Project = {
   progress_percent?: number; // 0..100
   status?: 'Ongoing' | 'Completed' | 'Pending' | string;
   start_at?: string | null;
-  end_at?: string | null;
+  due_date?: string | null;
   total_tasks?: number;
   completed_tasks?: number;
   freelancer_count?: number;
@@ -136,6 +136,8 @@ const AdminProjectListScreen = () => {
       await fetchProjects(async () => {
         // Fetch project summaries first
         const result = await getProjectSummaries(token);
+        console.log('result:', JSON.stringify(result, null, 2));
+        
         const projectsData = Array.isArray(result) ? result : [];
 
         // OPTIMIZATION: Fetch freelancer data for all projects in parallel
@@ -194,26 +196,87 @@ const AdminProjectListScreen = () => {
   useEffect(() => {
     fetchData();
     (async () => {
-      const name = (await AsyncStorage.getItem('display_name')) || 'User';
-      setDisplayName(name);
+      const userInfoRaw = await AsyncStorage.getItem('userInfo');
+      if (userInfoRaw) {
+        try {
+          const userInfo = JSON.parse(userInfoRaw);
+          setDisplayName(userInfo.name || 'User');
+        } catch (error) {
+          console.log('Error parsing user info:', error);
+          setDisplayName('User');
+        }
+      } else {
+        setDisplayName('User');
+      }
     })();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       fetchData(true);
-    }, [activeTab])
+    }, []) // Remove activeTab dependency to prevent reloading on tab change
   );
+
+  // Helper function to normalize status for comparison
+  const normalizeStatus = (status: string | undefined): string => {
+    if (!status) return '';
+    const normalized = status.toLowerCase().trim();
+    
+    // Map various status formats to tab values
+    if (normalized.includes('complete') || normalized.includes('completed') || normalized.includes('finish')) {
+      return 'completed';
+    }
+    if (normalized.includes('ongoing') || normalized.includes('in progress') || normalized.includes('active')) {
+      return 'ongoing';
+    }
+    if (normalized.includes('pending') || normalized.includes('waiting')) {
+      return 'pending';
+    }
+    
+    return normalized;
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return 'No due date';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.log('Error formatting date:', error);
+      return 'Invalid date';
+    }
+  };
 
   // Gabung carian + tabs
   const filteredProjects = useMemo(() => {
     const projectsList = projects || [];
+    
+    // Debug: Log status mapping for troubleshooting
+    if (activeTab !== 'All') {
+      console.log(`Filtering for tab: "${activeTab}"`);
+      projectsList.forEach(p => {
+        console.log(`Project: "${p.project_title}" - Original Status: "${p.status}" - Normalized: "${normalizeStatus(p.status)}"`);
+      });
+    }
+    
     const list =
       activeTab === 'All'
         ? projectsList
-        : projectsList.filter(
-          p => (p.status || '').toLowerCase() === activeTab.toLowerCase()
-        );
+        : projectsList.filter(p => {
+            const projectStatus = normalizeStatus(p.status);
+            const tabStatus = activeTab.toLowerCase();
+            const matches = projectStatus === tabStatus;
+            console.log(`Project "${p.project_title}": ${projectStatus} === ${tabStatus} = ${matches}`);
+            return matches;
+          });
 
     if (!debouncedQuery.trim()) return list;
 
@@ -343,8 +406,8 @@ const AdminProjectListScreen = () => {
                 client_name={item.client_name}
                 progress={item.progress_percent ?? 0}
                 status={item.status}
-                start_date={item.start_at}
-                due_date={item.end_at}
+                start_date={formatDate(item.start_at)}
+                due_date={formatDate(item.due_date)}
                 logo_url={undefined}
                 total_tasks={item.total_tasks ?? undefined}
                 assignees={assigneesData}

@@ -148,8 +148,11 @@ const AdminNotificationsScreen: React.FC = () => {
         try {
             setRefreshing(true);
             // Ambil badge dulu (tak bergantung paging)
-            const [badgeCount] = await Promise.all([getBadgeCount(tokenRef.current)]);
-            setBadge(typeof badgeCount === 'number' ? badgeCount : (badgeCount?.count ?? 0));
+            const token = await AsyncStorage.getItem('userToken');
+            if (token) {
+                const badgeCount = await getBadgeCount(token);
+                setBadge(badgeCount);
+            }
 
             setPage(0);
             await loadPage(0);

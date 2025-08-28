@@ -81,6 +81,8 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
       const token = await AsyncStorage.getItem('userToken');
       if (token) {
         const badgeCount = await getBadgeCount(token);
+        console.log('badgeCount:', badgeCount);
+        
         setNotificationBadge(badgeCount);
         onNotificationBadgeUpdate?.(badgeCount);
       }
