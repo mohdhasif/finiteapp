@@ -51,8 +51,8 @@ const ClientApprovalScreen = () => {
   const [clientType, setClientType] = useState(client.client_type ?? 'company');
 
   useEffect(() => {
-    if (client.logo_url) {
-      setLogoUrl(client.logo_url); // string URL
+    if (client.avatar_url) {
+      setLogoUrl(client.avatar_url); // string URL
     }
   }, [client]);
 
@@ -96,25 +96,25 @@ const ClientApprovalScreen = () => {
     }
 
     try {
-      const response = await fetch(API_ENDPOINTS.updateClient, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const token = (await AsyncStorage.getItem('userToken')) ?? '';
+      const result = await updateClient(token, {
+        client_id: client.client_id,
+        company_name: companyName,
+        phone: phone,
+        status: statusValue,
+        client_type: clientType,
+        logo: logoUrl && typeof logoUrl === 'object' && logoUrl.uri ? {
+          uri: logoUrl.uri,
+          name: logoUrl.fileName || `logo_${client.client_id}.jpg`,
+          type: logoUrl.type || 'image/jpeg'
+        } : null,
+        logo_url: typeof logoUrl === 'string' ? logoUrl : null,
       });
 
-      const text = await response.text();
-      try {
-        const result = JSON.parse(text);
-
-        if (response.ok && result.success) {
-          Alert.alert('Success', result.message || 'Client updated successfully');
-        } else {
-          Alert.alert('Error', result.error || 'Failed to update client');
-        }
-      } catch (parseError) {
-        Alert.alert('Error', 'Invalid server response');
+      if (result.success) {
+        Alert.alert('Success', result.message || 'Client updated successfully');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update client');
       }
     } catch (error) {
       console.error('Error updating client:', error);

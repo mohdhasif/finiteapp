@@ -95,26 +95,45 @@ const FreelancerApprovalScreen = () => {
         }
 
         try {
-            const response = await fetch(API_ENDPOINTS.updateFreelancer, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+            const token = (await AsyncStorage.getItem('userToken')) ?? '';
+            
+            // Check if freelancer ID exists
+            if (!freelancer?.id) {
+                Alert.alert('Error', 'Freelancer ID is missing. Cannot update.');
+                return;
+            }
+            
+            console.log('Freelancer object:', freelancer);
+            console.log('Freelancer ID:', freelancer.id);
+            console.log('Payload being sent:', {
+                freelancer_id: freelancer.id,
+                name: name,
+                email: email,
+                skillset: skillset,
+                avatar: avatarUrl,
+                availability: availability,
+                status: status,
+            });
+            
+            const result = await updateFreelancer(token, {
+                freelancer_id: freelancer.id,
+                name: name,
+                email: email,
+                skillset: skillset,
+                avatar: avatarUrl && typeof avatarUrl === 'object' && avatarUrl.uri ? {
+                    uri: avatarUrl.uri,
+                    name: avatarUrl.fileName || `avatar_${freelancer.id}.jpg`,
+                    type: avatarUrl.type || 'image/jpeg'
+                } : null,
+                avatar_url: typeof avatarUrl === 'string' ? avatarUrl : null,
+                availability: availability,
+                status: status,
             });
 
-            const text = await response.text();
-
-            try {
-                const result = JSON.parse(text);
-
-                if (response.ok && result.success) {
-                    Alert.alert('Success', result.message || 'Freelancer updated successfully');
-                } else {
-                    Alert.alert('Error', result.error || 'Update failed');
-                }
-            } catch (parseError) {
-                Alert.alert('Error', 'Invalid server response');
+            if (result.success) {
+                Alert.alert('Success', result.message || 'Freelancer updated successfully');
+            } else {
+                Alert.alert('Error', result.error || 'Update failed');
             }
         } catch (error) {
             console.error('Error updating freelancer:', error);

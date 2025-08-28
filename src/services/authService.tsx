@@ -119,3 +119,52 @@ export const updateUserDetails = async (
 
     return json;
 };
+
+export const login = async (email: string, password: string): Promise<{ token: string; user: any }> => {
+    const res = await fetch(API_ENDPOINTS.login, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch (e) {
+        throw new Error('Server mengembalikan respons tidak sah.');
+    }
+
+    if (!res.ok || !json?.token) {
+        throw new Error(json?.message || json?.error || `Gagal log masuk (HTTP ${res.status})`);
+    }
+
+    return json;
+};
+
+export const claimInstallSubscriptions = async (token: string, installId: string): Promise<any> => {
+    const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ install_id: installId }),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch (e) {
+        throw new Error('Server mengembalikan respons tidak sah.');
+    }
+
+    if (!res.ok) {
+        throw new Error(json?.message || json?.error || `Gagal claim install (HTTP ${res.status})`);
+    }
+
+    return json;
+};

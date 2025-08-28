@@ -10,7 +10,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { API_ENDPOINTS } from '../constants/apiConfig';
+import { uploadLogo } from '../services/uploadService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UploadLogoScreen = () => {
   const [logo, setLogo] = useState<any>(null);
@@ -24,7 +25,7 @@ const UploadLogoScreen = () => {
     });
   };
 
-  const uploadLogo = async (
+  const uploadLogoHandler = async (
     logo: {
       uri: string;
       fileName?: string;
@@ -37,25 +38,10 @@ const UploadLogoScreen = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('logo', {
-      uri: logo.uri,
-      name: logo.fileName || 'logo.jpg',
-      type: logo.type || 'image/jpeg',
-    } as any); // 👈 cast as any to satisfy TS
-
     try {
       setUploading(true);
-
-      const res = await fetch(API_ENDPOINTS.uploadLogo, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      const result = await res.json();
+      const token = await AsyncStorage.getItem('userToken') || '';
+      const result = await uploadLogo(token, logo);
       setUploading(false);
 
       if (result.success) {
@@ -75,7 +61,7 @@ const UploadLogoScreen = () => {
       <Text style={styles.title}>Upload Logo</Text>
       <Button title="Choose Logo" onPress={pickImage} />
       {logo && <Image source={{ uri: logo.uri }} style={styles.preview} />}
-      <Button title="Upload Logo" onPress={() => uploadLogo(logo, setUploading)} />
+      <Button title="Upload Logo" onPress={() => uploadLogoHandler(logo, setUploading)} />
       {uploading && <ActivityIndicator size="large" style={{ marginTop: 10 }} />}
     </View>
   );

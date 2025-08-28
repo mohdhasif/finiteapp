@@ -8,10 +8,13 @@ const parse = async (res: Response) => {
     return json;
 };
 
-export const getClients = async (token: string) => {
-    const res = await fetch(API_ENDPOINTS.getClients, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
+export const getClients = async (token?: string) => {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const res = await fetch(API_ENDPOINTS.getClients, { headers });
     return parse(res);
 };
 
@@ -37,8 +40,8 @@ export const updateClient = async (
 
     if (payload.logo) {
         formData.append('logo', payload.logo as any);
-    } else if (payload.logo_url) {
-        formData.append('logo_url', payload.logo_url);
+    } else if (payload.logo) {
+        formData.append('logo', payload.logo);
     }
 
     const res = await fetch(API_ENDPOINTS.updateClient, {

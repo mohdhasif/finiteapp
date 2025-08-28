@@ -16,7 +16,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { API_ENDPOINTS } from '../constants/apiConfig'; // sesuaikan path
+import { getFreelancers } from '../services/freelancerService';
 import { BASE_URL } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
@@ -55,17 +55,7 @@ const FreelancerListScreen = () => {
         setRefreshing: (val: boolean) => void
     ) => {
         try {
-            const response = await fetch(API_ENDPOINTS.getFreelancers);
-            const text = await response.text();
-
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (err) {
-                console.error('JSON parse error:', err);
-                return;
-            }
-
+            const data = await getFreelancers();
             setFreelancers(data);
         } catch (error) {
             console.error('Fetch error:', error);

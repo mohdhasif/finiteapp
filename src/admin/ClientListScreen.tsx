@@ -15,7 +15,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { API_ENDPOINTS } from '../constants/apiConfig';
+import { getClients } from '../services/clientService';
+import { getProjectSummaries } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../constants/apiConfig';
 
@@ -86,16 +87,7 @@ const ClientListScreen = () => {
     const fetchClients = useCallback(async (isRefreshing = false) => {
         try {
             if (!isRefreshing) setLoading(true);
-            const response = await fetch(API_ENDPOINTS.getClients);
-            const text = await response.text();
-
-            let data: Client[] = [];
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                return;
-            }
+            const data = await getClients();
             setClients(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Fetch error:', error);
@@ -127,15 +119,7 @@ const ClientListScreen = () => {
                 const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
                 if (!token) return;
 
-                const res = await fetch(API_ENDPOINTS.projectSummaries, {
-                    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-                });
-
-                const text = await res.text();
-                let json: any;
-                try { json = JSON.parse(text); } catch { json = []; }
-
-                if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+                const json = await getProjectSummaries(token);
                 if (!alive) return;
 
                 setProjects(Array.isArray(json) ? json : (json ? [json] : []));

@@ -132,25 +132,19 @@ const MyProfileScreen = () => {
 
             // Try API first, fallback to AsyncStorage
             try {
-                const response = await fetch(API_ENDPOINTS.updateMe, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data',
-                    },
-                    body: formData,
+                const result = await updateUserDetails(token, {
+                    name,
+                    dob,
+                    gender,
+                    phone,
+                    avatar_url: typeof avatarUriLocal === 'string' 
+                        ? (avatarUriLocal.startsWith('http') 
+                            ? avatarUriLocal.replace(BASE_URL, '') 
+                            : avatarUriLocal)
+                        : avatarUriLocal?.uri || null
                 });
 
-                const text = await response.text();
-                let result;
-                
-                try {
-                    result = JSON.parse(text);
-                } catch (parseError) {
-                    throw new Error('Invalid server response');
-                }
-
-                if (response.ok && result.success) {
+                if (result.success) {
                     // Refresh user details from API
                     const updatedUserDetails = await getUserDetails(token);
                     
@@ -161,7 +155,7 @@ const MyProfileScreen = () => {
                     setProfile(updatedUserDetails);
                     setModalVisible(true);
                 } else {
-                    throw new Error(result.error || result.message || 'Update failed');
+                    throw new Error(result.message || 'Update failed');
                 }
             } catch (apiError: any) {
                 // console.log('API update failed, using AsyncStorage:', apiError);

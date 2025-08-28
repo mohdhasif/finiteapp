@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ENDPOINTS } from '../constants/apiConfig';
+import { login as loginService, claimInstallSubscriptions } from '../services/authService';
 
 type AuthContextType = {
     userRole: string | null;
@@ -41,19 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             // console.log('Already claimed?', already);
 
                             if (already !== '1') {
-                                const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
-                                    method: 'POST',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': 'application/json',
-                                        Accept: 'application/json',
-                                    },
-                                    body: JSON.stringify({ install_id: installId }),
-                                });
-                                if (!res.ok) {
-                                    const t = await res.text();
-                                    throw new Error(t || `HTTP ${res.status}`);
-                                }
+                                await claimInstallSubscriptions(token, installId);
                                 await AsyncStorage.setItem(claimedKey, '1');
                                 // console.log('Install ID claimed successfully at loadUser()');
                             }
@@ -74,22 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await fetch(API_ENDPOINTS.login, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
-
-            // 🔍 Log untuk debug
-            const clonedResponse = response.clone();
-            const rawText = await clonedResponse.text();
-
-            // ✅ Cuba parse JSON
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
-            }
+            const data = await loginService(email, password);
 
             // ✅ Simpan dalam AsyncStorage
             await AsyncStorage.setItem('userToken', data.token);
