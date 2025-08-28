@@ -45,6 +45,8 @@ import {
     searchFreelancersSimple,
     type NewAssignee,
 } from '../services/taskAssigneesService';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 type ScreenRoute = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
@@ -66,38 +68,35 @@ const AdminTaskDetailsScreen: React.FC = () => {
     const taskTitle = route.params?.task_title ?? 'Task';
 
     const [token, setToken] = useState<string>('');
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Attachments
-    const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+    // Performance optimized state management
+    const { data: taskDetails, loading, error, execute: fetchTaskDetails } = useAsyncState<any>(null);
+    const { data: attachments, execute: fetchAttachments } = useAsyncState<TaskAttachment[]>([]);
+    const { data: notes, execute: fetchNotes } = useAsyncState<TaskNote[]>([]);
+    const { data: assignees, execute: fetchAssignees } = useAsyncState<Assignee[]>([]);
+    
+    // UI states
     const [uploading, setUploading] = useState(false);
-
-    // Single Link
     const [linkUrl, setLinkUrlState] = useState<string>('');
     const [savingLink, setSavingLink] = useState(false);
-
-    // Notes
-    const [notes, setNotes] = useState<TaskNote[]>([]);
     const [noteText, setNoteText] = useState('');
     const [sendingNote, setSendingNote] = useState(false);
-    const canSend = useMemo(() => noteText.trim().length > 0, [noteText]);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [options, setOptions] = useState<NewAssignee[]>([]);
+
+    const ROLE_OPTIONS: Assignee['role'][] = ['designer', 'editor', 'strategist', 'pm', 'other'];
 
     const outerScrollRef = useRef<ScrollView>(null); // scroll keseluruhan
     const notesBottomAnchor = useRef<View>(null);     // anchor untuk scroll ke bawah
 
-    const [taskDetails, setTaskDetails] = useState<any>(null);
-
-    const [showDropdown, setShowDropdown] = useState(false);
-
-    const ROLE_OPTIONS: Assignee['role'][] = ['designer', 'editor', 'strategist', 'pm', 'other'];
-
-    const [assignees, setAssignees] = useState<Assignee[]>([]);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [adding, setAdding] = useState(false);
-
-    // untuk modal pilihan freelancer (saranan: guna API freelancers_simple)
-    const [options, setOptions] = useState<NewAssignee[]>([]);
+    const canSend = useMemo(() => noteText.trim().length > 0, [noteText]);
+    
+    // Performance monitoring
+    const renderCount = useRef(0);
+    renderCount.current++;
     const [searchQ, setSearchQ] = useState('');
     const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -108,26 +107,36 @@ const AdminTaskDetailsScreen: React.FC = () => {
     }, []);
 
     const loadAll = useCallback(async (tk: string) => {
+        performanceMonitor.startTimer('loadTaskDetails');
+        
         try {
-            setLoading(true);
-            const [att, lk, ns, td, asg] = await Promise.all([
-                listAttachments(tk, taskId),
-                getTaskLink(tk, taskId),
-                listNotes(tk, taskId),
-                getTaskDetails(tk, taskId),
-                listTaskAssignees(tk, taskId), // <-- baru
+            // Load all data in parallel using optimized async state
+            await Promise.all([
+                fetchTaskDetails(async () => {
+                    return await getTaskDetails(tk, taskId);
+                }),
+                fetchAttachments(async () => {
+                    return await listAttachments(tk, taskId);
+                }),
+                fetchNotes(async () => {
+                    const notesData = await listNotes(tk, taskId);
+                    return sortOldest(notesData ?? []);
+                }),
+                fetchAssignees(async () => {
+                    return await listTaskAssignees(tk, taskId);
+                })
             ]);
-            setAttachments(att ?? []);
-            setLinkUrlState(lk?.url ?? '');
-            setNotes(sortOldest(ns ?? []));
-            setTaskDetails(td ?? null);
-            setAssignees(asg ?? []); // <-- baru
+            
+            // Load link separately since it's not part of async state
+            const linkData = await getTaskLink(tk, taskId);
+            setLinkUrlState(linkData?.url ?? '');
+            
         } catch (e: any) {
             Alert.alert('Failed to load', e?.message || 'Unknown error');
         } finally {
-            setLoading(false);
+            performanceMonitor.endTimer('loadTaskDetails');
         }
-    }, [taskId]);
+    }, [taskId, fetchTaskDetails, fetchAttachments, fetchNotes, fetchAssignees]);
 
 
     const onRefresh = useCallback(async () => {
@@ -168,7 +177,11 @@ const AdminTaskDetailsScreen: React.FC = () => {
             const type = res.type || 'application/octet-stream';
 
             const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
-            setAttachments((prev) => [uploaded, ...prev]);
+            // Update attachments using the async state execute function
+            await fetchAttachments(async () => {
+                const currentAttachments = await listAttachments(token, taskId);
+                return [uploaded, ...(currentAttachments ?? [])];
+            });
             Alert.alert('Success', 'Attachment uploaded successfully.');
         } catch (err: any) {
             if (!DocumentPicker.isCancel(err)) {
@@ -189,8 +202,15 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 onPress: async () => {
                     try {
                         const ok = await deleteAttachment(token, id);
-                        if (ok) setAttachments((prev) => prev.filter((x) => x.id !== id));
-                        else Alert.alert('Failed', 'Cannot delete attachment.');
+                        if (ok) {
+                            // Update attachments using the async state execute function
+                            await fetchAttachments(async () => {
+                                const currentAttachments = await listAttachments(token, taskId);
+                                return (currentAttachments ?? []).filter((x: TaskAttachment) => x.id !== id);
+                            });
+                        } else {
+                            Alert.alert('Failed', 'Cannot delete attachment.');
+                        }
                     } catch (e: any) {
                         Alert.alert('Failed', e?.message || 'Unknown error');
                     }
@@ -245,7 +265,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
             };
 
             // JANGAN sort di sini — terus APPEND untuk kekalkan di bawah
-            setNotes((prev) => [...prev, safeNote]);
+            await fetchNotes(async () => {
+                const currentNotes = await listNotes(token, taskId);
+                return [...(currentNotes ?? []), safeNote];
+            });
             setNoteText('');
 
             // Auto-scroll ke bawah supaya nampak nota baru
@@ -299,7 +322,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 onPress: async () => {
                     try {
                         await removeTaskAssignee(token, taskId, fid);
-                        setAssignees(prev => prev.filter(x => x.id !== fid));
+                        await fetchAssignees(async () => {
+                            const currentAssignees = await listTaskAssignees(token, taskId);
+                            return (currentAssignees ?? []).filter((x: Assignee) => x.id !== fid);
+                        });
                     } catch (e: any) {
                         Alert.alert('Gagal', e?.message || 'Tidak dapat buang.');
                     }
@@ -312,7 +338,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
         if (!token) return;
         try {
             await updateTaskAssigneeRole(token, taskId, fid, role);
-            setAssignees(prev => prev.map(x => x.id === fid ? { ...x, role } : x));
+            await fetchAssignees(async () => {
+                const currentAssignees = await listTaskAssignees(token, taskId);
+                return (currentAssignees ?? []).map((x: Assignee) => x.id === fid ? { ...x, role } : x);
+            });
         } catch (e: any) {
             Alert.alert('Gagal', e?.message || 'Tidak dapat kemas kini role.');
         }
@@ -323,7 +352,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
         try {
             setAdding(true);
             await assignTaskAssignee(token, taskId, f.id, 'other'); // default role
-            setAssignees(prev => [...prev, { ...f, role: 'other' } as any]); // cast ringkas; backend akan normalize
+            await fetchAssignees(async () => {
+                const currentAssignees = await listTaskAssignees(token, taskId);
+                return [...(currentAssignees ?? []), { ...f, role: 'other' } as Assignee];
+            });
             setShowAddModal(false);
             setOptions([]);
             setSearchQ('');
@@ -392,12 +424,12 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {loading && attachments.length === 0 ? (
+                    {loading && (attachments || []).length === 0 ? (
                         <Text style={styles.muted}>Loading attachments…</Text>
-                    ) : attachments.length === 0 ? (
+                    ) : (attachments || []).length === 0 ? (
                         <Text style={styles.muted}>Tiada lampiran.</Text>
                     ) : (
-                        attachments.map((att) => (
+                        (attachments || []).map((att) => (
                             <View key={att.id} style={styles.attachmentRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.attachmentName} numberOfLines={1}>
@@ -458,12 +490,12 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {loading && assignees.length === 0 ? (
+                    {loading && (assignees || []).length === 0 ? (
                         <Text style={styles.muted}>Loading assignees…</Text>
-                    ) : assignees.length === 0 ? (
+                    ) : (assignees || []).length === 0 ? (
                         <Text style={styles.muted}>Belum ada freelancer ditugaskan.</Text>
                     ) : (
-                        assignees.map(a => (
+                        (assignees || []).map(a => (
                             <View key={a.id} style={styles.attachmentRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.attachmentName} numberOfLines={1}>{a.name}</Text>
@@ -501,12 +533,12 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     <Text style={styles.cardTitle}>● Notes</Text>
 
                     {/* Senarai nota (oldest → newest) — disusun masa load */}
-                    {loading && notes.length === 0 ? (
+                    {loading && (notes || []).length === 0 ? (
                         <Text style={styles.muted}>Loading notes…</Text>
-                    ) : notes.length === 0 ? (
+                    ) : (notes || []).length === 0 ? (
                         <Text style={styles.muted}>Belum ada nota.</Text>
                     ) : (
-                        notes.map((n) => (
+                        (notes || []).map((n) => (
                             <View key={n.id} style={styles.noteRow}>
                                 <View style={styles.noteBadge}>
                                     <Text style={styles.noteBadgeText}>{n.sender_type === 'admin' ? 'A' : 'C'}</Text>

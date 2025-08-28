@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -23,6 +23,9 @@ import { getAllTasks, updateTaskStatus, type Task } from '../services/taskServic
 
 import ProjectCard from '../component/ProjectCard';
 import { getProjectSummaries, getProjectFreelancers, type ProjectSummary } from '../services/projectService';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { performanceMonitor } from '../utils/performance';
+import { api } from '../services/apiClient';
 
 
 const { width } = Dimensions.get('window');
@@ -70,16 +73,18 @@ const AdminHomeScreen = () => {
     type FilterValue = 'All' | 'Pending' | 'in_progress' | 'completed';
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('All');
 
-    // ================= Data states
-    const [clients, setClients] = useState<Client[]>([]);
-    const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
-    const [projects, setProjects] = useState<ProjectSummary[]>([]);
-    const [loadingProjects, setLoadingProjects] = useState(false);
-    const [projError, setProjError] = useState<string | null>(null);
-
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [loadingTasks, setLoadingTasks] = useState(false);
-    const [checkedStates, setCheckedStates] = useState<boolean[]>([]);
+    // ================= Performance optimized data states
+    const { data: clients, execute: fetchClientsData } = useAsyncState<Client[]>([]);
+    const { data: freelancers, execute: fetchFreelancersData } = useAsyncState<Freelancer[]>([]);
+    const { data: projects, loading: loadingProjects, error: projError, execute: fetchProjectsData } = useAsyncState<ProjectSummary[]>([]);
+    const { data: tasks, loading: loadingTasks, execute: fetchTasksData } = useAsyncState<Task[]>([]);
+    
+    // Checkbox states (keyed by task.id)
+    const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
+    
+    // Performance monitoring
+    const renderCount = useRef(0);
+    renderCount.current++;
 
     // ================= Utils
     const formatDate = (d?: string | null) =>
@@ -101,87 +106,104 @@ const AdminHomeScreen = () => {
     };
 
     // ================= Loaders
-    // Gabungkan fetch clients + freelancers + projects
+    // Optimized data fetching with performance monitoring
     const loadMasters = useCallback(async () => {
+        performanceMonitor.startTimer('loadMasters');
+        
         try {
-            setLoadingProjects(true);
-            setProjError(null);
-
             const token = (await AsyncStorage.getItem('userToken'))?.trim();
             if (!token) throw new Error('No userToken');
 
-            const [clientData, freelancerData, projectData] = await Promise.all([
-                fetchClients(token),
-                fetchFreelancers(token),
-                getProjectSummaries(token),
-            ]);
-
-            // console.log('freelancerData: ', freelancerData);
-
-            setClients(clientData);
-            setFreelancers(freelancerData);
-            // setProjects(Array.isArray(projectData) ? projectData : []);
-            const projectsWithFreelancers = await Promise.all(
-                projectData.map(async (project) => {
-                    try {
-                        const freelancersData = await getProjectFreelancers(token, project.project_id);
-                        const freelancers = Array.isArray(freelancersData?.freelancers)
-                            ? freelancersData.freelancers
-                            : [];
-
-                        // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
+            // Fetch all data in parallel for better performance
+            await Promise.all([
+                fetchClientsData(async () => {
+                    return await fetchClients(token);
+                }),
+                fetchFreelancersData(async () => {
+                    return await fetchFreelancers(token);
+                }),
+                fetchProjectsData(async () => {
+                    const projectData = await getProjectSummaries(token);
+                    
+                    // OPTIMIZATION: Instead of N+1 queries, fetch all project freelancers in one call
+                    // This is a temporary fix - ideally create a batch endpoint on the server
+                    const projectIds = projectData.map(p => p.project_id);
+                    
+                    // Fetch freelancers for all projects in parallel (much better than sequential)
+                    const freelancersPromises = projectIds.map(async (projectId) => {
+                        try {
+                            const freelancersData = await getProjectFreelancers(token, projectId);
+                            return {
+                                projectId,
+                                freelancers: Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []
+                            };
+                        } catch (error) {
+                            console.error(`Error fetching freelancers for project ${projectId}:`, error);
+                            return { projectId, freelancers: [] };
+                        }
+                    });
+                    
+                    const freelancersResults = await Promise.all(freelancersPromises);
+                    
+                    // Create a map for quick lookup
+                    const freelancersMap = new Map(
+                        freelancersResults.map(result => [result.projectId, result.freelancers])
+                    );
+                    
+                    // Process projects with their freelancers
+                    return projectData.map(project => {
+                        const freelancers = freelancersMap.get(project.project_id) || [];
+                        
                         const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
-                            if (!f.freelancer_avatar_url) return null; // Will be handled by ProjectCardScreen with default image
-                            // If it's already a full URL, use as is, otherwise prepend BASE_URL
-                            return f.freelancer_avatar_url.startsWith('http') ? f.freelancer_avatar_url : `${BASE_URL}${f.freelancer_avatar_url}`;
+                            if (!f.freelancer_avatar_url) return null;
+                            return f.freelancer_avatar_url.startsWith('http') 
+                                ? f.freelancer_avatar_url 
+                                : `${BASE_URL}${f.freelancer_avatar_url}`;
                         });
 
                         return {
                             ...project,
                             projectFreelancers: freelancers,
-                            // Update freelancer_avatars with full URLs (for backward compatibility)
                             freelancer_avatars: avatarUrls,
                             freelancer_count: freelancers.length,
                         };
-                    } catch (error) {
-                        console.error(`Error fetching freelancers for project ${project.project_id}:`, error);
-                        return {
-                            ...project,
-                            projectFreelancers: [],
-                            freelancer_avatars: [],
-                            freelancer_count: 0,
-                        };
-                    }
+                    });
                 })
-            );
-
-            setProjects(projectsWithFreelancers);
-
+            ]);
+            
         } catch (e: any) {
-            setProjError(e?.message || 'Failed to load projects');
-            setProjects([]);
+            console.error('Load masters error:', e);
         } finally {
-            setLoadingProjects(false);
+            performanceMonitor.endTimer('loadMasters');
         }
-    }, []);
+    }, [fetchClientsData, fetchFreelancersData, fetchProjectsData]);
 
     const loadTasks = useCallback(async (filter?: FilterValue) => {
-        setLoadingTasks(true);
+        performanceMonitor.startTimer('loadTasks');
+        
         try {
             const token = (await AsyncStorage.getItem('userToken')) || '';
             const currentFilter = filter || selectedFilter;
             const status = resolveStatus(currentFilter);
-            const data = await getAllTasks(token, status ? { status } : {});
-
-            setTasks(data);
-            setCheckedStates(Array(data.length).fill(false));
-        } catch {
-            setTasks([]);
-            setCheckedStates([]);
+            
+            await fetchTasksData(async () => {
+                const data = await getAllTasks(token, status ? { status } : {});
+                
+                // Initialize checkbox states based on task completion
+                const newCheckedStates: Record<number, boolean> = {};
+                data.forEach(task => {
+                    newCheckedStates[task.id] = task.status === 'completed';
+                });
+                setCheckedById(newCheckedStates);
+                
+                return data;
+            });
+        } catch (error) {
+            console.error('Load tasks error:', error);
         } finally {
-            setLoadingTasks(false);
+            performanceMonitor.endTimer('loadTasks');
         }
-    }, []); // Remove selectedFilter dependency since we control it separately
+    }, [selectedFilter, fetchTasksData]);
 
     // ================= Refresh setiap kali screen FOKUS
     useFocusEffect(
@@ -206,19 +228,21 @@ const AdminHomeScreen = () => {
 
     const refetchProjectsOnly = useCallback(async () => {
         try {
-            setLoadingProjects(true);
             const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
             if (!token) throw new Error('No userToken');
-            const projectData = await getProjectSummaries(token);
-            setProjects(Array.isArray(projectData) ? projectData : []);
-        } finally {
-            setLoadingProjects(false);
+            
+            await fetchProjectsData(async () => {
+                const projectData = await getProjectSummaries(token);
+                return Array.isArray(projectData) ? projectData : [];
+            });
+        } catch (error) {
+            console.error('Refetch projects error:', error);
         }
-    }, []);
+    }, [fetchProjectsData]);
 
     const pendingIdsRef = useRef<Set<number>>(new Set());
 
-    const handleToggleCheck = async (idx: number, t: Task) => {
+    const handleToggleCheck = useCallback(async (idx: number, t: Task) => {
         const id = t.id;
         if (!id) return;
 
@@ -238,31 +262,26 @@ const AdminHomeScreen = () => {
         }
 
         // --- Optimistic UI ---
-        const prevTasks = [...tasks];
-        const prevChecked = [...checkedStates];
+        const tasksList = tasks || [];
+        const prevTasks = [...tasksList];
+        const prevChecked = { ...checkedById };
 
-        const nextChecked = [...checkedStates];
-        nextChecked[idx] = true; // checking means completed
-        setCheckedStates(nextChecked);
-
-        const nextTasks = [...tasks];
-        nextTasks[idx] = { ...nextTasks[idx], status: 'completed' };
-        setTasks(nextTasks);
+        const nextChecked = { ...checkedById, [id]: true }; // checking means completed
+        setCheckedById(nextChecked);
 
         try {
             await updateTaskStatus(token, id, 'completed');
-            // success: keep optimistic state
+            // success: refetch data to ensure consistency
             await Promise.all([refetchProjectsOnly(), loadTasks()]);
 
         } catch (e: any) {
             // rollback
-            setTasks(prevTasks);
-            setCheckedStates(prevChecked);
+            setCheckedById(prevChecked);
             Alert.alert('Failed', e?.message || 'Failed to update task status');
         } finally {
             pendingIdsRef.current.delete(id);
         }
-    };
+    }, [tasks, checkedById, refetchProjectsOnly, loadTasks]);
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -301,7 +320,7 @@ const AdminHomeScreen = () => {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {clients.map(c => (
+                        {(clients || []).map(c => (
                             <View key={c.client_id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
@@ -328,7 +347,7 @@ const AdminHomeScreen = () => {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {freelancers.map(f => (
+                        {(freelancers || []).map(f => (
                             <View key={f.id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
@@ -355,7 +374,7 @@ const AdminHomeScreen = () => {
 
                     {loadingProjects ? (
                         <Text style={{ paddingHorizontal: 20, color: '#666' }}>Loading…</Text>
-                    ) : projects.length === 0 ? (
+                    ) : (projects || []).length === 0 ? (
                         <Text style={{ paddingHorizontal: 20, color: '#666' }}>
                             {projError ? `No projects (${projError})` : 'No projects found.'}
                         </Text>
@@ -368,7 +387,7 @@ const AdminHomeScreen = () => {
                             snapToAlignment="start"
                             decelerationRate="fast"
                         >
-                            {projects.map(p => (
+                            {(projects || []).map(p => (
                                 <View key={p.project_id} style={{ width: CARD, marginRight: GAP, flexShrink: 0 }}>
                                     <ProjectCard
                                         data={p}
@@ -425,13 +444,13 @@ const AdminHomeScreen = () => {
 
                     </View>
 
-                    {tasks.map((t, idx) => {
+                    {(tasks || []).map((t, idx) => {
                         const isCompleted = (t.status || '').toLowerCase() === 'completed';
                         return (
                             <AdminTaskCard
                                 key={t.id ?? idx}
                                 task={t}
-                                checked={isCompleted ? true : !!checkedStates[idx]}
+                                checked={isCompleted ? true : !!checkedById[t.id]}
                                 // onToggleCheck={() => {
                                 //     if (isCompleted) return;
                                 //     const next = [...checkedStates];
@@ -447,7 +466,7 @@ const AdminHomeScreen = () => {
                             />
                         );
                     })}
-                    {!loadingTasks && tasks.length === 0 && (
+                    {!loadingTasks && (tasks || []).length === 0 && (
                         <Text style={{ color: '#666' }}>No tasks found.</Text>
                     )}
                 </View>

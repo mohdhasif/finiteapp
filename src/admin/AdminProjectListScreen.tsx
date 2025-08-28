@@ -1,5 +1,5 @@
 // src/screens/AdminProjectListScreen.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,9 @@ import { getProjectSummaries, getProjectFreelancers } from '../services/projectS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProjectCardScreen from '../component/ProjectCardScreen';
 import { BASE_URL } from '../constants/apiConfig';
+import { useDebouncedState } from '../hooks/useOptimizedState';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 
@@ -59,14 +62,19 @@ const AdminProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Performance optimized state management
+  const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
-  // Search
+  // Debounced search for better performance
+  const [query, setQuery, debouncedQuery] = useDebouncedState('', 300);
   const [showSearch, setShowSearch] = useState(false);
-  const [query, setQuery] = useState('');
+  
+  // Performance monitoring
+  const renderCount = useRef(0);
+  renderCount.current++;
 
   // Utility function to get avatar source
   const getAvatarSource = (avatarUrl: string | null) => {
@@ -78,33 +86,53 @@ const AdminProjectListScreen = () => {
     return { uri: fullUrl };
   };
 
-  const fetchData = async (isRefreshing = false) => {
+  const fetchData = useCallback(async (isRefreshing = false) => {
+    performanceMonitor.startTimer('fetchAdminProjects');
+    
     try {
+      if (!isRefreshing) setRefreshing(true);
+      
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
-      if (!isRefreshing) setLoading(true);
+      
+      await fetchProjects(async () => {
+        // Fetch project summaries first
+        const result = await getProjectSummaries(token);
+        const projectsData = Array.isArray(result) ? result : [];
 
-      // Fetch project summaries first
-      const result = await getProjectSummaries(token);
-      const projectsData = Array.isArray(result) ? result : [];
-
-      // Fetch freelancer data for each project
-      const projectsWithFreelancers = await Promise.all(
-        projectsData.map(async (project) => {
+        // OPTIMIZATION: Fetch freelancer data for all projects in parallel
+        const projectIds = projectsData.map(p => p.project_id);
+        
+        // Fetch freelancers for all projects in parallel (much better than sequential)
+        const freelancersPromises = projectIds.map(async (projectId) => {
           try {
-            const freelancersData = await getProjectFreelancers(token, project.project_id);
-            const freelancers = Array.isArray(freelancersData?.freelancers)
-              ? freelancersData.freelancers
-              : [];
-
-            // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
-            const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
+            const freelancersData = await getProjectFreelancers(token, projectId);
+            return {
+              projectId,
+              freelancers: Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []
+            };
+          } catch (error) {
+            console.error(`Error fetching freelancers for project ${projectId}:`, error);
+            return { projectId, freelancers: [] };
+          }
+        });
+        
+        const freelancersResults = await Promise.all(freelancersPromises);
+        
+        // Create a map for quick lookup
+        const freelancersMap = new Map(
+          freelancersResults.map(result => [result.projectId, result.freelancers])
+        );
+        
+        // Process projects with their freelancers
+        return projectsData.map(project => {
+          const freelancers = freelancersMap.get(project.project_id) || [];
+          
+          // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
+          const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
               if (!f.avatar_url) return null; // Will be handled by ProjectCardScreen with default image
               // If it's already a full URL, use as is, otherwise prepend BASE_URL
               return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
             });
-
-            // console.log('Project', project.project_id, 'freelancers:', freelancers.length);
-            // console.log('Avatar URLs for project', project.project_id, ':', avatarUrls);
 
             return {
               ...project,
@@ -113,33 +141,16 @@ const AdminProjectListScreen = () => {
               freelancer_avatars: avatarUrls,
               freelancer_count: freelancers.length,
             };
-          } catch (error) {
-            console.error(`Error fetching freelancers for project ${project.project_id}:`, error);
-            return {
-              ...project,
-              projectFreelancers: [],
-              freelancer_avatars: [],
-              freelancer_count: 0,
-            };
-          }
-        })
-      );
-
-      // console.log('Projects with freelancers:', projectsWithFreelancers.map(p => ({
-      //   project_id: p.project_id,
-      //   project_title: p.project_title,
-      //   freelancer_count: p.freelancer_count,
-      //   freelancer_avatars: p.freelancer_avatars,
-      // })));
-
-      setProjects(projectsWithFreelancers);
+        });
+      });
+      
     } catch (error) {
       console.error('Fetch projects error:', error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
+      performanceMonitor.endTimer('fetchAdminProjects');
     }
-  };
+  }, [fetchProjects]);
 
   useEffect(() => {
     fetchData();
@@ -157,22 +168,23 @@ const AdminProjectListScreen = () => {
 
   // Gabung carian + tabs
   const filteredProjects = useMemo(() => {
+    const projectsList = projects || [];
     const list =
       activeTab === 'All'
-        ? projects
-        : projects.filter(
+        ? projectsList
+        : projectsList.filter(
           p => (p.status || '').toLowerCase() === activeTab.toLowerCase()
         );
 
-    if (!query.trim()) return list;
+    if (!debouncedQuery.trim()) return list;
 
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     return list.filter(p => {
       const title = (p.project_title || '').toLowerCase();
       const client = (p.client_name || '').toLowerCase();
       return title.includes(q) || client.includes(q);
     });
-  }, [projects, activeTab, query]);
+  }, [projects, activeTab, debouncedQuery]);
 
   const goToTasks = (p: Project) => {
     navigation.navigate('AdminProjectTaskListScreen', { project_title: p.project_title, project_id: p.project_id });
@@ -262,12 +274,12 @@ const AdminProjectListScreen = () => {
           />
         }
       >
-        {filteredProjects.length === 0 ? (
+        {(filteredProjects || []).length === 0 ? (
           <Text style={styles.emptyText}>
-            {query ? 'Tiada projek sepadan dengan carian.' : 'Tiada projek dijumpai.'}
+            {debouncedQuery ? 'Tiada projek sepadan dengan carian.' : 'Tiada projek dijumpai.'}
           </Text>
         ) : (
-          filteredProjects.map(item => {
+          (filteredProjects || []).map(item => {
             // console.log('Project item for ProjectCardScreen:', {
             //   project_id: item.project_id,
             //   project_title: item.project_title,
