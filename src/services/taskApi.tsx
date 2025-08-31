@@ -17,11 +17,6 @@ const appendQuery = (base: string, params?: Record<string, unknown>) => {
     return `${base}${base.includes('?') ? '&' : '?'}${q}`;
 };
 
-export const getTasksByProjectId = async (token: string, projectId: number) => {
-    const res = await fetch(API_ENDPOINTS.getTasksByProjectId(projectId), { headers: auth(token) });
-    return parse(res);
-};
-
 export const getTasksByProject = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), { headers: auth(token) });
     return parse(res); // normalize di caller jika perlu
@@ -39,14 +34,5 @@ export const getAllTasks = async (
 
 export const getTaskDetails = async (token: string, taskId: number) => {
     const res = await fetch(API_ENDPOINTS.taskDetails(taskId), { headers: auth(token) });
-    return parse(res);
-};
-
-export const updateTaskStatus = async (token: string, taskId: number, status: string) => {
-    const res = await fetch(API_ENDPOINTS.updateTaskStatus(taskId), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...auth(token) },
-        body: JSON.stringify({ status }),
-    });
     return parse(res);
 };

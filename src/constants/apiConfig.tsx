@@ -35,12 +35,9 @@ export const API_ENDPOINTS = {
     projectDetails: (projectId: number) => buildUrl('project_details.php', { project_id: projectId }),
     projectFreelancers: (projectId: number) => buildUrl('get_project_freelancers.php', { project_id: projectId }),
     projects: buildUrl('get_projects.php'),
-    projectById: (id: number) => buildUrl(`projects/${id}`), // jika memang ada endpoint REST
     projectTasks: (projectId: number) => buildUrl('project_tasks.php', { project_id: projectId }),
     projectTasksPublic: (projectId: number) => buildUrl('project_tasks_public.php', { project_id: projectId }),
     taskDetails: (taskId: number) => buildUrl('task_details.php', { task_id: taskId }),
-    getTasksByProjectId: (projectId: number) => buildUrl(`projects/${projectId}/tasks`), // kalau wujud
-    updateTaskStatus: (taskId: number) => buildUrl(`tasks/${taskId}`), // kalau wujud
 
     // ---- Forms / Auth / Uploads
     submitJoinForm: buildUrl('freelancers.php'),
@@ -103,8 +100,6 @@ export const API_ENDPOINTS = {
 
 
     // task assignees
-    addTaskAssignee: buildUrl('/task_assignees_add.php'),
-    removeTaskAssignee: buildUrl('/task_assignees_remove.php'),
     listTaskAssignees: buildUrl('/task_assignees_list.php'),
 
     urlListTaskAssignees: buildUrl('/task_assignees_list.php'),

@@ -23,10 +23,3 @@ export const createProject = async (token: string, payload: any) => {
     });
     return parse(res);
 };
-
-export const getProjectById = async (token: string, id: number) => {
-    const res = await fetch(API_ENDPOINTS.projectById(id), {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
-    return parse(res);
-};
