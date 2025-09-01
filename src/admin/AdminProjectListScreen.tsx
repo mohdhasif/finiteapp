@@ -447,9 +447,16 @@ const styles = StyleSheet.create({
   },
   heroGreeting: {
     color: '#fff',
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     letterSpacing: 0.2,
+    lineHeight: 34,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    maxWidth: width - 100, // Leave space for search button
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   heroSearchBtn: {
     position: 'absolute',

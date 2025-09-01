@@ -1,9 +1,7 @@
 // src/constants/apiConfig.ts
 
-import { url } from "inspector";
-
 // 1) Buang trailing slash untuk elak `//`
-export const BASE_URL = 'https://a3d5e73f0172.ngrok-free.app';
+export const BASE_URL = 'https://app.finite.my';
 
 // 2) Helper untuk build URL + query params dengan selamat
 const join = (base: string, path: string) =>

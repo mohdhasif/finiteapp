@@ -15,11 +15,12 @@ export const fetchClients = async (token: string) => {
     const text = await res.text();
     try {
         const result = JSON.parse(text);
-        return result;
+        // Return the data array from the response
+        return result.data || [];
     } catch (error) {
-        // console.log('Error parsing JSON:', error);
+        console.log('Error parsing JSON:', error);
+        return [];
     }
-    // return parse(res);
 };
 
 export const fetchFreelancers = async (token: string) => {
@@ -29,11 +30,12 @@ export const fetchFreelancers = async (token: string) => {
     const text = await res.text();
     try {
         const result = JSON.parse(text);
-        return result;
+        // Freelancers API returns data directly, not wrapped in data property
+        return Array.isArray(result) ? result : (result.data || []);
     } catch (error) {
-        // console.log('Error parsing JSON:', error);
+        console.log('Error parsing JSON:', error);
+        return [];
     }
-    // return parse(res);
 };
 
 

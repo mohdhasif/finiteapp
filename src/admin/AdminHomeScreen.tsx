@@ -74,10 +74,10 @@ const AdminHomeScreen = () => {
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('All');
 
     // ================= Performance optimized data states
-    const { data: clients, execute: fetchClientsData } = useAsyncState<Client[]>([]);
-    const { data: freelancers, execute: fetchFreelancersData } = useAsyncState<Freelancer[]>([]);
-    const { data: projects, loading: loadingProjects, error: projError, execute: fetchProjectsData } = useAsyncState<ProjectSummary[]>([]);
-    const { data: tasks, loading: loadingTasks, execute: fetchTasksData } = useAsyncState<Task[]>([]);
+    const { data: clients = [], execute: fetchClientsData } = useAsyncState<Client[]>([]);
+    const { data: freelancers = [], execute: fetchFreelancersData } = useAsyncState<Freelancer[]>([]);
+    const { data: projects = [], loading: loadingProjects, error: projError, execute: fetchProjectsData } = useAsyncState<ProjectSummary[]>([]);
+    const { data: tasks = [], loading: loadingTasks, execute: fetchTasksData } = useAsyncState<Task[]>([]);
     
     // User profile data
     const [userInfo, setUserInfo] = useState<any>(null);
@@ -212,9 +212,9 @@ const AdminHomeScreen = () => {
     }, [fetchClientsData, fetchFreelancersData, fetchProjectsData]);
 
     const loadTasks = useCallback(async (filter?: FilterValue) => {
-        performanceMonitor.startTimer('loadTasks');
-        
         try {
+            performanceMonitor.startTimer('loadTasks');
+            
             const token = (await AsyncStorage.getItem('userToken')) || '';
             const currentFilter = filter || selectedFilter;
             const status = resolveStatus(currentFilter);
@@ -234,7 +234,11 @@ const AdminHomeScreen = () => {
         } catch (error) {
             console.error('Load tasks error:', error);
         } finally {
-            performanceMonitor.endTimer('loadTasks');
+            try {
+                performanceMonitor.endTimer('loadTasks');
+            } catch (timerError) {
+                console.warn('Timer error in loadTasks:', timerError);
+            }
         }
     }, [selectedFilter, fetchTasksData]);
 
@@ -358,6 +362,9 @@ const AdminHomeScreen = () => {
         },
     ];
 
+
+
+
     return (
         <SafeAreaView style={styles.safeArea}>
 
@@ -383,7 +390,7 @@ const AdminHomeScreen = () => {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {(clients || []).map(c => (
+                        {Array.isArray(clients) && clients.map(c => (
                             <View key={c.client_id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
@@ -410,7 +417,7 @@ const AdminHomeScreen = () => {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {(freelancers || []).map(f => (
+                        {Array.isArray(freelancers) && freelancers.map(f => (
                             <View key={f.id} style={styles.clientCard}>
                                 <View style={styles.clientCircle}>
                                     <Image
@@ -437,7 +444,7 @@ const AdminHomeScreen = () => {
 
                     {loadingProjects ? (
                         <Text style={{ paddingHorizontal: 20, color: '#666' }}>Loading…</Text>
-                    ) : (projects || []).length === 0 ? (
+                    ) : (!Array.isArray(projects) || projects.length === 0) ? (
                         <Text style={{ paddingHorizontal: 20, color: '#666' }}>
                             {projError ? `No projects (${projError})` : 'No projects found.'}
                         </Text>
@@ -450,7 +457,7 @@ const AdminHomeScreen = () => {
                             snapToAlignment="start"
                             decelerationRate="fast"
                         >
-                            {(projects || []).map(p => (
+                            {Array.isArray(projects) && projects.map(p => (
                                 <View key={p.project_id} style={{ width: CARD, marginRight: GAP, flexShrink: 0 }}>
                                     <ProjectCard
                                         data={p}

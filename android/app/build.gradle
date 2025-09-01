@@ -25,7 +25,8 @@ react {
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
-    nodeExecutableAndArgs = ["/opt/homebrew/bin/node"]
+    nodeExecutableAndArgs = ["node"]
+    // nodeExecutableAndArgs = ["/opt/homebrew/bin/node"]
 
     //
     //   The command to run when bundling. By default is 'bundle'

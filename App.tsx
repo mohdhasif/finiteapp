@@ -56,10 +56,13 @@ export default function App() {
         // Tunggu subscription id wujud (kadang-kadang lambat sikit)
         let subscriptionId: string | undefined;
         for (let i = 0; i < 10; i++) {
-          // @ts-ignore (bergantung versi SDK)
-          subscriptionId = OneSignal.User?.pushSubscription?.id
-            // @ts-ignore
-            || (await OneSignal.User?.pushSubscription?.getPushSubscriptionId?.());
+          try {
+            // Use the correct OneSignal API methods
+            const id = await OneSignal.User?.pushSubscription?.getIdAsync?.();
+            subscriptionId = id || undefined;
+          } catch (error) {
+            console.warn('Failed to get subscription ID:', error);
+          }
           if (subscriptionId) break;
           await new Promise(r => setTimeout(r, 800));
         }

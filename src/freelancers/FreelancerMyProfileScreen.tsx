@@ -9,7 +9,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { getUserDetails, updateUserDetails, type UserDetails } from '../services/authService';
+import { getUserDetails, type UserDetails } from '../services/authService';
+import { updateMyProfileForm } from '../services/adminService';
 import { BASE_URL, API_ENDPOINTS } from '../constants/apiConfig';
 
 const { width } = Dimensions.get('window');
@@ -132,17 +133,7 @@ const MyProfileScreen = () => {
 
             // Try API first, fallback to AsyncStorage
             try {
-                const result = await updateUserDetails(token, {
-                    name,
-                    dob,
-                    gender,
-                    phone,
-                    avatar_url: typeof avatarUriLocal === 'string' 
-                        ? (avatarUriLocal.startsWith('http') 
-                            ? avatarUriLocal.replace(BASE_URL, '') 
-                            : avatarUriLocal)
-                        : avatarUriLocal?.uri || null
-                });
+                const result = await updateMyProfileForm(token, formData);
 
                 if (result.success) {
                     // Refresh user details from API

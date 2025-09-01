@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as loginService, claimInstallSubscriptions } from '../services/authService';
+import { API_ENDPOINTS } from '../constants/apiConfig';
 
 type AuthContextType = {
     userRole: string | null;
@@ -63,6 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const login = async (email: string, password: string) => {
         try {
             const data = await loginService(email, password);
+            console.log('response login', data);
 
             // ✅ Simpan dalam AsyncStorage
             await AsyncStorage.setItem('userToken', data.token);

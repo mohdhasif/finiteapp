@@ -92,34 +92,6 @@ export const getUserDetails = async (token: string): Promise<UserDetails> => {
     return userData as UserDetails;
 };
 
-export const updateUserDetails = async (
-    token: string,
-    userData: Partial<UserDetails>
-): Promise<{ success: boolean; message?: string }> => {
-    const res = await fetch(API_ENDPOINTS.updateMe, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(userData),
-    });
-
-    const raw = await res.text();
-    let json: any;
-    try {
-        json = JSON.parse(raw);
-    } catch (e) {
-        throw new Error('Server mengembalikan respons tidak sah.');
-    }
-
-    if (!res.ok || json?.success !== true) {
-        throw new Error(json?.message || `Gagal kemaskini maklumat pengguna (HTTP ${res.status})`);
-    }
-
-    return json;
-};
-
 export const login = async (email: string, password: string): Promise<{ token: string; user: any }> => {
     const res = await fetch(API_ENDPOINTS.login, {
         method: 'POST',
@@ -145,26 +117,33 @@ export const login = async (email: string, password: string): Promise<{ token: s
 };
 
 export const claimInstallSubscriptions = async (token: string, installId: string): Promise<any> => {
-    const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ install_id: installId }),
-    });
-
-    const raw = await res.text();
-    let json: any;
     try {
-        json = JSON.parse(raw);
-    } catch (e) {
-        throw new Error('Server mengembalikan respons tidak sah.');
-    }
+        const res = await fetch(API_ENDPOINTS.claimInstallSubscriptions, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ install_id: installId }),
+        });
 
-    if (!res.ok) {
-        throw new Error(json?.message || json?.error || `Gagal claim install (HTTP ${res.status})`);
-    }
+        const raw = await res.text();
+        let json: any;
+        try {
+            json = JSON.parse(raw);
+        } catch (e) {
+            console.warn('Claim install response parse error:', raw);
+            throw new Error('Server mengembalikan respons tidak sah.');
+        }
 
-    return json;
+        if (!res.ok) {
+            console.warn('Claim install failed:', res.status, json);
+            throw new Error(json?.message || json?.error || `Gagal claim install (HTTP ${res.status})`);
+        }
+
+        return json;
+    } catch (error) {
+        console.warn('Claim install error:', error);
+        throw error;
+    }
 };

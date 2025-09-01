@@ -123,17 +123,18 @@ export const useRenderTime = (componentName: string) => {
 
 // Hook for measuring async operations
 export const useAsyncTimer = (operationName: string) => {
-  const executeWithTimer = React.useCallback(async <T>(
-    asyncFn: () => Promise<T>
-  ): Promise<T> => {
-    performanceMonitor.startTimer(operationName);
-    try {
-      const result = await asyncFn();
-      return result;
-    } finally {
-      performanceMonitor.endTimer(operationName);
-    }
-  }, [operationName]);
+  const executeWithTimer = React.useCallback(
+    <T,>(asyncFn: () => Promise<T>): Promise<T> => {
+      performanceMonitor.startTimer(operationName);
+      try {
+        const result = asyncFn();
+        return result;
+      } finally {
+        performanceMonitor.endTimer(operationName);
+      }
+    },
+    [operationName]
+  );
 
   return executeWithTimer;
 };

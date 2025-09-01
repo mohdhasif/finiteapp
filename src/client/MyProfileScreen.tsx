@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
     ScrollView, Dimensions, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
@@ -9,8 +9,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { getUserDetails, updateUserDetails, type UserDetails } from '../services/authService';
+import { getUserDetails, type UserDetails } from '../services/authService';
+import { updateMyProfileForm } from '../services/adminService';
 import { BASE_URL, API_ENDPOINTS } from '../constants/apiConfig';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 
@@ -30,86 +32,99 @@ const MyProfileScreen = () => {
     const [myId, setMyId] = useState<number | null>(null);
     const [me, setMe] = useState<UserDetails | null>(null);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const tk = (await AsyncStorage.getItem('userToken')) || '';
-                setToken(tk);
-                if (!tk) {
-                    Alert.alert('Error', 'Token is missing. Please log in again.');
-                    setLoading(false);
-                    return;
-                }
-                
-                // Try to fetch user details from API first
-                try {
-                    const userDetails = await getUserDetails(tk);
-                    
-                    // console.log('userDetails: ', userDetails);
-                    
-                    setMe(userDetails);
-                    setMyId(userDetails.id);
-                    setProfile(userDetails);
-                    setName(userDetails.name || '');
-                    setDob(userDetails.dob || '');
-                    setGender(userDetails.gender || '');
-                    setPhone(userDetails.phone || '');
-                    setAvatarUriLocal(userDetails.avatar_url
-                        ? (userDetails.avatar_url.startsWith('http')
-                            ? userDetails.avatar_url
-                            : `${BASE_URL}${userDetails.avatar_url}`)
-                        : null
-                    );
-                } catch (apiError) {
-                    // console.log('API failed, falling back to AsyncStorage:', apiError);
-                    
-                    // Fallback to AsyncStorage
-                    const userInfoRaw = await AsyncStorage.getItem('userInfo');
-                    const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
-                    
-                    if (userInfo) {
-                        setMe(userInfo);
-                        setMyId(userInfo?.id ?? null);
-                        setProfile(userInfo);
-                        setName(userInfo?.name || '');
-                        setDob(userInfo?.dob || '');
-                        setGender((userInfo?.gender as any) || '');
-                        setPhone(userInfo?.phone || '');
-                        setAvatarUriLocal(userInfo?.avatar_url || null);
-                    } else {
-                        // Set default values if no user info found
-                        setMe(null);
-                        setMyId(null);
-                        setProfile(null);
-                        setName('');
-                        setDob('');
-                        setGender('');
-                        setPhone('');
-                        setAvatarUriLocal(null);
-                    }
-                }
-            } catch (e: any) {
-                Alert.alert('Failed', e?.message || 'Failed to load profile');
-            } finally {
+    // Performance optimized data loading
+    const loadUserData = useCallback(async () => {
+        try {
+            performanceMonitor.startTimer('loadUserData');
+            
+            const tk = (await AsyncStorage.getItem('userToken')) || '';
+            setToken(tk);
+            if (!tk) {
+                Alert.alert('Error', 'Token is missing. Please log in again.');
                 setLoading(false);
+                return;
             }
-        })();
+
+            // Try to fetch user details from API first
+            try {
+                const userDetails = await getUserDetails(tk);
+                
+                setMe(userDetails);
+                setMyId(userDetails.id);
+                setProfile(userDetails);
+                setName(userDetails.name || '');
+                setDob(userDetails.dob || '');
+                setGender(userDetails.gender || '');
+                setPhone(userDetails.phone || '');
+                setAvatarUriLocal(userDetails.avatar_url
+                    ? (userDetails.avatar_url.startsWith('http')
+                        ? userDetails.avatar_url
+                        : `${BASE_URL}${userDetails.avatar_url}`)
+                    : null
+                );
+            } catch (apiError) {
+                // Fallback to AsyncStorage
+                const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+
+                if (userInfo) {
+                    setMe(userInfo);
+                    setMyId(userInfo?.id ?? null);
+                    setProfile(userInfo);
+                    setName(userInfo?.name || '');
+                    setDob(userInfo?.dob || '');
+                    setGender((userInfo?.gender as any) || '');
+                    setPhone(userInfo?.phone || '');
+                    setAvatarUriLocal(userInfo?.avatar_url || null);
+                } else {
+                    // Set default values if no user info found
+                    setMe(null);
+                    setMyId(null);
+                    setProfile(null);
+                    setName('');
+                    setDob('');
+                    setGender('');
+                    setPhone('');
+                    setAvatarUriLocal(null);
+                }
+            }
+        } catch (e: any) {
+            Alert.alert('Failed', e?.message || 'Failed to load profile');
+        } finally {
+            setLoading(false);
+            performanceMonitor.endTimer('loadUserData');
+        }
     }, []);
 
-    const handleSave = async () => {
-        if (!token) return;
+    useEffect(() => {
+        loadUserData();
+    }, [loadUserData]);
+
+    const handleSave = useCallback(async () => {
+        if (!token) {
+            Alert.alert('Error', 'Token is missing. Please log in again.');
+            return;
+        }
+
+        // Basic validation
+        if (!name.trim()) {
+            Alert.alert('Error', 'Name is required.');
+            return;
+        }
+
         try {
+            performanceMonitor.startTimer('saveProfile');
             setSaving(true);
 
             // Create FormData for multipart upload
             const formData = new FormData();
-            
+
             formData.append('name', name);
             formData.append('dob', dob);
             formData.append('gender', gender);
             formData.append('phone', phone);
 
-            // Handle avatar upload
+            // Handle avatar upload - similar to FreelancerApprovalScreen
             if (avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri) {
                 const fileName = avatarUriLocal.fileName || `avatar_${myId || 'user'}.jpg`;
                 const fileType = avatarUriLocal.type || 'image/jpeg';
@@ -124,27 +139,26 @@ const MyProfileScreen = () => {
                 formData.append('avatar_url', avatarUriLocal);
             }
 
-            // Try API first, fallback to AsyncStorage
+            console.log('FormData being sent:', {
+                name,
+                dob,
+                gender,
+                phone,
+                avatar: avatarUriLocal,
+            });
+
+            // Use multipart form data API
             try {
-                const result = await updateUserDetails(token, {
-                    name,
-                    dob,
-                    gender,
-                    phone,
-                    avatar_url: typeof avatarUriLocal === 'string' 
-                        ? (avatarUriLocal.startsWith('http') 
-                            ? avatarUriLocal.replace(BASE_URL, '') 
-                            : avatarUriLocal)
-                        : avatarUriLocal?.uri || null
-                });
+                const result = await updateMyProfileForm(token, formData);
+                console.log('API response:', result);
 
                 if (result.success) {
                     // Refresh user details from API
                     const updatedUserDetails = await getUserDetails(token);
-                    
+
                     // Update local storage with latest data
                     await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserDetails));
-                    
+
                     setMe(updatedUserDetails);
                     setProfile(updatedUserDetails);
                     setModalVisible(true);
@@ -152,45 +166,47 @@ const MyProfileScreen = () => {
                     throw new Error(result.message || 'Update failed');
                 }
             } catch (apiError: any) {
-                // console.log('API update failed, using AsyncStorage:', apiError);
-                
+                console.log('API update failed:', apiError);
+
                 // Fallback to AsyncStorage
                 const updateData = {
                     name,
                     dob,
                     gender,
                     phone,
-                    avatar_url: typeof avatarUriLocal === 'string' 
-                        ? (avatarUriLocal.startsWith('http') 
-                            ? avatarUriLocal.replace(BASE_URL, '') 
+                    avatar_url: typeof avatarUriLocal === 'string'
+                        ? (avatarUriLocal.startsWith('http')
+                            ? avatarUriLocal.replace(BASE_URL, '')
                             : avatarUriLocal)
                         : avatarUriLocal?.uri || null
                 };
-                
+
                 const updatedUserInfo = {
                     ...me,
                     ...updateData,
                     id: me?.id || 0 // Ensure id is always a number
                 };
-                
+
                 await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
                 setMe(updatedUserInfo as UserDetails);
                 setProfile(updatedUserInfo as UserDetails);
                 setModalVisible(true);
             }
         } catch (e: any) {
+            console.error('Save profile error:', e);
             Alert.alert('Failed', e?.message || 'Failed to save profile.');
         } finally {
             setSaving(false);
+            performanceMonitor.endTimer('saveProfile');
         }
-    };
+    }, [token, name, dob, gender, phone, avatarUriLocal, myId, me]);
 
-    const handleNext = () => {
+    const handleNext = useCallback(() => {
         setModalVisible(false);
         navigation.navigate('ProfileScreen');
-    };
+    }, [navigation]);
 
-    const pickAvatar = () => {
+    const pickAvatar = useCallback(() => {
         launchImageLibrary({ 
             mediaType: 'photo',
             includeBase64: false,
@@ -204,10 +220,39 @@ const MyProfileScreen = () => {
                         fileName: selected.fileName || `avatar_${myId || 'user'}.jpg`,
                         type: selected.type || 'image/jpeg',
                     });
+                    console.log('Selected avatar:', {
+                        uri: selected.uri,
+                        fileName: selected.fileName,
+                        type: selected.type,
+                    });
                 }
             }
         });
-    };
+    }, [myId]);
+
+    // Memoized values for better performance
+    const avatarSource = useMemo(() => {
+        if (avatarUriLocal) {
+            return typeof avatarUriLocal === 'string'
+                ? { uri: avatarUriLocal }
+                : avatarUriLocal;
+        }
+        return require('../assets/user.png');
+    }, [avatarUriLocal]);
+
+    // Debug logging for avatar state
+    useEffect(() => {
+        console.log('Avatar state changed:', {
+            avatarUriLocal,
+            type: typeof avatarUriLocal,
+            isObject: typeof avatarUriLocal === 'object',
+            hasUri: avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri,
+        });
+    }, [avatarUriLocal]);
+
+    const isFormValid = useMemo(() => {
+        return name.trim().length > 0 && !loading;
+    }, [name, loading]);
 
     return (
         <KeyboardAvoidingView 
@@ -221,13 +266,7 @@ const MyProfileScreen = () => {
 
                 <View style={styles.avatarContainer}>
                     <Image
-                        source={
-                            avatarUriLocal
-                                ? typeof avatarUriLocal === 'string'
-                                    ? { uri: avatarUriLocal }
-                                    : avatarUriLocal // { uri: ... }
-                                : require('../assets/user.png')
-                        }
+                        source={avatarSource}
                         style={styles.avatar}
                         resizeMode="contain"
                     />
