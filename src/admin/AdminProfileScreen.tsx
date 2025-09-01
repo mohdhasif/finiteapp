@@ -31,7 +31,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const AdminProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { logout } = useAuth();
+    const { logout, captureLocation } = useAuth();
 
     // Toggle umum app (project/task dsb)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
@@ -495,6 +495,15 @@ const AdminProfileScreen = () => {
                                 <Text style={styles.hint}>
                                     Sistem akan guna lat/long ini untuk ambil waktu solat harian dan hantar notifikasi tepat pada waktunya.
                                 </Text>
+
+                                {/* Manual Location Capture Button */}
+                                <TouchableOpacity
+                                    style={[styles.btn, { backgroundColor: '#28a745', marginTop: 10 }]}
+                                    onPress={captureLocation}
+                                >
+                                    <Icon name="refresh-outline" size={18} color="#fff" />
+                                    <Text style={styles.btnText}>Refresh Location</Text>
+                                </TouchableOpacity>
 
                                 {installId ? <Text style={styles.hint}>Install ID: {installId}</Text> : null}
                                 {coords ? <Text style={styles.hint}>Current: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</Text> : null}
