@@ -30,7 +30,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const ProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { logout, captureLocation } = useAuth();
+    const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus } = useAuth();
 
     // Toggle umum app (project/task dsb)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
@@ -54,6 +54,12 @@ const ProfileScreen = () => {
     const lastAutoRunRef = useRef<number>(0);
 
     const [userInfo, setUserInfo] = useState<any>(null);
+    const [geolocationStatus, setGeolocationStatus] = useState<{
+        hasPermission: boolean;
+        isEnabled: boolean;
+        coordinates: { latitude: number; longitude: number } | null;
+        lastUpdated: string | null;
+    } | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -87,6 +93,21 @@ const ProfileScreen = () => {
             };
             loadUserData();
         }, [])
+    );
+
+    // Check geolocation status when screen loads
+    useFocusEffect(
+        useCallback(() => {
+            const checkStatus = async () => {
+                try {
+                    const status = await checkGeolocationStatus();
+                    setGeolocationStatus(status);
+                } catch (error) {
+                    console.warn('Failed to check geolocation status:', error);
+                }
+            };
+            checkStatus();
+        }, [checkGeolocationStatus])
     );
 
     const saveSettings = async (payload: SaveSettingsPayload): Promise<SaveSettingsResponse> => {
@@ -422,8 +443,74 @@ const ProfileScreen = () => {
                                     <Text style={styles.btnText}>Refresh Location</Text>
                                 </TouchableOpacity>
 
+                                {/* Manual Prayer Notification Configuration Button */}
+                                <TouchableOpacity
+                                    style={[styles.btn, { backgroundColor: '#ff6b35', marginTop: 10 }]}
+                                    onPress={configurePrayerNotification}
+                                >
+                                    <Icon name="notifications-outline" size={18} color="#fff" />
+                                    <Text style={styles.btnText}>Configure Prayer Notifications</Text>
+                                </TouchableOpacity>
+
+                                {/* Refresh Geolocation Status Button */}
+                                <TouchableOpacity
+                                    style={[styles.btn, { backgroundColor: '#6f42c1', marginTop: 10 }]}
+                                    onPress={async () => {
+                                        try {
+                                            const status = await checkGeolocationStatus();
+                                            setGeolocationStatus(status);
+                                        } catch (error) {
+                                            console.warn('Failed to refresh geolocation status:', error);
+                                        }
+                                    }}
+                                >
+                                    <Icon name="refresh-outline" size={18} color="#fff" />
+                                    <Text style={styles.btnText}>Refresh Geolocation Status</Text>
+                                </TouchableOpacity>
+
                                 {installId ? <Text style={styles.hint}>Install ID: {installId}</Text> : null}
                                 {coords ? <Text style={styles.hint}>Current: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</Text> : null}
+
+                                {/* Geolocation Status Display */}
+                                {geolocationStatus && (
+                                    <View style={styles.statusContainer}>
+                                        <Text style={styles.statusTitle}>📍 Geolocation Status:</Text>
+                                        <View style={styles.statusRow}>
+                                            <Text style={styles.statusLabel}>Permission:</Text>
+                                            <Text style={[
+                                                styles.statusValue, 
+                                                { color: geolocationStatus.hasPermission ? '#28a745' : '#dc3545' }
+                                            ]}>
+                                                {geolocationStatus.hasPermission ? '✅ Granted' : '❌ Denied'}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.statusRow}>
+                                            <Text style={styles.statusLabel}>Location Captured:</Text>
+                                            <Text style={[
+                                                styles.statusValue, 
+                                                { color: geolocationStatus.isEnabled ? '#28a745' : '#ffc107' }
+                                            ]}>
+                                                {geolocationStatus.isEnabled ? '✅ Yes' : '⚠️ No'}
+                                            </Text>
+                                        </View>
+                                        {geolocationStatus.coordinates && (
+                                            <View style={styles.statusRow}>
+                                                <Text style={styles.statusLabel}>Coordinates:</Text>
+                                                <Text style={styles.statusValue}>
+                                                    {geolocationStatus.coordinates.latitude.toFixed(5)}, {geolocationStatus.coordinates.longitude.toFixed(5)}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        {geolocationStatus.lastUpdated && (
+                                            <View style={styles.statusRow}>
+                                                <Text style={styles.statusLabel}>Last Updated:</Text>
+                                                <Text style={styles.statusValue}>
+                                                    {new Date(geolocationStatus.lastUpdated).toLocaleString()}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
                             </View>
                         )}
                     </View>
@@ -636,6 +723,37 @@ const styles = StyleSheet.create({
     navItem: { 
         alignItems: 'center', 
         justifyContent: 'center' 
+    },
+
+    // Status Display Styles
+    statusContainer: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+    },
+    statusTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#495057',
+        marginBottom: 8,
+    },
+    statusRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    statusLabel: {
+        fontSize: 12,
+        color: '#6c757d',
+        fontWeight: '500',
+    },
+    statusValue: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
 
