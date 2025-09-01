@@ -35,6 +35,12 @@ const LoginScreen = () => {
     const [validUsers, setvalidUsers] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
+    // Debug password state
+    const handlePasswordChange = (text: string) => {
+        console.log('Password changed:', text.length, 'characters');
+        setPassword(text);
+    };
+
     const [isLoading, setIsLoading] = useState(false);
 
     // useEffect(() => {
@@ -167,11 +173,17 @@ const LoginScreen = () => {
                         placeholderTextColor="#aaa"
                         secureTextEntry={!showPassword}
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={handlePasswordChange}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        textContentType="password"
+                        returnKeyType="done"
+                        onSubmitEditing={handleLogin}
                     />
                     <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
                         style={styles.eyeIcon}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <Icon
                             name={showPassword ? 'eye-off' : 'eye'}
@@ -316,18 +328,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 25,
-        paddingHorizontal: 16,
-        paddingVertical: 4,
+        paddingHorizontal: 20,
+        paddingVertical: 0,
         marginBottom: 20,
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 2,
+        minHeight: 45,
     },
     passwordInput: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 12,
         fontSize: 16,
+        color: '#000',
+        textAlignVertical: 'center',
     },
     eyeIcon: {
         padding: 8,
