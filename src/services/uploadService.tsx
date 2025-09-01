@@ -31,7 +31,6 @@ export const uploadLogo = async (
     const res = await fetch(API_ENDPOINTS.uploadLogo, {
         method: 'POST',
         headers: {
-            'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`,
         },
         body: formData,
@@ -58,7 +57,6 @@ export const uploadAvatar = async (
     const res = await fetch(API_ENDPOINTS.uploadAvatar, {
         method: 'POST',
         headers: {
-            'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`,
         },
         body: formData,

@@ -47,7 +47,7 @@ const UploadLogoScreen = () => {
       if (result.success) {
         Alert.alert('Success', result.message);
       } else {
-        Alert.alert('Failed', result.error || 'Something went wrong');
+        Alert.alert('Failed', result.message || 'Something went wrong');
       }
     } catch (error) {
       setUploading(false);

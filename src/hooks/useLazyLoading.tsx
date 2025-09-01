@@ -7,7 +7,7 @@ interface LazyLoadingOptions {
   enabled?: boolean;
 }
 
-export const useLazyLoading = <T>(
+export const useLazyLoading = <T,>(
   data: T[],
   options: LazyLoadingOptions = {}
 ) => {

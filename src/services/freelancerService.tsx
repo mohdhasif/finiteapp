@@ -26,7 +26,6 @@ export const updateFreelancer = async (token: string, payload: {
     availability: boolean;
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
 }) => {
-    console.log('Updating freelancer with ID:', payload.freelancer_id);
     
     // Check if freelancer_id is provided
     if (!payload.freelancer_id) {

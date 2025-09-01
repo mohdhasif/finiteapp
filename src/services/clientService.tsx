@@ -40,8 +40,8 @@ export const updateClient = async (
 
     if (payload.logo) {
         formData.append('logo', payload.logo as any);
-    } else if (payload.logo) {
-        formData.append('logo', payload.logo);
+    } else if (payload.logo_url) {
+        formData.append('logo', payload.logo_url);
     }
 
     const res = await fetch(API_ENDPOINTS.updateClient, {

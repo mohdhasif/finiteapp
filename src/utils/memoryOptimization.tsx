@@ -209,7 +209,7 @@ export const useMemoryOptimization = (options: {
 };
 
 // Hook for memory-efficient data processing
-export const useMemoryEfficientData = <T>(
+export const useMemoryEfficientData = <T,>(
   data: T[],
   options: {
     batchSize?: number;
@@ -270,7 +270,7 @@ export const useMemoryEfficientData = <T>(
 };
 
 // Utility for debouncing memory-intensive operations
-export const useMemoryDebounce = <T extends (...args: any[]) => any>(
+export const useMemoryDebounce = <T extends (...args: any[]) => any,>(
   callback: T,
   delay: number = 300,
   maxCalls: number = 10

@@ -58,7 +58,7 @@ export const API_ENDPOINTS = {
 
     projectSummariesClient: buildUrl('get_project_summaries_client.php'),
     projectSummaries: buildUrl('get_project_summaries.php'),
-    projectSummary: (projectId: number) => buildUrl('get_project_summaries.php', { project_id: projectId }), // ❌ buang space + guna params
+    projectSummary: (projectId: number) => buildUrl('get_project_summaries.php', { project_id: projectId }),
 
     createProject: buildUrl('create_project.php'),
     projectsOptions: buildUrl('get_projects_options.php'),
@@ -84,28 +84,27 @@ export const API_ENDPOINTS = {
     projectsCalendar: buildUrl(`projects_calendar.php`),
 
 
-    me: buildUrl('/get_my_profile.php'),
-    updateMe: buildUrl('/update_my_profile.php'),
-    uploadAvatar: buildUrl('/upload_avatar.php'),
+    me: buildUrl('get_my_profile.php'),
+    updateMe: buildUrl('update_my_profile.php'),
+    uploadAvatar: buildUrl('upload_avatar.php'),
     getUserDetails: buildUrl('get_user_details.php'),
 
+    changePassword: buildUrl('change_password.php'),
 
-    changePassword: buildUrl('/change_password.php'),
-
-    taskStatus: (id: number) => buildUrl('/update_status.php', { id }),
+    taskStatus: (id: number) => buildUrl('update_status.php', { id }),
 
 
 
 
     // task assignees
-    listTaskAssignees: buildUrl('/task_assignees_list.php'),
+    listTaskAssignees: buildUrl('task_assignees_list.php'),
 
-    urlListTaskAssignees: buildUrl('/task_assignees_list.php'),
-    urlAssignTaskAssignee: buildUrl('/task_assignees_assign.php'),
-    urlUpdateTaskAssigneeRole: buildUrl('/task_assignees_update_role.php'),
-    urlRemoveTaskAssignee: buildUrl('/task_assignees_remove.php'),
+    urlListTaskAssignees: buildUrl('task_assignees_list.php'),
+    urlAssignTaskAssignee: buildUrl('task_assignees_assign.php'),
+    urlUpdateTaskAssigneeRole: buildUrl('task_assignees_update_role.php'),
+    urlRemoveTaskAssignee: buildUrl('task_assignees_remove.php'),
 
-    urlGetFreelancers: buildUrl('/freelancers_simple.php'), // <--- TAMBAH INI
+    urlGetFreelancers: buildUrl('freelancers_simple.php'),
 };
 
 

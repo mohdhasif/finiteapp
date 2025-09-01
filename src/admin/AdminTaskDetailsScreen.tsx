@@ -325,9 +325,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 onPress: async () => {
                     try {
                         await removeTaskAssignee(token, taskId, fid);
+                        
+                        // Just refresh the assignees list from server to avoid duplicates
                         await fetchAssignees(async () => {
-                            const currentAssignees = await listTaskAssignees(token, taskId);
-                            return (currentAssignees ?? []).filter((x: Assignee) => x.id !== fid);
+                            return await listTaskAssignees(token, taskId);
                         });
                     } catch (e: any) {
                         Alert.alert('Gagal', e?.message || 'Tidak dapat buang.');
@@ -341,9 +342,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
         if (!token) return;
         try {
             await updateTaskAssigneeRole(token, taskId, fid, role);
+            
+            // Just refresh the assignees list from server to avoid duplicates
             await fetchAssignees(async () => {
-                const currentAssignees = await listTaskAssignees(token, taskId);
-                return (currentAssignees ?? []).map((x: Assignee) => x.id === fid ? { ...x, role } : x);
+                return await listTaskAssignees(token, taskId);
             });
         } catch (e: any) {
             Alert.alert('Gagal', e?.message || 'Tidak dapat kemas kini role.');
@@ -352,13 +354,23 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const handleSelectToAdd = async (f: NewAssignee) => {
         if (!token) return;
+        
+        // Check if freelancer is already assigned to prevent duplicates
+        const isAlreadyAssigned = (assignees || []).some(a => a.id === f.id);
+        if (isAlreadyAssigned) {
+            Alert.alert('Already Assigned', 'This freelancer is already assigned to this task.');
+            return;
+        }
+        
         try {
             setAdding(true);
             await assignTaskAssignee(token, taskId, f.id, 'other'); // default role
+            
+            // Just refresh the assignees list from server to avoid duplicates
             await fetchAssignees(async () => {
-                const currentAssignees = await listTaskAssignees(token, taskId);
-                return [...(currentAssignees ?? []), { ...f, role: 'other' } as Assignee];
+                return await listTaskAssignees(token, taskId);
             });
+            
             setShowAddModal(false);
             setOptions([]);
             setSearchQ('');
@@ -633,9 +645,13 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         <View style={{ paddingVertical: 20 }}><ActivityIndicator size="small" color="#fff" /></View>
                     ) : options.length === 0 ? (
                         <Text style={styles.muted}>Tiada result.</Text>
+                    ) : options.filter(opt => !(assignees || []).some(a => a.id === opt.id)).length === 0 ? (
+                        <Text style={styles.muted}>All available freelancers are already assigned to this task.</Text>
                     ) : (
                         <ScrollView style={{ maxHeight: 280, marginTop: 10 }}>
-                            {options.map(opt => (
+                            {options
+                                .filter(opt => !(assignees || []).some(a => a.id === opt.id)) // Hide already assigned freelancers
+                                .map(opt => (
                                 <TouchableOpacity
                                     key={opt.id}
                                     style={[styles.attachmentRow, { backgroundColor: '#0E4766' }]}

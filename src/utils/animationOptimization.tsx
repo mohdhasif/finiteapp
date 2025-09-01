@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Animated, InteractionManager, Platform } from 'react-native';
+import { Animated, InteractionManager, Platform, Easing } from 'react-native';
 
 // Animation performance constants
 const ANIMATION_CONFIG = {
@@ -8,7 +8,7 @@ const ANIMATION_CONFIG = {
   // Optimize for 60fps
   duration: 300,
   // Easing for smooth animations
-  easing: Animated.Easing.cubic,
+  easing: Easing.cubic,
   // Reduce animation complexity on low-end devices
   isLowEndDevice: Platform.OS === 'android' && Platform.Version < 26,
 };
