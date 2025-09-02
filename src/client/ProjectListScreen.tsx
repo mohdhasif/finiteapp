@@ -132,7 +132,7 @@ const ProjectListScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Gradient header full-bleed ke atas */}
+      {/* Gradient header full-bleed to top */}
       <LinearGradient
         colors={['#0064B7', '#00A2E1']}
         start={{ x: 0, y: 0 }}

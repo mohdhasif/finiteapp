@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
     View, Text, StyleSheet, Image, TouchableOpacity,
     ScrollView, Switch, SafeAreaView, ActivityIndicator, Alert,
@@ -11,7 +11,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
-import Geolocation from 'react-native-geolocation-service';
+import * as Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
@@ -115,10 +115,14 @@ const AdminProfileScreen = () => {
     useFocusEffect(
         useCallback(() => {
             const loadUserData = async () => {
-                const userInfoRaw = await AsyncStorage.getItem('userInfo');
-                const parsedUserInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
-
-                setUserInfo(parsedUserInfo);
+                try {
+                    const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                    const parsedUserInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+                    setUserInfo(parsedUserInfo);
+                } catch (error) {
+                    console.warn('Failed to load user data:', error);
+                    setUserInfo(null);
+                }
             };
             loadUserData();
         }, [])
@@ -133,6 +137,7 @@ const AdminProfileScreen = () => {
                     setGeolocationStatus(status);
                 } catch (error) {
                     console.warn('Failed to check geolocation status:', error);
+                    setGeolocationStatus(null);
                 }
             };
             checkStatus();
@@ -230,7 +235,9 @@ const AdminProfileScreen = () => {
                 setLatInput(String(lat));
                 setLngInput(String(lng));
             }
-        } catch { }
+        } catch (error) {
+            console.warn('Failed to load prayer settings:', error);
+        }
     }
 
     // ===== Helpers =====
@@ -257,11 +264,33 @@ const AdminProfileScreen = () => {
 
     const getCurrentCoordinates = (): Promise<Coords> =>
         new Promise(resolve => {
-            Geolocation.getCurrentPosition(
-                pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-                () => resolve(null),
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-            );
+            try {
+                // Try react-native-geolocation-service first
+                if (Geolocation.getCurrentPosition) {
+                    Geolocation.getCurrentPosition(
+                        (pos: any) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+                        (error: any) => {
+                            console.warn('Geolocation error:', error);
+                            resolve(null);
+                        },
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+                    );
+                } else {
+                    // Fallback to React Native's built-in Geolocation
+                    const RNGeolocation = require('react-native').Geolocation;
+                    RNGeolocation.getCurrentPosition(
+                        (pos: any) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+                        (error: any) => {
+                            console.warn('RN Geolocation error:', error);
+                            resolve(null);
+                        },
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+                    );
+                }
+            } catch (error) {
+                console.warn('Geolocation setup error:', error);
+                resolve(null);
+            }
         });
 
     // ===== Prayer dropdown actions =====
@@ -387,12 +416,21 @@ const AdminProfileScreen = () => {
     // console.log('userInfo: ', userInfo);
     
     // Client logo source (from profile), fallback to default avatar
-    const logoSource =
-        userInfo?.avatar_url
-            ? (userInfo.avatar_url.startsWith('http')
-                ? { uri: userInfo.avatar_url }
-                : { uri: `${BASE_URL}${userInfo.avatar_url}` })
-            : avatarSrc;
+    const logoSource = useMemo(() => {
+        try {
+            if (userInfo?.avatar_url) {
+                if (userInfo.avatar_url.startsWith('http')) {
+                    return { uri: userInfo.avatar_url };
+                } else {
+                    return { uri: `${BASE_URL}${userInfo.avatar_url}` };
+                }
+            }
+            return avatarSrc;
+        } catch (error) {
+            console.warn('Error creating logo source:', error);
+            return avatarSrc;
+        }
+    }, [userInfo?.avatar_url]);
 
     if (loading) {
         return (
@@ -520,7 +558,13 @@ const AdminProfileScreen = () => {
                                 {/* Manual Location Capture Button */}
                                 <TouchableOpacity
                                     style={[styles.btn, { backgroundColor: '#28a745', marginTop: 10 }]}
-                                    onPress={captureLocation}
+                                    onPress={() => {
+                                        try {
+                                            captureLocation();
+                                        } catch (error) {
+                                            console.warn('Capture location error:', error);
+                                        }
+                                    }}
                                 >
                                     <Icon name="refresh-outline" size={18} color="#fff" />
                                     <Text style={styles.btnText}>Refresh Location</Text>
@@ -529,7 +573,13 @@ const AdminProfileScreen = () => {
                                 {/* Manual Prayer Notification Configuration Button */}
                                 <TouchableOpacity
                                     style={[styles.btn, { backgroundColor: '#ff6b35', marginTop: 10 }]}
-                                    onPress={configurePrayerNotification}
+                                    onPress={() => {
+                                        try {
+                                            configurePrayerNotification();
+                                        } catch (error) {
+                                            console.warn('Configure prayer notification error:', error);
+                                        }
+                                    }}
                                 >
                                     <Icon name="notifications-outline" size={18} color="#fff" />
                                     <Text style={styles.btnText}>Configure Prayer Notifications</Text>
@@ -544,6 +594,7 @@ const AdminProfileScreen = () => {
                                             setGeolocationStatus(status);
                                         } catch (error) {
                                             console.warn('Failed to refresh geolocation status:', error);
+                                            setGeolocationStatus(null);
                                         }
                                     }}
                                 >
@@ -554,7 +605,13 @@ const AdminProfileScreen = () => {
                                 {/* Debug AsyncStorage Button */}
                                 <TouchableOpacity
                                     style={[styles.btn, { backgroundColor: '#17a2b8', marginTop: 10 }]}
-                                    onPress={debugAsyncStorage}
+                                    onPress={() => {
+                                        try {
+                                            debugAsyncStorage();
+                                        } catch (error) {
+                                            console.warn('Debug AsyncStorage error:', error);
+                                        }
+                                    }}
                                 >
                                     <Icon name="bug-outline" size={18} color="#fff" />
                                     <Text style={styles.btnText}>Debug AsyncStorage</Text>

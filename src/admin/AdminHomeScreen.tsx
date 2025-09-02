@@ -30,7 +30,7 @@ import OptimizedBottomTab from '../components/OptimizedBottomTab';
 
 
 const { width } = Dimensions.get('window');
-const CARD = Math.round(width * 0.62); // nampak >1 kad
+const CARD = Math.round(width * 0.62); // shows >1 card
 const GAP = 12;
 const SIDE = 20;
 
@@ -65,7 +65,7 @@ type ProjectFreelancer = {
 };
 
 const AdminHomeScreen = () => {
-    // --- Navigation (dah ada dalam file anda)
+    // --- Navigation (already exists in your file)
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     // ================= UI states
@@ -225,7 +225,7 @@ const AdminHomeScreen = () => {
                 // Initialize checkbox states based on task completion
                 const newCheckedStates: Record<number, boolean> = {};
                 data.forEach(task => {
-                    newCheckedStates[task.id] = task.status === 'completed';
+                    newCheckedStates[task.id] = (task.status || '').toLowerCase() === 'completed';
                 });
                 setCheckedById(newCheckedStates);
                 
@@ -284,9 +284,6 @@ const AdminHomeScreen = () => {
         const id = t.id;
         if (!id) return;
 
-        // if already completed, ignore (your existing guard)
-        if ((t.status || '').toLowerCase() === 'completed') return;
-
         // Prevent double taps while pending
         if (pendingIdsRef.current.has(id)) return;
         pendingIdsRef.current.add(id);
@@ -299,16 +296,21 @@ const AdminHomeScreen = () => {
             return;
         }
 
+        // Determine new status based on current state
+        const currentStatus = (t.status || '').toLowerCase();
+        const isCurrentlyCompleted = currentStatus === 'completed';
+        const newStatus = isCurrentlyCompleted ? 'pending' : 'completed';
+
         // --- Optimistic UI ---
         const tasksList = tasks || [];
         const prevTasks = [...tasksList];
         const prevChecked = { ...checkedById };
 
-        const nextChecked = { ...checkedById, [id]: true }; // checking means completed
+        const nextChecked = { ...checkedById, [id]: !isCurrentlyCompleted };
         setCheckedById(nextChecked);
 
         try {
-            await updateTaskStatus(token, id, 'completed');
+            await updateTaskStatus(token, id, newStatus);
             // success: refetch data to ensure consistency
             await Promise.all([refetchProjectsOnly(), loadTasks()]);
 
@@ -520,13 +522,7 @@ const AdminHomeScreen = () => {
                             <AdminTaskCard
                                 key={t.id ?? idx}
                                 task={t}
-                                checked={isCompleted ? true : !!checkedById[t.id]}
-                                // onToggleCheck={() => {
-                                //     if (isCompleted) return;
-                                //     const next = [...checkedStates];
-                                //     next[idx] = !next[idx];
-                                //     setCheckedStates(next);
-                                // }}
+                                checked={isCompleted}
                                 onToggleCheck={() => handleToggleCheck(idx, t)}
                                 onPress={() =>
                                     navigation.push('AdminTaskDetailsScreen', {

@@ -4,6 +4,7 @@ import {
     ScrollView, Dimensions, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Modal from 'react-native-modal';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -265,14 +266,18 @@ const MyProfileScreen = () => {
                 <Text style={styles.header}>My Profile</Text>
 
                 <View style={styles.avatarContainer}>
-                    <Image
-                        source={avatarSource}
-                        style={styles.avatar}
-                        resizeMode="contain"
-                    />
-
-                    <TouchableOpacity style={styles.editCircle} onPress={pickAvatar} />
-                    <Text style={styles.smallHint}>Tap the white circle to choose avatar</Text>
+                    <View style={styles.avatarWrapper}>
+                        <Image
+                            source={avatarSource}
+                            style={styles.avatar}
+                            resizeMode="contain"
+                        />
+                        
+                        <TouchableOpacity style={styles.editCircle} onPress={pickAvatar}>
+                            <Icon name="add" size={16} color="#0072B5" />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.smallHint}>Tap the plus icon to choose avatar</Text>
                 </View>
 
                 {/* Basic Details */}
@@ -353,6 +358,10 @@ const styles = StyleSheet.create({
         marginBottom: 25,
         position: 'relative',
     },
+    avatarWrapper: {
+        position: 'relative',
+        alignItems: 'center',
+    },
     avatar: { 
         width: 100, 
         height: 100, 
@@ -360,13 +369,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#DDD' 
     },
     editCircle: {
-        width: 24, 
-        height: 24, 
+        width: 32, 
+        height: 32, 
         backgroundColor: '#fff', 
-        borderRadius: 12,
+        borderRadius: 16,
         position: 'absolute', 
-        bottom: 18, 
-        right: width / 2 - 102, 
+        bottom: 0, 
+        right: -8, 
         borderWidth: 2, 
         borderColor: '#0072B5',
         elevation: 3,
@@ -374,6 +383,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     smallHint: { 
         marginTop: 12, 

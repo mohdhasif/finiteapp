@@ -41,8 +41,8 @@ interface OptimizedBottomTabProps {
 }
 
 const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
-  tabs,
-  quickActions,
+  tabs = [],
+  quickActions = [],
   activeTab,
   onTabPress,
   onNotificationBadgeUpdate,
@@ -83,11 +83,14 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
         const badgeCount = await getBadgeCount(token);
         console.log('badgeCount:', badgeCount);
         
-        setNotificationBadge(badgeCount);
-        onNotificationBadgeUpdate?.(badgeCount);
+        // Ensure badge count is a valid number
+        const validBadgeCount = typeof badgeCount === 'number' && !isNaN(badgeCount) ? badgeCount : 0;
+        setNotificationBadge(validBadgeCount);
+        onNotificationBadgeUpdate?.(validBadgeCount);
       }
     } catch (error) {
       console.log('Error loading notification badge:', error);
+      setNotificationBadge(0);
     }
   }, [onNotificationBadgeUpdate]);
 
@@ -105,7 +108,7 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
     
     return (
       <TouchableOpacity
-        key={tab.id}
+        key={`tab-${tab.id}-${index}`}
         style={[
           styles.tabItem,
           tab.isActive && styles.activeTabItem,
@@ -119,13 +122,12 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
             size={26}
             color={tab.isActive ? '#fff' : 'rgba(255,255,255,0.7)'}
           />
-          {showBadge && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {notificationBadge > 99 ? '99+' : notificationBadge}
-              </Text>
-            </View>
-          )}
+          {/* Always render badge container to prevent child count mismatch */}
+          <View style={[styles.badge, { opacity: showBadge ? 1 : 0 }]}>
+            <Text style={styles.badgeText}>
+              {notificationBadge > 99 ? '99+' : notificationBadge}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -163,12 +165,18 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
     }
   }, [showQuickActions, fadeAnim, scaleAnim]);
 
+  // Safety check: ensure we have valid tabs
+  if (!Array.isArray(tabs) || tabs.length === 0) {
+    console.warn('OptimizedBottomTab: No tabs provided or invalid tabs array');
+    return null;
+  }
+
   return (
     <>
       {/* Bottom Tab */}
       <View style={styles.bottomTab}>
-        {renderTabWithBadge(tabs[0], 0)}
-        {renderTabWithBadge(tabs[1], 1)}
+        {tabs.length > 0 && renderTabWithBadge(tabs[0], 0)}
+        {tabs.length > 1 && renderTabWithBadge(tabs[1], 1)}
         
         {/* FAB Button - Center */}
         <TouchableOpacity
@@ -179,8 +187,8 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
           <Icon name="add" size={32} color="#0072B5" />
         </TouchableOpacity>
 
-        {renderTabWithBadge(tabs[2], 2)}
-        {renderTabWithBadge(tabs[3], 3)}
+        {tabs.length > 2 && renderTabWithBadge(tabs[2], 2)}
+        {tabs.length > 3 && renderTabWithBadge(tabs[3], 3)}
       </View>
 
       {/* Quick Actions Modal */}
@@ -202,9 +210,9 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
                   },
                 ]}
               >
-                {quickActions.map((action) => (
+                {quickActions.map((action, index) => (
                   <TouchableOpacity
-                    key={action.id}
+                    key={`action-${action.id}-${index}`}
                     style={styles.quickActionItem}
                     onPress={() => handleQuickActionPress(action)}
                     activeOpacity={0.7}
@@ -266,6 +274,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    // Ensure badge is always rendered but hidden when not needed
+    pointerEvents: 'none',
   },
   badgeText: {
     color: '#fff',

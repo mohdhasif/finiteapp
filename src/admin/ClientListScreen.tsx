@@ -82,15 +82,36 @@ const ClientListScreen = () => {
     // Optional: projek ringkas (kalau tak guna, boleh buang block ni)
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [err, setErr] = useState<string | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     // --- fetchers
     const fetchClients = useCallback(async (isRefreshing = false) => {
         try {
             if (!isRefreshing) setLoading(true);
-            const data = await getClients();
-            setClients(Array.isArray(data) ? data : []);
+            
+            // Get token first
+            const token = await AsyncStorage.getItem('userToken');
+            console.log('ClientListScreen: Token available:', !!token);
+            
+            const data = await getClients(token || undefined);
+            console.log('ClientListScreen: Raw API response:', data);
+            
+            // Handle different response structures
+            let clientsData: Client[] = [];
+            if (Array.isArray(data)) {
+                clientsData = data;
+            } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
+                clientsData = data.data;
+            } else if (data && typeof data === 'object' && data.success && Array.isArray(data.data)) {
+                clientsData = data.data;
+            }
+            
+            console.log('ClientListScreen: Processed clients:', clientsData.length);
+            setClients(clientsData);
         } catch (error) {
-            console.error('Fetch error:', error);
+            console.error('ClientListScreen: Fetch error:', error);
+            setClients([]);
+            setFetchError(error instanceof Error ? error.message : 'Failed to fetch clients');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -100,16 +121,18 @@ const ClientListScreen = () => {
     // Refresh bila screen fokus
     useFocusEffect(
         useCallback(() => {
+            console.log('ClientListScreen: Screen focused, fetching clients...');
             fetchClients();
             return () => { };
-        }, [fetchClients, selectedFilter])
+        }, [fetchClients])
     );
 
     // Refresh bila filter berubah (jika backend support filter server-side boleh tambah query)
     useEffect(() => {
+        console.log('ClientListScreen: Filter changed to:', selectedFilter);
         setLoading(true);
         fetchClients();
-    }, [fetchClients, selectedFilter]);
+    }, [selectedFilter]);
 
     // Optional: load project summaries (debug/log)
     useEffect(() => {
@@ -137,6 +160,10 @@ const ClientListScreen = () => {
         selectedFilter === 'all'
             ? clients
             : clients.filter(c => (c.client_status || '').toLowerCase() === selectedFilter.toLowerCase());
+    
+    console.log('ClientListScreen: Total clients:', clients.length);
+    console.log('ClientListScreen: Filtered clients:', filteredClients.length);
+    console.log('ClientListScreen: Selected filter:', selectedFilter);
 
     const handlePress = (client: Client) => {
         navigation.navigate('ClientApprovalScreen', { client });
@@ -219,11 +246,44 @@ const ClientListScreen = () => {
                         refreshing={refreshing}
                         onRefresh={() => {
                             setRefreshing(true);
+                            setFetchError(null);
                             fetchClients(true);
                         }}
                     />
                 }
             >
+                {/* Error State */}
+                {fetchError && (
+                    <View style={styles.errorContainer}>
+                        <Icon name="alert-circle" size={24} color="#dc3545" />
+                        <Text style={styles.errorText}>{fetchError}</Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={() => {
+                                setFetchError(null);
+                                fetchClients();
+                            }}
+                        >
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* Empty State */}
+                {!fetchError && filteredClients.length === 0 && !loading && (
+                    <View style={styles.emptyContainer}>
+                        <Icon name="people-outline" size={48} color="#999" />
+                        <Text style={styles.emptyText}>No clients found</Text>
+                        <Text style={styles.emptySubtext}>
+                            {selectedFilter === 'all' 
+                                ? 'No clients available' 
+                                : `No clients with status: ${selectedFilter}`
+                            }
+                        </Text>
+                    </View>
+                )}
+
+                {/* Clients List */}
                 {filteredClients.map((item, index) => (
                     <TouchableOpacity
                         key={item.client_id ?? index.toString()}
@@ -457,5 +517,45 @@ const styles = StyleSheet.create({
     },
     dropdownActiveItem: {
         backgroundColor: '#007bff',
+    },
+    errorContainer: {
+        alignItems: 'center',
+        padding: 20,
+        marginVertical: 20,
+    },
+    errorText: {
+        color: '#dc3545',
+        fontSize: 16,
+        textAlign: 'center',
+        marginTop: 8,
+        marginBottom: 16,
+    },
+    retryButton: {
+        backgroundColor: '#007bff',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        padding: 40,
+        marginVertical: 20,
+    },
+    emptyText: {
+        color: '#999',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    emptySubtext: {
+        color: '#999',
+        fontSize: 14,
+        textAlign: 'center',
     },
 });

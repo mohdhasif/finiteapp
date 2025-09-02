@@ -6,7 +6,7 @@ export type TaskAttachment = {
     id: number;
     task_id: number;
     file_name: string;
-    file_url: string; // boleh jadi relative; paparkan dengan BASE_URL jika perlu
+    file_url: string; // can be relative; display with BASE_URL if needed
     mime_type?: string | null;
     size_bytes?: number | null;
     created_at?: string;
@@ -126,7 +126,7 @@ export const uploadAttachment = async (
         API_ENDPOINTS.uploadAttachment,
         {
             method: 'POST',
-            // IMPORTANT: jangan set 'Content-Type' untuk FormData (biar RN set boundary)
+            // IMPORTANT: don't set 'Content-Type' for FormData (let RN set boundary)
             body: form,
         },
         token
@@ -166,7 +166,7 @@ export const getTaskLink = async (token: string, taskId: number): Promise<TaskLi
     const json = await apiFetch(url, {}, token);
 
     if (!json) return null;
-    // server mungkin return { task_id, url } atau { data: { task_id, url } }
+    // server may return { task_id, url } or { data: { task_id, url } }
     const r = json?.data ?? json;
     if (!r?.url) return null;
     return {
@@ -190,7 +190,7 @@ export const setTaskLink = async (token: string, taskId: number, urlValue: strin
     if (json?.success === true) {
         return { task_id: taskId, url: urlValue };
     }
-    // fallback kalau server reply terus {task_id,url}
+    // fallback if server replies directly with {task_id,url}
     const r = json?.data ?? json;
     return r?.url ? { task_id: Number(r.task_id ?? taskId), url: String(r.url) } : null;
 };
@@ -212,7 +212,7 @@ export const listNotes = async (token: string, taskId: number): Promise<TaskNote
         created_at: normIso(r.created_at),
     })) as TaskNote[];
 
-    return mapped; // sorting akan dibuat di screen masa load sahaja
+    return mapped; // sorting will be done at screen level when loading
 };
 
 export const addNote = async (
@@ -243,6 +243,6 @@ export const addNote = async (
             | 'client',
         sender_id: n.sender_id != null ? Number(n.sender_id) : payload.sender_id ?? null,
         message: String(n.message ?? payload.message ?? ''),
-        created_at: normIso(n.created_at), // fallback ke now
+        created_at: normIso(n.created_at), // fallback to now
     };
 };

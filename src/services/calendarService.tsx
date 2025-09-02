@@ -41,11 +41,11 @@ export const getProjectsCalendar = async (
     try {
         json = JSON.parse(raw);
     } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 
     if (!res.ok || json?.success === false) {
-        const msg = json?.error || `Gagal ambil data calendar (HTTP ${res.status})`;
+        const msg = json?.error || `Failed to fetch calendar data (HTTP ${res.status})`;
         throw new Error(msg);
     }
 

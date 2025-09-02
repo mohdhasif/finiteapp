@@ -23,10 +23,10 @@ export async function listTaskAssignees(token: string, taskId: number): Promise<
     try {
         j = JSON.parse(text);
     } catch (e) {
-        throw new Error('Response bukan JSON sah');
+        throw new Error('Response is not valid JSON');
     }
 
-    if (!j.success) throw new Error(j.error || 'Gagal memuat assignees');
+    if (!j.success) throw new Error(j.error || 'Failed to load assignees');
     return j.data || [];
 }
 
@@ -39,7 +39,7 @@ export async function assignTaskAssignee(token: string, taskId: number, freelanc
         body: JSON.stringify({ task_id: taskId, freelancer_id: freelancerId, role }),
     });
     const j = await r.json();
-    if (!j.success) throw new Error(j.error || 'Gagal assign freelancer');
+    if (!j.success) throw new Error(j.error || 'Failed to assign freelancer');
 }
 
 export async function updateTaskAssigneeRole(token: string, taskId: number, freelancerId: number, role: Assignee['role']) {
@@ -50,14 +50,14 @@ export async function updateTaskAssigneeRole(token: string, taskId: number, free
         body: JSON.stringify({ task_id: taskId, freelancer_id: freelancerId, role }),
     });
     const j = await r.json();
-    if (!j.success) throw new Error(j.error || 'Gagal kemas kini role');
+    if (!j.success) throw new Error(j.error || 'Failed to update role');
 }
 
 export async function removeTaskAssignee(token: string, taskId: number, freelancerId: number) {
     const url = `${API_ENDPOINTS.urlRemoveTaskAssignee}?task_id=${encodeURIComponent(taskId)}&freelancer_id=${encodeURIComponent(freelancerId)}`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     const j = await r.json();
-    if (!j.success) throw new Error(j.error || 'Gagal buang assignee');
+    if (!j.success) throw new Error(j.error || 'Failed to remove assignee');
 }
 
 
@@ -81,7 +81,7 @@ export async function searchFreelancersSimple(
     token: string,
     params: SearchFreelancersParams = {}
 ): Promise<NewAssignee[]> {
-    // bina querystring manual supaya tak bergantung pada URLSearchParams (issue di RN Hermes)
+    // build querystring manually to avoid dependency on URLSearchParams (issue in RN Hermes)
     const qs = Object.entries({
         q: params.q ?? '',
         status: params.status ?? '',
@@ -105,7 +105,7 @@ export async function searchFreelancersSimple(
 
     if (!resp.ok) {
         const txt = await resp.text().catch(() => '');
-        throw new Error(`Gagal memuat freelancers (${resp.status}) ${txt}`);
+        throw new Error(`Failed to load freelancers (${resp.status}) ${txt}`);
     }
 
     const data = await resp.json();
@@ -119,9 +119,9 @@ export async function searchFreelancersSimple(
                 ? data.data
                 : [];
 
-    // (Opsyenal) guard kalau API guna success=false
+    // (Optional) guard if API uses success=false
     if (!Array.isArray(list) && data?.success === false) {
-        throw new Error(data?.error || 'Gagal memuat freelancers');
+        throw new Error(data?.error || 'Failed to load freelancers');
     }
 
     // Normalise → NewAssignee

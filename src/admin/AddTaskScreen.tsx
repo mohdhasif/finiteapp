@@ -59,12 +59,12 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
 
   const [loading, setLoading] = useState(false);
 
-  // Load senarai projek utk dropdown
+      // Load project list for dropdown
   const loadProjects = useCallback(async () => {
     try {
       performanceMonitor.startTimer('loadProjects');
-      const token = await AsyncStorage.getItem('userToken'); // kekalkan key ini
-      if (!token) throw new Error('Tiada token. Sila log masuk semula.');
+      const token = await AsyncStorage.getItem('userToken'); // keep this key
+      if (!token) throw new Error('No token found. Please log in again.');
 
       const data = await getProjectsOptions(token);
       setProjects(data);
@@ -99,7 +99,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
     );
     setStartAt(toMySQLDateTime(final));
     setShowStartTime(false);
-    // Optional UX: auto-suggest end = start + 1 jam kalau end kosong
+    // Optional UX: auto-suggest end = start + 1 hour if end is empty
     if (!endAt) {
       const suggest = new Date(final.getTime() + 60 * 60 * 1000);
       setEndAt(toMySQLDateTime(suggest));
@@ -145,7 +145,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('userToken');
-      if (!token) throw new Error('Tiada token. Sila log masuk semula.');
+      if (!token) throw new Error('No token found. Please log in again.');
 
       await createTask(token, {
         title: title.trim(),
@@ -167,7 +167,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
     }
   };
 
-  // Item untuk modal Project
+  // Item for Project modal
   const projectItems = useMemo(
     () =>
       projects.map(p => ({
@@ -197,7 +197,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
             <Text style={styles.selectText}>
               {selectedProject
                 ? `${selectedProject.title}${selectedProject.client_name ? ' — ' + selectedProject.client_name : ''}`
-                : 'Pilih project'}
+                : 'Select project'}
             </Text>
           </TouchableOpacity>
 
@@ -205,7 +205,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
           <Text style={styles.label}>Task Title</Text>
           <TextInput
             style={styles.input}
-            placeholder="Contoh: Setup CI/CD"
+            placeholder="Example: Setup CI/CD"
             placeholderTextColor={SUB}
             value={title}
             onChangeText={setTitle}
@@ -215,7 +215,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
           <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.multiline]}
-            placeholder="Butiran tugas..."
+            placeholder="Task details..."
             placeholderTextColor={SUB}
             value={description}
             onChangeText={setDescription}
@@ -237,18 +237,18 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
           {/* Due Date */}
           {/* <Text style={styles.label}>Due Date (optional)</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowDueDate(true)}>
-            <Text style={styles.selectText}>{dueDate || 'Pilih tarikh (jika ada)'}</Text>
+            <Text style={styles.selectText}>{dueDate || 'Select date (if any)'}</Text>
           </TouchableOpacity> */}
 
           {/* Start / End */}
           <Text style={styles.label}>Start (optional)</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowStartDate(true)}>
-            <Text style={styles.selectText}>{startAt || 'Pilih tarikh & masa mula'}</Text>
+            <Text style={styles.selectText}>{startAt || 'Select date & time start'}</Text>
           </TouchableOpacity>
 
           <Text style={styles.label}>End (optional)</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowEndDate(true)}>
-            <Text style={styles.selectText}>{endAt || 'Pilih tarikh & masa tamat'}</Text>
+            <Text style={styles.selectText}>{endAt || 'Select date & time end'}</Text>
           </TouchableOpacity>
 
           {/* Submit */}
@@ -257,14 +257,14 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
             onPress={onSubmit}
             disabled={!canSubmit || loading}
           >
-            <Text style={styles.submitText}>{loading ? 'Menyimpan...' : 'Tambah Task'}</Text>
+            <Text style={styles.submitText}>{loading ? 'Saving...' : 'Add Task'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
         {/* Project Modal */}
         <SelectionModal
           visible={showProjectPicker}
-          title="Pilih Project"
+          title="Select Project"
           items={projectItems}
           value={selectedProject?.id ?? null}
           onClose={() => setShowProjectPicker(false)}
@@ -273,13 +273,13 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
             if (found) setSelectedProject(found);
           }}
           showSearch
-          placeholder="Cari project atau client"
+          placeholder="Search projects or clients"
         />
 
         {/* Status Modal */}
         <SelectionModal
           visible={showStatusPicker}
-          title="Pilih Status"
+          title="Select Status"
           items={STATUSES}
           value={status}
           onClose={() => setShowStatusPicker(false)}

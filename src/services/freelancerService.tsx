@@ -22,7 +22,7 @@ export const updateFreelancer = async (token: string, payload: {
     freelancer_id: number;
     name: string; email: string; skillset: string;
     avatar?: { uri: string; name: string; type: string } | null; // file baru
-    avatar_url?: string | null; // url lama kalau kekalkan
+    avatar_url?: string | null; // old url if keep existing
     availability: boolean;
     status: 'pending' | 'approved' | 'rejected' | 'inactive';
 }) => {
@@ -52,7 +52,7 @@ export const updateFreelancer = async (token: string, payload: {
         headers: {
             Accept: 'application/json',
             Authorization: `Bearer ${token}`,
-            // ❌ Jangan set 'Content-Type' manual untuk FormData
+            // ❌ Don't set 'Content-Type' manually for FormData
         },
         body: formData,
     });

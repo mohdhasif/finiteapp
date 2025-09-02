@@ -179,10 +179,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
             const type = res.type || 'application/octet-stream';
 
             const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
-            // Update attachments using the async state execute function
+            // ✅ OPTIMIZED: Append to existing attachments without fetching from server
             await fetchAttachments(async () => {
-                const currentAttachments = await listAttachments(token, taskId);
-                return [uploaded, ...(currentAttachments ?? [])];
+                const currentAttachments = attachments || [];
+                return [uploaded, ...currentAttachments];
             });
             Alert.alert('Success', 'Attachment uploaded successfully.');
         } catch (err: any) {
@@ -206,10 +206,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     try {
                         const ok = await deleteAttachment(token, id);
                         if (ok) {
-                            // Update attachments using the async state execute function
+                            // ✅ OPTIMIZED: Remove from existing attachments without fetching from server
                             await fetchAttachments(async () => {
-                                const currentAttachments = await listAttachments(token, taskId);
-                                return (currentAttachments ?? []).filter((x: TaskAttachment) => x.id !== id);
+                                const currentAttachments = attachments || [];
+                                return currentAttachments.filter((x: TaskAttachment) => x.id !== id);
                             });
                         } else {
                             Alert.alert('Failed', 'Cannot delete attachment.');
@@ -267,10 +267,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 created_at: note.created_at && note.created_at.trim() ? note.created_at : new Date().toISOString(),
             };
 
-            // JANGAN sort di sini — terus APPEND untuk kekalkan di bawah
+            // ✅ OPTIMIZED: Append to existing notes without fetching from server
             await fetchNotes(async () => {
-                const currentNotes = await listNotes(token, taskId);
-                return [...(currentNotes ?? []), safeNote];
+                const currentNotes = notes || [];
+                return [...currentNotes, safeNote];
             });
             setNoteText('');
 
@@ -326,9 +326,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     try {
                         await removeTaskAssignee(token, taskId, fid);
                         
-                        // Just refresh the assignees list from server to avoid duplicates
+                        // ✅ OPTIMIZED: Remove from existing assignees without fetching from server
                         await fetchAssignees(async () => {
-                            return await listTaskAssignees(token, taskId);
+                            const currentAssignees = assignees || [];
+                            return currentAssignees.filter((a: Assignee) => a.id !== fid);
                         });
                     } catch (e: any) {
                         Alert.alert('Gagal', e?.message || 'Tidak dapat buang.');
@@ -343,9 +344,12 @@ const AdminTaskDetailsScreen: React.FC = () => {
         try {
             await updateTaskAssigneeRole(token, taskId, fid, role);
             
-            // Just refresh the assignees list from server to avoid duplicates
+            // ✅ OPTIMIZED: Update existing assignees without fetching from server
             await fetchAssignees(async () => {
-                return await listTaskAssignees(token, taskId);
+                const currentAssignees = assignees || [];
+                return currentAssignees.map((a: Assignee) => 
+                    a.id === fid ? { ...a, role } : a
+                );
             });
         } catch (e: any) {
             Alert.alert('Gagal', e?.message || 'Tidak dapat kemas kini role.');
@@ -366,9 +370,16 @@ const AdminTaskDetailsScreen: React.FC = () => {
             setAdding(true);
             await assignTaskAssignee(token, taskId, f.id, 'other'); // default role
             
-            // Just refresh the assignees list from server to avoid duplicates
+            // ✅ OPTIMIZED: Add to existing assignees without fetching from server
             await fetchAssignees(async () => {
-                return await listTaskAssignees(token, taskId);
+                const currentAssignees = assignees || [];
+                const newAssignee: Assignee = {
+                    id: f.id,
+                    name: f.name,
+                    email: f.email || '',
+                    role: 'other'
+                };
+                return [...currentAssignees, newAssignee];
             });
             
             setShowAddModal(false);

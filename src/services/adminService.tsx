@@ -49,12 +49,12 @@ export type AdminRawClient = {
     company_name: string | null;
     client_type: 'company' | 'individual';
     status?: 'pending' | 'approved' | 'rejected' | 'active' | 'non-active';
-    // field lain wujud tapi tak digunakan di sini
+    // other fields exist but not used here
 };
 
 export type AdminClientOption = {
     value: number; // clients.id
-    label: string; // company_name (company) atau users.name (individual)
+    label: string; // company_name (company) or users.name (individual)
     client_type: 'company' | 'individual';
     status?: AdminRawClient['status'];
 };
@@ -68,7 +68,7 @@ function displayName(row: AdminRawClient): string {
     return person || company || 'Unnamed';
 }
 
-/** Ambil raw clients dari get_clients.php */
+/** Get raw clients from get_clients.php */
 export async function fetchAdminClients(token?: string): Promise<AdminRawClient[]> {
     const res = await fetch(API_ENDPOINTS.getClients, {
         headers: {
@@ -82,18 +82,18 @@ export async function fetchAdminClients(token?: string): Promise<AdminRawClient[
     try {
         json = JSON.parse(raw);
     } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 
     if (!res.ok) {
-        throw new Error(`Gagal ambil klien (HTTP ${res.status})`);
+        throw new Error(`Failed to fetch clients (HTTP ${res.status})`);
     }
     return Array.isArray(json) ? (json as AdminRawClient[]) : [];
 }
 
 /**
- * Pulangkan list yang siap untuk picker: {label, value}
- * opts.statusIn → tapis ikut status (client_status) di frontend (optional)
+ * Return list ready for picker: {label, value}
+ * opts.statusIn → filter by status (client_status) in frontend (optional)
  * opts.sort → 'label' (default) | 'id'
  */
 export async function getClientsOptions(
@@ -161,9 +161,9 @@ export async function getMyProfile(token: string): Promise<MyProfile> {
     const raw = await res.text();
     
     let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('JSON tidak sah'); }
+    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal dapatkan profil (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to get profile (HTTP ${res.status})`);
     }
     return json.data as MyProfile;
 }
@@ -181,9 +181,9 @@ export async function updateMyProfile(
     // console.log('raw:', raw);
 
     let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('JSON tidak sah'); }
+    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal kemaskini profil (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to update profile (HTTP ${res.status})`);
     }
     return json.data as MyProfile;
 }
@@ -209,11 +209,11 @@ export async function uploadAvatar(
     });
     const raw = await res.text();
     let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('JSON tidak sah'); }
+    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal upload avatar (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to upload avatar (HTTP ${res.status})`);
     }
-    return json.url as string; // URL avatar baru
+    return json.url as string; // New avatar URL
 }
 
 
@@ -229,7 +229,7 @@ export type MyProfile = {
     avatar_url?: string | null;
 };
 
-// Tambah fungsi multipart
+// Add multipart function
 export async function updateMyProfileForm(
     token: string,
     form: FormData
@@ -253,7 +253,7 @@ export async function updateMyProfileForm(
     }
 
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal kemaskini profil (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to update profile (HTTP ${res.status})`);
     }
 
     return json as any;

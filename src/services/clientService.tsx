@@ -27,7 +27,7 @@ export const updateClient = async (
         status: string;
         client_type: string;
         logo?: { uri: string; name: string; type: string } | null; // fail baru
-        logo_url?: string | null; // url lama kalau kekalkan
+        logo_url?: string | null; // old url if keep existing
     }
 ) => {
     const formData = new FormData();
@@ -49,7 +49,7 @@ export const updateClient = async (
         headers: {
             Accept: 'application/json',
             Authorization: `Bearer ${token}`,
-            // ❌ Jangan set 'Content-Type' manual untuk FormData
+            // ❌ Don't set 'Content-Type' manually for FormData
         },
         body: formData,
     });

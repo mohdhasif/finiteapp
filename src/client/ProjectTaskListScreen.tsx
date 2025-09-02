@@ -55,6 +55,9 @@ const ProjectTaskListScreen = () => {
     const { data: tasksAll, loading, error, execute: fetchTasks } = useAsyncState<any[]>([]);
     const { data: projectDetails, execute: fetchProjectDetails } = useAsyncState<any>(null);
     const { data: projectFreelancers, execute: fetchFreelancers } = useAsyncState<ProjectFreelancer[]>([]);
+    
+    // User info for client company name
+    const [userInfo, setUserInfo] = useState<any>(null);
 
     // Checkbox states (keyed by task.id)
     const [checkedById, setCheckedById] = useState<Record<number, boolean>>({});
@@ -90,7 +93,21 @@ const ProjectTaskListScreen = () => {
         slideAnim.setValue(BOTTOM_TOP);
     }, [BOTTOM_TOP, slideAnim]);
 
-    // Fetch tasks, project details, and freelancers on mount
+    // Load user info for client company name
+    const loadUserInfo = useCallback(async () => {
+        try {
+            const userInfoRaw = await AsyncStorage.getItem('userInfo');
+            if (userInfoRaw) {
+                const parsedUserInfo = JSON.parse(userInfoRaw);
+                setUserInfo(parsedUserInfo);
+                console.log('ProjectTaskListScreen: User info loaded:', parsedUserInfo);
+            }
+        } catch (error) {
+            console.error('Error loading user info:', error);
+        }
+    }, []);
+
+    // Fetch project details first, then tasks
     useEffect(() => {
         const run = async () => {
             performanceMonitor.startTimer('fetchProjectData');
@@ -99,41 +116,84 @@ const ProjectTaskListScreen = () => {
                 const token = await AsyncStorage.getItem('userToken');
                 if (!token) throw new Error('Token tidak dijumpai');
 
-                // Fetch tasks, project details, and freelancers in parallel
-                await Promise.all([
-                    fetchTasks(async () => {
-                        const arr = await getTasksByProjectPublic(token, route.params.projectId);
-                        const list = Array.isArray(arr) ? arr : [];
-                        
-                        // init checkbox according to id (preserve when re-fetch)
-                        setCheckedById(() => {
-                            const next: Record<number, boolean> = {};
-                            for (const t of list) {
-                                const id = Number(t.id);
-                                const isCompleted = String(t.status || '').toLowerCase() === 'completed';
-                                next[id] = isCompleted; // force according to server
-                            }
-                            return next;
-                        });
-                        
-                        return list;
-                    }),
-                    fetchProjectDetails(async () => {
-                        return await getProjectDetails(token, route.params.projectId);
-                    }),
-                    fetchFreelancers(async () => {
-                        const freelancersData = await getProjectFreelancers(token, route.params.projectId);
-                        return Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : [];
-                    }),
-                ]);
+                // Load user info first
+                await loadUserInfo();
+
+                // First fetch project details
+                await fetchProjectDetails(async () => {
+                    return await getProjectDetails(token, route.params.projectId);
+                });
+                
+                // Then fetch freelancers
+                await fetchFreelancers(async () => {
+                    const freelancersData = await getProjectFreelancers(token, route.params.projectId);
+                    return Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : [];
+                });
+                
             } catch (err: any) {
-                console.error('Fetch data error:', err?.message || err);
+                console.error('Fetch project details error:', err?.message || err);
             } finally {
                 performanceMonitor.endTimer('fetchProjectData');
             }
         };
         run();
-    }, [route.params.projectId, fetchTasks, fetchProjectDetails, fetchFreelancers]);
+    }, [route.params.projectId, fetchProjectDetails, fetchFreelancers, loadUserInfo]);
+
+    // Fetch tasks after project details are loaded
+    useEffect(() => {
+        if (!projectDetails) return; // Wait for project details
+        
+        const run = async () => {
+            try {
+                const token = await AsyncStorage.getItem('userToken');
+                if (!token) throw new Error('Token tidak dijumpai');
+
+                await fetchTasks(async () => {
+                    const arr = await getTasksByProjectPublic(token, route.params.projectId);
+                    const list = Array.isArray(arr) ? arr : [];
+                    
+                    console.log('ProjectTaskListScreen: Raw tasks data:', list);
+                    console.log('ProjectTaskListScreen: Project details:', projectDetails);
+                    console.log('ProjectTaskListScreen: User info:', userInfo);
+                    
+                    // Enrich tasks with project and client data
+                    const enrichedTasks = list.map(task => ({
+                        ...task,
+                        project: {
+                            id: route.params.projectId,
+                            title: route.params.projectTitle || projectDetails?.title || 'Project'
+                        },
+                        client: {
+                            user_id: userInfo?.user_id || null,
+                            display_name: userInfo?.name || null,
+                            client_type: 'company',
+                            company_name: userInfo?.company_name || userInfo?.name || 'Company',
+                            logo_url: userInfo?.avatar_url || null,
+                            name: userInfo?.company_name || userInfo?.name || 'Company'
+                        }
+                    }));
+                    
+                    console.log('ProjectTaskListScreen: Enriched tasks:', enrichedTasks);
+                    
+                    // init checkbox according to id (preserve when re-fetch)
+                    setCheckedById(() => {
+                        const next: Record<number, boolean> = {};
+                        for (const t of enrichedTasks) {
+                            const id = Number(t.id);
+                            const isCompleted = String(t.status || '').toLowerCase() === 'completed';
+                            next[id] = isCompleted; // force according to server
+                        }
+                        return next;
+                    });
+                    
+                    return enrichedTasks;
+                });
+            } catch (err: any) {
+                console.error('Fetch tasks error:', err?.message || err);
+            }
+        };
+        run();
+    }, [route.params.projectId, projectDetails, userInfo, fetchTasks]);
 
     // Filtered tasks (client-side)
     const tasks = useMemo(() => {
@@ -174,10 +234,31 @@ const ProjectTaskListScreen = () => {
                 const arr = await getTasksByProjectPublic(token, route.params.projectId);
                 const list = Array.isArray(arr) ? arr : [];
                 
+                console.log('ProjectTaskListScreen: Refetch - Raw tasks data:', list);
+                
+                // Enrich tasks with project and client data
+                const enrichedTasks = list.map(task => ({
+                    ...task,
+                    project: {
+                        id: route.params.projectId,
+                        title: route.params.projectTitle || projectDetails?.title || 'Project'
+                    },
+                    client: {
+                        user_id: userInfo?.user_id || null,
+                        display_name: userInfo?.name || null,
+                        client_type: 'company',
+                        company_name: userInfo?.company_name || userInfo?.name || 'Company',
+                        logo_url: userInfo?.avatar_url || null,
+                        name: userInfo?.company_name || userInfo?.name || 'Company'
+                    }
+                }));
+                
+                console.log('ProjectTaskListScreen: Refetch - Enriched tasks:', enrichedTasks);
+                
                 // Update checkbox states based on new data
                 setCheckedById(() => {
                     const next: Record<number, boolean> = {};
-                    for (const t of list) {
+                    for (const t of enrichedTasks) {
                         const id = Number(t.id);
                         const isCompleted = String(t.status || '').toLowerCase() === 'completed';
                         next[id] = isCompleted;
@@ -185,7 +266,7 @@ const ProjectTaskListScreen = () => {
                     return next;
                 });
                 
-                return list;
+                return enrichedTasks;
             });
         } catch (error) {
             // Revert optimistic update on error

@@ -16,7 +16,7 @@ export type ProjectSummary = {
 
 const parse = async (res: Response) => {
     const raw = await res.text();
-    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Server did not return valid JSON'); }
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
     return json;
 };
@@ -26,7 +26,7 @@ const parseText = (text: string) => {
     try {
         json = JSON.parse(text);
     } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
     return json;
 };
@@ -129,11 +129,11 @@ export const createProject = async (token: string, body: CreateProjectPayload) =
     try {
         json = JSON.parse(raw);
     } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 
     if (!res.ok || json?.success === false) {
-        const msg = json?.error || `Gagal cipta projek (HTTP ${res.status})`;
+        const msg = json?.error || `Failed to create project (HTTP ${res.status})`;
         throw new Error(msg);
     }
     return json;
@@ -177,11 +177,11 @@ export const getProjectsOptions = async (token: string): Promise<ProjectOption[]
     const raw = await res.text();
     let json: any;
     try { json = JSON.parse(raw); } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal ambil projek (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to fetch project (HTTP ${res.status})`);
     }
 
     return Array.isArray(json.data) ? json.data : [];

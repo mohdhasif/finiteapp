@@ -40,7 +40,7 @@ const safeJson = async (res: Response) => {
     try {
         return { json: JSON.parse(raw), raw };
     } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 };
 
@@ -58,14 +58,14 @@ const appendQuery = (base: string, params?: Record<string, unknown>) => {
 export const getTasksByProject = async (token: string, projectId: number) => {
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
-    if (!projectId) throw new Error('projectId tidak sah');
+    if (!projectId) throw new Error('Invalid projectId');
 
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), {
         headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
     });
 
     const { json } = await safeJson(res);
-    if (!res.ok) throw new Error(json?.error || `Gagal ambil tugasan (HTTP ${res.status})`);
+    if (!res.ok) throw new Error(json?.error || `Failed to fetch tasks (HTTP ${res.status})`);
 
     return Array.isArray(json) ? json : (json?.data ?? []);
 };
@@ -76,7 +76,7 @@ export const getTasksByProjectPublic = async (
 ): Promise<Task[]> => {
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
-    if (!projectId) throw new Error('projectId tidak sah');
+    if (!projectId) throw new Error('Invalid projectId');
 
     const res = await fetch(API_ENDPOINTS.projectTasksPublic(projectId), {
         headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
@@ -95,7 +95,7 @@ export const getTasksByProjectPublic = async (
 export const getTaskDetails = async (token: string, taskId: number) => {
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
-    if (!taskId) throw new Error('taskId tidak sah');
+    if (!taskId) throw new Error('Invalid taskId');
 
     let res: Response | undefined;
     let raw = '';
@@ -105,15 +105,15 @@ export const getTaskDetails = async (token: string, taskId: number) => {
             headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
         });
 
-        // Penting: baca body sekali sahaja
+        // Important: read body only once
         raw = await res.text();
 
-        // Cuba parse JSON
+        // Try to parse JSON
         let json: any;
         try {
             json = JSON.parse(raw);
         } catch {
-            // Server tak bagi JSON sah
+            // Server didn't return valid JSON
             throw new Error(`Invalid JSON from server (first 300 chars): ${raw.slice(0, 300)}`);
         }
 
@@ -123,14 +123,14 @@ export const getTaskDetails = async (token: string, taskId: number) => {
             throw new Error(msg);
         }
 
-        // API-level error (jika server balas { success:false, error:"..." })
+        // API-level error (if server returns { success:false, error:"..." })
         if (json?.success === false) {
             throw new Error(json?.error || 'Server returned an error');
         }
 
-        return json; // berjaya
+        return json; // success
     } catch (err: any) {
-        // Letak detail tambahan untuk trace
+        // Add additional details for tracing
         console.error('[getTaskDetails] ERROR:', err?.message);
         if (res) {
             console.error('[getTaskDetails] HTTP status:', res.status);
@@ -149,7 +149,7 @@ export const getAllTasks = async (
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
 
-    // Kekal guna API_ENDPOINTS (string). Kita hanya tambah query di sini.
+    // Keep using API_ENDPOINTS (string). We only add query here.
     const url = appendQuery(API_ENDPOINTS.allTasks, {
         status: opts.status,
         project_id: opts.projectId,
@@ -176,7 +176,7 @@ export const getAllTasksFreelancer = async (
     const t = (token ?? '').trim();
     if (!t) throw new Error('Missing userToken');
 
-    // Kekal guna API_ENDPOINTS (string). Kita hanya tambah query di sini.
+    // Keep using API_ENDPOINTS (string). We only add query here.
     const url = appendQuery(API_ENDPOINTS.allTasksFreelancer, {
         status: opts.status,
         project_id: opts.projectId,
@@ -224,11 +224,11 @@ export const createTask = async (token: string, payload: CreateTaskPayload) => {
 
     let json: any;
     try { json = JSON.parse(raw); } catch {
-        throw new Error('Server tidak mengembalikan JSON yang sah');
+        throw new Error('Server did not return valid JSON');
     }
 
     if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Gagal tambah task (HTTP ${res.status})`);
+        throw new Error(json?.error || `Failed to create task (HTTP ${res.status})`);
     }
 
     return json;

@@ -21,9 +21,9 @@ type ListOptions = {
 const parseJson = async (res: Response) => {
     const raw = await res.text();
     let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+    try { json = JSON.parse(raw); } catch { throw new Error('Server did not return valid JSON'); }
     if (!res.ok) {
-        const msg = json?.error || `Ralat (HTTP ${res.status})`;
+        const msg = json?.error || `Error (HTTP ${res.status})`;
         throw new Error(msg);
     }
     return json;

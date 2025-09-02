@@ -21,7 +21,7 @@ import AdminTaskCard from '../component/AdminTaskCard';
 
 const { width } = Dimensions.get('window');
 
-const tabs = ['All', 'Pending', 'in_progress', 'completed'] as const;
+const tabs = ['All', 'Pending', 'WIP', 'Completed'] as const;
 type Tab = (typeof tabs)[number];
 
 const FreelancersHomeScreen = () => {
@@ -42,7 +42,9 @@ const FreelancersHomeScreen = () => {
   ): 'pending' | 'in_progress' | 'completed' | undefined => {
     if (f === 'All') return undefined;
     if (f === 'Pending') return 'pending';
-    return f;
+    if (f === 'WIP') return 'in_progress';
+    if (f === 'Completed') return 'completed';
+    return undefined;
   };
 
   const fetchData = async (isRefreshing = false) => {
@@ -107,7 +109,7 @@ const FreelancersHomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Gradient header full-bleed ke atas */}
+      {/* Gradient header full-bleed to top */}
       <LinearGradient
         colors={['#0064B7', '#00A2E1']}
         start={{ x: 0, y: 0 }}
@@ -183,7 +185,7 @@ const FreelancersHomeScreen = () => {
       >
         {filteredTasks.length === 0 ? (
           <Text style={styles.emptyText}>
-            {query ? 'Tiada task sepadan dengan carian.' : 'Tiada task dijumpai.'}
+            {query ? 'No tasks match your search.' : 'No tasks found.'}
           </Text>
         ) : (
           filteredTasks.map((task, idx) => {

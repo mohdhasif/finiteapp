@@ -166,9 +166,6 @@ const AdminProjectTaskListScreen = () => {
         const task = tasksAll.find(t => t.id === taskId);
         if (!task) return;
 
-        // if already completed, ignore
-        if ((task.status || '').toLowerCase() === 'completed') return;
-
         // Prevent double taps while pending
         if (pendingIdsRef.current.has(taskId)) return;
         pendingIdsRef.current.add(taskId);
@@ -181,20 +178,25 @@ const AdminProjectTaskListScreen = () => {
             return;
         }
 
+        // Determine new status based on current state
+        const currentStatus = (task.status || '').toLowerCase();
+        const isCurrentlyCompleted = currentStatus === 'completed';
+        const newStatus = isCurrentlyCompleted ? 'pending' : 'completed';
+
         // --- Optimistic UI ---
         const prevTasks = [...tasksAll];
         const prevChecked = { ...checkedById };
 
-        const nextChecked = { ...checkedById, [taskId]: true }; // checking means completed
+        const nextChecked = { ...checkedById, [taskId]: !isCurrentlyCompleted };
         setCheckedById(nextChecked);
 
         const nextTasks = tasksAll.map(t =>
-            t.id === taskId ? { ...t, status: 'completed' } : t
+            t.id === taskId ? { ...t, status: newStatus } : t
         );
         setTasksAll(nextTasks);
 
         try {
-            await updateTaskStatus(token, taskId, 'completed');
+            await updateTaskStatus(token, taskId, newStatus);
             // success: keep optimistic state
             // Optionally refetch tasks to ensure consistency
             const arr = await getTasksByProject(token, route.params.project_id);
@@ -413,20 +415,23 @@ const AdminProjectTaskListScreen = () => {
                             Loading...
                         </Text>
                     ) : Array.isArray(tasks) && tasks.length > 0 ? (
-                        tasks.map((task: any) => (
-                            <AdminTaskCard
-                                key={task.id}
-                                task={task}
-                                checked={!!checkedById[task.id]}
-                                onToggleCheck={() => handleToggleCheck(task.id)}
-                                onPress={() =>
-                                    navigation.push('AdminTaskDetailsScreen', {
-                                        task_title: task.title,
-                                        task_id: task.id,
-                                    })
-                                }
-                            />
-                        ))
+                        tasks.map((task: any) => {
+                            const isCompleted = (task.status || '').toLowerCase() === 'completed';
+                            return (
+                                <AdminTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    checked={isCompleted}
+                                    onToggleCheck={() => handleToggleCheck(task.id)}
+                                    onPress={() =>
+                                        navigation.push('AdminTaskDetailsScreen', {
+                                            task_title: task.title,
+                                            task_id: task.id,
+                                        })
+                                    }
+                                />
+                            );
+                        })
                     ) : (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
                             Tiada task dijumpai.

@@ -40,11 +40,11 @@ export const changePassword = async (
     try {
         json = JSON.parse(raw);
     } catch (e) {
-        throw new Error('Server mengembalikan respons tidak sah.');
+        throw new Error('Server returned invalid response.');
     }
 
     if (!res.ok || json?.success !== true) {
-        throw new Error(json?.message || `Gagal tukar kata laluan (HTTP ${res.status})`);
+        throw new Error(json?.message || `Failed to change password (HTTP ${res.status})`);
     }
 
     return json as ChangePasswordResponse;
@@ -69,7 +69,7 @@ export const getUserDetails = async (token: string): Promise<UserDetails> => {
         json = JSON.parse(raw);
     } catch (e) {
         // console.log('JSON Parse Error:', e);
-        throw new Error('Server mengembalikan respons tidak sah.');
+        throw new Error('Server returned invalid response.');
     }
 
     // console.log('Parsed JSON:', json);
@@ -77,7 +77,7 @@ export const getUserDetails = async (token: string): Promise<UserDetails> => {
 
     // Only check HTTP status, not success field (like other services)
     if (!res.ok) {
-        throw new Error(json?.message || json?.error || `Gagal dapatkan maklumat pengguna (HTTP ${res.status})`);
+        throw new Error(json?.message || json?.error || `Failed to get user information (HTTP ${res.status})`);
     }
 
     // Try different possible data structures
@@ -86,7 +86,7 @@ export const getUserDetails = async (token: string): Promise<UserDetails> => {
     // Validate that we have the required fields
     if (!userData || !userData.id || !userData.name) {
         // console.log('Invalid user data structure:', userData);
-        throw new Error('Data pengguna tidak lengkap');
+        throw new Error('User data is incomplete');
     }
 
     return userData as UserDetails;
@@ -106,11 +106,11 @@ export const login = async (email: string, password: string): Promise<{ token: s
     try {
         json = JSON.parse(raw);
     } catch (e) {
-        throw new Error('Server mengembalikan respons tidak sah.');
+        throw new Error('Server returned invalid response.');
     }
 
     if (!res.ok || !json?.token) {
-        throw new Error(json?.message || json?.error || `Gagal log masuk (HTTP ${res.status})`);
+        throw new Error(json?.message || json?.error || `Failed to login (HTTP ${res.status})`);
     }
 
     return json;
@@ -133,12 +133,12 @@ export const claimInstallSubscriptions = async (token: string, installId: string
             json = JSON.parse(raw);
         } catch (e) {
             console.warn('Claim install response parse error:', raw);
-            throw new Error('Server mengembalikan respons tidak sah.');
+            throw new Error('Server returned invalid response.');
         }
 
         if (!res.ok) {
             console.warn('Claim install failed:', res.status, json);
-            throw new Error(json?.message || json?.error || `Gagal claim install (HTTP ${res.status})`);
+            throw new Error(json?.message || json?.error || `Failed to claim install (HTTP ${res.status})`);
         }
 
         return json;

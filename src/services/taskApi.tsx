@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../constants/apiConfig';
 
 const parse = async (res: Response) => {
     const raw = await res.text();
-    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Server tidak mengembalikan JSON yang sah'); }
+    let json: any; try { json = JSON.parse(raw); } catch { throw new Error('Server did not return valid JSON'); }
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
     return json;
 };
@@ -19,7 +19,7 @@ const appendQuery = (base: string, params?: Record<string, unknown>) => {
 
 export const getTasksByProject = async (token: string, projectId: number) => {
     const res = await fetch(API_ENDPOINTS.projectTasks(projectId), { headers: auth(token) });
-    return parse(res); // normalize di caller jika perlu
+    return parse(res); // normalize at caller if needed
 };
 
 export const getAllTasks = async (

@@ -32,7 +32,7 @@ const ProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus } = useAuth();
 
-    // Toggle umum app (project/task dsb)
+    // Toggle general app (project/task etc)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
 
     // Auth/storage
@@ -125,7 +125,7 @@ const ProfileScreen = () => {
         } else if (inst) {
             bodyPayload.install_id = inst;
         } else {
-            throw new Error('install_id tiada. Buka app sekali untuk generate.');
+            throw new Error('install_id not found. Open app once to generate.');
         }
 
         const controller = new AbortController();
