@@ -1,14 +1,16 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
-  FlatList,
-  FlatListProps,
+  ScrollView,
   View,
   ActivityIndicator,
   Text,
   StyleSheet,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  ScrollViewProps,
 } from 'react-native';
 
-interface VirtualizedListProps<T> extends Omit<FlatListProps<T>, 'data' | 'renderItem' | 'keyExtractor'> {
+interface VirtualizedListProps<T> {
   data: T[];
   renderItem: (item: T, index: number) => JSX.Element;
   keyExtractor: (item: T, index: number) => string;
@@ -17,11 +19,20 @@ interface VirtualizedListProps<T> extends Omit<FlatListProps<T>, 'data' | 'rende
   hasMore?: boolean;
   emptyComponent?: JSX.Element;
   loadingComponent?: JSX.Element;
+  // Legacy props kept for API compatibility (not used by ScrollView)
   pageSize?: number;
   initialNumToRender?: number;
   maxToRenderPerBatch?: number;
   windowSize?: number;
   removeClippedSubviews?: boolean;
+  // Common ScrollView props
+  contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
+  style?: ScrollViewProps['style'];
+  horizontal?: boolean;
+  refreshControl?: ScrollViewProps['refreshControl'];
+  showsVerticalScrollIndicator?: boolean;
+  showsHorizontalScrollIndicator?: boolean;
+  scrollEventThrottle?: number;
 }
 
 const VirtualizedList = <T,>({
@@ -33,80 +44,104 @@ const VirtualizedList = <T,>({
   hasMore = false,
   emptyComponent,
   loadingComponent,
-  pageSize = 20,
-  initialNumToRender = 10,
-  maxToRenderPerBatch = 10,
-  windowSize = 5,
-  removeClippedSubviews = true,
+  // Legacy/compat props (unused but destructured to avoid ...rest collisions)
+  pageSize,
+  initialNumToRender,
+  maxToRenderPerBatch,
+  windowSize,
+  removeClippedSubviews,
+  // ScrollView props
+  contentContainerStyle,
+  style,
+  horizontal,
+  refreshControl,
+  showsVerticalScrollIndicator,
+  showsHorizontalScrollIndicator,
+  scrollEventThrottle = 16,
   ...props
 }: VirtualizedListProps<T>) => {
-  
-  const handleEndReached = useCallback(() => {
-    if (hasMore && !loading && onLoadMore) {
-      onLoadMore();
-    }
-  }, [hasMore, loading, onLoadMore]);
+  const endReachedGuardRef = useRef(false);
 
-  const handleRenderItem = useCallback(({ item, index }: { item: T; index: number }) => {
-    return renderItem(item, index);
-  }, [renderItem]);
+  const handleLoadMoreIfNeeded = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const visibleLength = horizontal ? layoutMeasurement.width : layoutMeasurement.height;
+      const offset = horizontal ? contentOffset.x : contentOffset.y;
+      const contentLength = horizontal ? contentSize.width : contentSize.height;
 
-  const ListFooterComponent = useMemo(() => {
+      const threshold = 200; // px before end
+      const isNearEnd = visibleLength + offset >= contentLength - threshold;
+
+      if (isNearEnd && hasMore && !loading && onLoadMore && !endReachedGuardRef.current) {
+        endReachedGuardRef.current = true;
+        onLoadMore();
+      }
+    },
+    [hasMore, loading, onLoadMore, horizontal]
+  );
+
+  const handleScrollBegin = useCallback(() => {
+    endReachedGuardRef.current = false;
+  }, []);
+
+  const Footer = useMemo(() => {
     if (!hasMore) return null;
-    
     if (loading) {
-      return loadingComponent || (
+      return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#0072B5" />
           <Text style={styles.loadingText}>Loading more...</Text>
         </View>
       );
     }
-    
     return null;
-  }, [hasMore, loading, loadingComponent]);
+  }, [hasMore, loading]);
 
-  const ListEmptyComponent = useMemo(() => {
+  const Empty = useMemo(() => {
     if (loading) {
-      return loadingComponent || (
+      return (
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color="#0072B5" />
           <Text style={styles.emptyText}>Loading...</Text>
         </View>
       );
     }
-    
-    return emptyComponent || (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No data available</Text>
-      </View>
+
+    return (
+      emptyComponent || (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No data available</Text>
+        </View>
+      )
     );
-  }, [loading, emptyComponent, loadingComponent]);
+  }, [loading, emptyComponent]);
 
   return (
-    <FlatList
-      data={data}
-      renderItem={handleRenderItem}
-      keyExtractor={keyExtractor}
-      onEndReached={handleEndReached}
-      onEndReachedThreshold={0.1}
-      ListFooterComponent={ListFooterComponent}
-      ListEmptyComponent={ListEmptyComponent}
-      // Performance optimizations
-      initialNumToRender={initialNumToRender}
-      maxToRenderPerBatch={maxToRenderPerBatch}
-      windowSize={windowSize}
-      removeClippedSubviews={removeClippedSubviews}
-      getItemLayout={props.getItemLayout}
-      // Memory optimizations
-      updateCellsBatchingPeriod={50}
-      disableVirtualization={false}
-      // Scroll performance
-      scrollEventThrottle={16}
-      showsVerticalScrollIndicator={false}
-      showsHorizontalScrollIndicator={false}
+    <ScrollView
+      style={style}
+      contentContainerStyle={contentContainerStyle}
+      horizontal={horizontal}
+      refreshControl={refreshControl}
+      onScroll={handleLoadMoreIfNeeded}
+      onScrollBeginDrag={handleScrollBegin}
+      scrollEventThrottle={scrollEventThrottle}
+      showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+      showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
       {...props}
-    />
+    >
+      {data.length === 0 ? (
+        Empty
+      ) : (
+        <View>
+          {data.map((item, index) => (
+            <View key={keyExtractor(item, index)}>
+              {renderItem(item, index)}
+            </View>
+          ))}
+          {Footer}
+        </View>
+      )}
+    </ScrollView>
   );
 };
 

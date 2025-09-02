@@ -178,13 +178,16 @@ const AdminTaskDetailsScreen: React.FC = () => {
             const name = res.name || `attachment_${Date.now()}`;
             const type = res.type || 'application/octet-stream';
 
-            const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
-            // ✅ OPTIMIZED: Append to existing attachments without fetching from server
-            await fetchAttachments(async () => {
-                const currentAttachments = attachments || [];
-                return [uploaded, ...currentAttachments];
-            });
-            Alert.alert('Success', 'Attachment uploaded successfully.');
+            const success = await uploadAttachment(token, taskId, { uri, name, type });
+            if (success) {
+                // ✅ FIXED: Always fetch fresh data from server
+                await fetchAttachments(async () => {
+                    return await listAttachments(token, taskId);
+                });
+                Alert.alert('Success', 'Attachment uploaded successfully.');
+            } else {
+                Alert.alert('Failed', 'Upload failed. Please try again.');
+            }
         } catch (err: any) {
             if (!DocumentPicker.isCancel(err)) {
                 Alert.alert('Upload failed', err?.message || 'Unknown error');

@@ -70,25 +70,65 @@ function displayName(row: AdminRawClient): string {
 
 /** Get raw clients from get_clients.php */
 export async function fetchAdminClients(token?: string): Promise<AdminRawClient[]> {
-    const res = await fetch(API_ENDPOINTS.getClients, {
-        headers: {
-            Accept: 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-    });
+    console.log('fetchAdminClients called with token:', !!token);
 
-    const raw = await res.text();
-    let json: unknown;
     try {
-        json = JSON.parse(raw);
-    } catch {
-        throw new Error('Server did not return valid JSON');
-    }
+        const res = await fetch(API_ENDPOINTS.getClients, {
+            headers: {
+                Accept: 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
 
-    if (!res.ok) {
-        throw new Error(`Failed to fetch clients (HTTP ${res.status})`);
+        console.log('Response status:', res.status);
+        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+
+        const raw = await res.text();
+        console.log('Raw response text:', raw);
+
+        if (!raw || raw.trim() === '') {
+            console.error('Empty response received');
+            return [];
+        }
+
+        let json: unknown;
+        try {
+            json = JSON.parse(raw);
+            console.log('Parsed JSON:', json);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Raw text that failed to parse:', raw);
+            throw new Error('Server did not return valid JSON');
+        }
+
+        if (!res.ok) {
+            console.error('HTTP error:', res.status, json);
+            throw new Error(`Failed to fetch clients (HTTP ${res.status})`);
+        }
+
+        // Handle different response formats
+        let clients: AdminRawClient[] = [];
+
+        if (Array.isArray(json)) {
+            clients = json as AdminRawClient[];
+        } else if (json && typeof json === 'object' && 'data' in json && Array.isArray(json.data)) {
+            clients = json.data as AdminRawClient[];
+        } else if (json && typeof json === 'object' && 'clients' in json && Array.isArray(json.clients)) {
+            clients = json.clients as AdminRawClient[];
+        } else {
+            console.error('Unexpected response format:', json);
+            return [];
+        }
+
+        console.log('Extracted clients:', clients);
+        console.log('Clients count:', clients.length);
+
+        return clients;
+
+    } catch (error) {
+        console.error('fetchAdminClients error:', error);
+        throw error;
     }
-    return Array.isArray(json) ? (json as AdminRawClient[]) : [];
 }
 
 /**
@@ -159,10 +199,10 @@ export async function getMyProfile(token: string): Promise<MyProfile> {
         headers: { Authorization: `Bearer ${token}` },
     });
     const raw = await res.text();
-    
-    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+
+    let json: any; try { json = JSON.parse(raw); } catch (error) {
         // Remove console.log for production
-        throw new Error('Invalid JSON response'); 
+        throw new Error('Invalid JSON response');
     }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to get profile (HTTP ${res.status})`);
@@ -182,9 +222,9 @@ export async function updateMyProfile(
     const raw = await res.text();
     // console.log('raw:', raw);
 
-    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+    let json: any; try { json = JSON.parse(raw); } catch (error) {
         // Remove console.log for production
-        throw new Error('Invalid JSON response'); 
+        throw new Error('Invalid JSON response');
     }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to update profile (HTTP ${res.status})`);
@@ -212,9 +252,9 @@ export async function uploadAvatar(
         body: form,
     });
     const raw = await res.text();
-    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+    let json: any; try { json = JSON.parse(raw); } catch (error) {
         // Remove console.log for production
-        throw new Error('Invalid JSON response'); 
+        throw new Error('Invalid JSON response');
     }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to upload avatar (HTTP ${res.status})`);

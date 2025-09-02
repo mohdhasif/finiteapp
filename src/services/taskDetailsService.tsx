@@ -116,7 +116,7 @@ export const uploadAttachment = async (
     token: string,
     taskId: number,
     file: { uri: string; name: string; type: string }
-): Promise<TaskAttachment> => {
+): Promise<boolean> => {
     const form = new FormData();
     form.append('task_id', String(taskId));
     form.append('file', {
@@ -125,26 +125,21 @@ export const uploadAttachment = async (
         type: file.type,
     } as any);
 
-    const json = await apiFetch(
-        API_ENDPOINTS.uploadAttachment,
-        {
-            method: 'POST',
-            // IMPORTANT: don't set 'Content-Type' for FormData (let RN set boundary)
-            body: form,
-        },
-        token
-    );
-
-    const att = json?.attachment ?? json;
-    return {
-        id: Number(att.id),
-        task_id: Number(att.task_id ?? taskId),
-        file_name: String(att.file_name ?? 'file'),
-        file_url: toAbsoluteUrl(att.file_url ?? att.path ?? att.url ?? ''),
-        mime_type: att.mime_type ?? null,
-        size_bytes: att.size_bytes != null ? Number(att.size_bytes) : null,
-        created_at: att.created_at,
-    } as TaskAttachment;
+    try {
+        await apiFetch(
+            API_ENDPOINTS.uploadAttachment,
+            {
+                method: 'POST',
+                // IMPORTANT: don't set 'Content-Type' for FormData (let RN set boundary)
+                body: form,
+            },
+            token
+        );
+        return true; // Success
+    } catch (error) {
+        console.error('Upload failed:', error);
+        return false; // Failed
+    }
 };
 
 export const deleteAttachment = async (token: string, attachmentId: number): Promise<boolean> => {
