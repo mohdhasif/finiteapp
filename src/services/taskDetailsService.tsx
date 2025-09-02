@@ -61,7 +61,10 @@ const handleErrors = async (res: Response, raw: string) => {
 // Optional: timeout wrapper (avoid hanging requests on mobile networks)
 const withTimeout = <T,>(p: Promise<T>, ms = 20000) => {
     return new Promise<T>((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error('Request timeout')), ms);
+        const t = setTimeout(() => {
+            reject(new Error('Request timeout'));
+        }, ms);
+        
         p.then((v) => {
             clearTimeout(t);
             resolve(v);

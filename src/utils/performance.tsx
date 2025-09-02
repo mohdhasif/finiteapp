@@ -16,7 +16,7 @@ class PerformanceMonitor {
   endTimer(name: string): number {
     const startTime = this.timers.get(name);
     if (!startTime) {
-      console.warn(`Timer '${name}' was not started`);
+      // Remove console.warn for production - could log to analytics service instead
       return 0;
     }
 
@@ -26,7 +26,7 @@ class PerformanceMonitor {
 
     // Log slow operations
     if (duration > 1000) {
-      console.warn(`Slow operation detected: ${name} took ${duration}ms`);
+      // Remove console.warn for production - could log to analytics service instead
     }
 
     return duration;

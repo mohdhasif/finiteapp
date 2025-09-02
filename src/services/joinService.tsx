@@ -27,7 +27,7 @@ export const submitJoinForm = async (payload: JoinFormPayload) => {
 
         return await response.json();
     } catch (error) {
-        console.error('Submit Join Form Error:', error);
+        // Remove console.error for production
         throw error;
     }
 };

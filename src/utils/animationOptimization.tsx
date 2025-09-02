@@ -284,8 +284,9 @@ export const useAnimationPerformance = (animationName: string) => {
     const duration = Date.now() - startTime.current;
     const fps = frameCount.current / (duration / 1000);
     
-    if (fps < 50) {
-      console.warn(`Low animation FPS detected for ${animationName}: ${fps.toFixed(1)}fps`);
+    // Log low FPS warnings
+    if (fps < 30) {
+      // Remove console.warn for production - could log to analytics service instead
     }
     
     return { duration, frameCount: frameCount.current, fps };

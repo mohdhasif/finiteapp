@@ -81,7 +81,6 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
       const token = await AsyncStorage.getItem('userToken');
       if (token) {
         const badgeCount = await getBadgeCount(token);
-        console.log('badgeCount:', badgeCount);
         
         // Ensure badge count is a valid number
         const validBadgeCount = typeof badgeCount === 'number' && !isNaN(badgeCount) ? badgeCount : 0;
@@ -89,7 +88,6 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
         onNotificationBadgeUpdate?.(validBadgeCount);
       }
     } catch (error) {
-      console.log('Error loading notification badge:', error);
       setNotificationBadge(0);
     }
   }, [onNotificationBadgeUpdate]);
@@ -167,7 +165,7 @@ const OptimizedBottomTab: React.FC<OptimizedBottomTabProps> = ({
 
   // Safety check: ensure we have valid tabs
   if (!Array.isArray(tabs) || tabs.length === 0) {
-    console.warn('OptimizedBottomTab: No tabs provided or invalid tabs array');
+    // Remove console.warn for production - return null instead
     return null;
   }
 

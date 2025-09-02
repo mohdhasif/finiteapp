@@ -145,7 +145,7 @@ const PerformanceOptimizedScreen: React.FC<PerformanceOptimizedScreenProps> = ({
         const stats = getMemoryStats();
         
         if (stats.utilization > 80) {
-          console.warn(`High memory usage detected on ${screenName}: ${stats.utilization.toFixed(1)}%`);
+          // Remove console.warn for production - could log to analytics service instead
           cleanup();
         }
       }, 30000); // Check every 30 seconds

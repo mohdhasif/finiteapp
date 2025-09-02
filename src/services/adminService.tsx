@@ -18,8 +18,8 @@ export const fetchClients = async (token: string) => {
         // Return the data array from the response
         return result.data || [];
     } catch (error) {
-        console.log('Error parsing JSON:', error);
-        return [];
+        // Remove console.log for production
+        throw new Error('Invalid JSON response');
     }
 };
 
@@ -33,8 +33,8 @@ export const fetchFreelancers = async (token: string) => {
         // Freelancers API returns data directly, not wrapped in data property
         return Array.isArray(result) ? result : (result.data || []);
     } catch (error) {
-        console.log('Error parsing JSON:', error);
-        return [];
+        // Remove console.log for production
+        throw new Error('Invalid JSON response');
     }
 };
 
@@ -160,8 +160,10 @@ export async function getMyProfile(token: string): Promise<MyProfile> {
     });
     const raw = await res.text();
     
-    let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+        // Remove console.log for production
+        throw new Error('Invalid JSON response'); 
+    }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to get profile (HTTP ${res.status})`);
     }
@@ -180,8 +182,10 @@ export async function updateMyProfile(
     const raw = await res.text();
     // console.log('raw:', raw);
 
-    let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+        // Remove console.log for production
+        throw new Error('Invalid JSON response'); 
+    }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to update profile (HTTP ${res.status})`);
     }
@@ -208,8 +212,10 @@ export async function uploadAvatar(
         body: form,
     });
     const raw = await res.text();
-    let json: any;
-    try { json = JSON.parse(raw); } catch { throw new Error('Invalid JSON'); }
+    let json: any; try { json = JSON.parse(raw); } catch (error) { 
+        // Remove console.log for production
+        throw new Error('Invalid JSON response'); 
+    }
     if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to upload avatar (HTTP ${res.status})`);
     }
@@ -245,10 +251,10 @@ export async function updateMyProfileForm(
     const text = await res.text();
     // console.log(text);
 
-    let json: any;
-    try {
+    let json: any; try {
         json = JSON.parse(text);
-    } catch {
+    } catch (error) {
+        // Remove console.log for production
         throw new Error('Invalid server response');
     }
 

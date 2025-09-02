@@ -60,7 +60,8 @@ const FreelancersHomeScreen = () => {
       // You might want to modify the API to return only freelancer's tasks
       setTasks(Array.isArray(result) ? result : []);
     } catch (error) {
-      console.error('Fetch tasks error:', error);
+      // Remove console.error for production
+      // Handle error silently or show user-friendly message
     } finally {
       setLoading(false);
       setRefreshing(false);

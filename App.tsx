@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { API_ENDPOINTS } from './src/constants/apiConfig';
 import { Platform } from 'react-native';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 async function postJSON(url: string, body: any, token?: string) {
   const res = await fetch(url, {
@@ -84,7 +85,9 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <AppNavigator />
+      <ErrorBoundary>
+        <AppNavigator />
+      </ErrorBoundary>
     </AuthProvider>
   );
 }

@@ -132,18 +132,21 @@ export const claimInstallSubscriptions = async (token: string, installId: string
         try {
             json = JSON.parse(raw);
         } catch (e) {
-            console.warn('Claim install response parse error:', raw);
-            throw new Error('Server returned invalid response.');
+            // Remove console.warn for production
+            throw new Error('Invalid server response format');
         }
 
         if (!res.ok) {
-            console.warn('Claim install failed:', res.status, json);
-            throw new Error(json?.message || json?.error || `Failed to claim install (HTTP ${res.status})`);
+            // Remove console.warn for production
+            throw new Error(json?.message || json?.error || `Request failed (HTTP ${res.status})`);
         }
 
         return json;
     } catch (error) {
-        console.warn('Claim install error:', error);
-        throw error;
+        // Remove console.warn for production
+        if (error instanceof Error) {
+            throw new Error(`Installation claim failed: ${error.message}`);
+        }
+        throw new Error('Installation claim failed');
     }
 };

@@ -33,8 +33,8 @@ export const submitDiscoveryForm = async (formData: {
         }
 
         return json;
-    } catch (error: any) {
-        console.error('API Error:', error);
+    } catch (error) {
+        // Remove console.error for production
         throw new Error(error.message || 'Unknown error');
     }
 };
