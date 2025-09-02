@@ -250,7 +250,7 @@ const AdminHomeScreen = () => {
             loadTasks(); // Will use current selectedFilter
             loadUserData(); // Load user profile data
 
-            // tiada cleanup khas diperlukan di sini
+            // no special cleanup required here
             return () => { };
         }, [loadMasters, loadUserData]) // Remove loadTasks from dependency to prevent reloading on filter change
     );

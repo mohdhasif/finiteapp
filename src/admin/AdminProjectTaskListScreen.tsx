@@ -120,8 +120,8 @@ const AdminProjectTaskListScreen = () => {
         const run = async () => {
             try {
                 setLoading(true);
-                const token = await AsyncStorage.getItem('userToken'); // tukar jika key sebenar lain
-                if (!token) throw new Error('Token tidak dijumpai');
+                const token = await AsyncStorage.getItem('userToken'); // change if actual key is different
+                if (!token) throw new Error('Token not found');
 
                 // Fetch tasks, project details, and freelancers in parallel
                 const [arr, projectData, freelancersData] = await Promise.all([
@@ -135,7 +135,7 @@ const AdminProjectTaskListScreen = () => {
                 setProjectDetails(projectData);
                 setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
 
-                // init checkbox mengikut id (preserve bila re-fetch)
+                // init checkbox by id (preserve when re-fetching)
                 setCheckedById(() => {
                     const next: Record<number, boolean> = {};
                     for (const t of list) {
@@ -434,7 +434,7 @@ const AdminProjectTaskListScreen = () => {
                         })
                     ) : (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
-                            Tiada task dijumpai.
+                            No tasks found.
                         </Text>
                     )}
 

@@ -228,7 +228,7 @@ const AdminCalendarScreen: React.FC = () => {
 
     const renderEmptyDate = useCallback(() => (
         <View style={styles.emptyWrap}>
-            <Text style={styles.emptyText}>Tiada projek pada tarikh ini.</Text>
+            <Text style={styles.emptyText}>No projects on this date.</Text>
         </View>
     ), []);
 
@@ -259,11 +259,11 @@ const AdminCalendarScreen: React.FC = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.h1}>Project Calendar</Text>
-                <Text style={styles.h2}>Lihat start & end date projek</Text>
+                <Text style={styles.h2}>View project start & end dates</Text>
                 {loading && (
                     <View style={styles.headerLoaderWrap}>
                         <ActivityIndicator size="small" color={BLUE} />
-                        <Text style={styles.headerLoaderText}>Memuatkan…</Text>
+                        <Text style={styles.headerLoaderText}>Loading…</Text>
                     </View>
                 )}
             </View>

@@ -52,14 +52,14 @@ import OptimizedBottomTab from '../components/OptimizedBottomTab';
 const { width } = Dimensions.get('window');
 type ScreenRoute = RouteProp<RootStackParamList, 'AdminTaskDetailsScreen'>;
 
-// Normalise tarikh → milliseconds (handle "YYYY-MM-DD HH:mm:ss" atau ISO)
+    // Normalize date → milliseconds (handle "YYYY-MM-DD HH:mm:ss" or ISO)
 const toMs = (s?: string) => {
     if (!s) return 0;
     const iso = s.includes('T') ? s : s.replace(' ', 'T') + 'Z';
     const t = Date.parse(iso);
     return Number.isFinite(t) ? t : 0;
 };
-// Sort helper: oldest → newest (guna masa load sahaja)
+    // Sort helper: oldest → newest (only used during load)
 const sortOldest = (arr: TaskNote[]) => arr.slice().sort((a, b) => toMs(a.created_at) - toMs(b.created_at));
 
 const AdminTaskDetailsScreen: React.FC = () => {
@@ -90,8 +90,8 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const ROLE_OPTIONS: Assignee['role'][] = ['designer', 'editor', 'strategist', 'pm', 'other'];
 
-    const outerScrollRef = useRef<ScrollView>(null); // scroll keseluruhan
-    const notesBottomAnchor = useRef<View>(null);     // anchor untuk scroll ke bawah
+    const outerScrollRef = useRef<ScrollView>(null); // overall scroll
+    const notesBottomAnchor = useRef<View>(null);     // anchor for scrolling to bottom
 
     const canSend = useMemo(() => noteText.trim().length > 0, [noteText]);
     
@@ -168,7 +168,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
         try {
             performanceMonitor.startTimer('uploadAttachment');
             const res = await DocumentPicker.pickSingle({
-                type: [types.allFiles], // semua jenis file
+                type: [types.allFiles], // all file types
             });
 
             const uri = res.uri;
@@ -264,7 +264,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 message: noteText.trim(),
             });
 
-            // Fallback created_at kalau server tak bagi, supaya tak tersort pelik
+            // Fallback created_at if server doesn't provide, so sorting isn't weird
             const safeNote: TaskNote = {
                 ...note,
                 created_at: note.created_at && note.created_at.trim() ? note.created_at : new Date().toISOString(),
@@ -277,7 +277,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             });
             setNoteText('');
 
-            // Auto-scroll ke bawah supaya nampak nota baru
+            // Auto-scroll to bottom to show new note
             requestAnimationFrame(() => {
                 outerScrollRef.current?.scrollToEnd({ animated: true });
             });
@@ -321,10 +321,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
     const handleRemoveAssignee = (fid: number) => {
         if (!token) return;
-        Alert.alert('Buang freelancer?', 'Freelancer akan dibuang dari task ini.', [
-            { text: 'Batal', style: 'cancel' },
+        Alert.alert('Remove freelancer?', 'Freelancer will be removed from this task.', [
+            { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Buang', style: 'destructive',
+                text: 'Remove', style: 'destructive',
                 onPress: async () => {
                     try {
                         await removeTaskAssignee(token, taskId, fid);
@@ -335,7 +335,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                             return currentAssignees.filter((a: Assignee) => a.id !== fid);
                         });
                     } catch (e: any) {
-                        Alert.alert('Gagal', e?.message || 'Tidak dapat buang.');
+                        Alert.alert('Failed', e?.message || 'Cannot remove.');
                     }
                 }
             }
@@ -355,7 +355,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 );
             });
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak dapat kemas kini role.');
+            Alert.alert('Failed', e?.message || 'Cannot update role.');
         }
     };
 
@@ -389,7 +389,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
             setOptions([]);
             setSearchQ('');
         } catch (e: any) {
-            Alert.alert('Gagal', e?.message || 'Tidak dapat assign.');
+            Alert.alert('Failed', e?.message || 'Cannot assign.');
         } finally {
             setAdding(false);
         }
@@ -421,7 +421,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         <Text style={styles.bullet}>● </Text>Description
                     </Text>
                     <Text style={styles.description}>
-                        {taskDetails?.description || 'Tiada deskripsi.'}
+                        {taskDetails?.description || 'No description.'}
                     </Text>
                 </View>
 
@@ -442,7 +442,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     {loading && (attachments || []).length === 0 ? (
                         <Text style={styles.muted}>Loading attachments…</Text>
                     ) : (attachments || []).length === 0 ? (
-                        <Text style={styles.muted}>Tiada lampiran.</Text>
+                        <Text style={styles.muted}>No attachments.</Text>
                     ) : (
                         (attachments || []).map((att) => (
                             <View key={att.id} style={styles.attachmentRow}>
@@ -508,7 +508,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     {loading && (assignees || []).length === 0 ? (
                         <Text style={styles.muted}>Loading assignees…</Text>
                     ) : (assignees || []).length === 0 ? (
-                        <Text style={styles.muted}>Belum ada freelancer ditugaskan.</Text>
+                        <Text style={styles.muted}>No freelancers assigned yet.</Text>
                     ) : (
                         (assignees || []).map(a => (
                             <View key={a.id} style={styles.attachmentRow}>
@@ -642,10 +642,10 @@ const AdminTaskDetailsScreen: React.FC = () => {
 
             <Modal isVisible={showAddModal} onBackdropPress={() => setShowAddModal(false)} backdropOpacity={0.4} useNativeDriver>
                 <View style={{ backgroundColor: '#12668C', borderRadius: 12, padding: 12 }}>
-                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 10 }}>Tambah Freelancer</Text>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 10 }}>Add Freelancer</Text>
                     <View style={styles.linkRow}>
                         <TextInput
-                            placeholder="Cari nama / email…"
+                            placeholder="Search name / email…"
                             placeholderTextColor="#9dc9e4"
                             style={styles.input}
                             value={searchQ}
@@ -658,7 +658,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     {loadingOptions ? (
                         <View style={{ paddingVertical: 20 }}><ActivityIndicator size="small" color="#fff" /></View>
                     ) : options.length === 0 ? (
-                        <Text style={styles.muted}>Tiada result.</Text>
+                        <Text style={styles.muted}>No results.</Text>
                     ) : options.filter(opt => !(assignees || []).some(a => a.id === opt.id)).length === 0 ? (
                         <Text style={styles.muted}>All available freelancers are already assigned to this task.</Text>
                     ) : (
@@ -685,7 +685,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
                         <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowAddModal(false)} disabled={adding}>
                             <Icon name="close-outline" size={18} color="#fff" />
-                            <Text style={styles.secondaryBtnText}>Tutup</Text>
+                            <Text style={styles.secondaryBtnText}>Close</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

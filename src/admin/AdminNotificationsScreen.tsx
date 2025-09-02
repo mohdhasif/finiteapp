@@ -98,7 +98,7 @@ const AdminNotificationsScreen: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Auto refresh setiap kali screen fokus
+    // Auto refresh every time screen is focused
     useFocusEffect(
         useCallback(() => {
             refresh();
@@ -147,7 +147,7 @@ const AdminNotificationsScreen: React.FC = () => {
     const refresh = useCallback(async () => {
         try {
             setRefreshing(true);
-            // Ambil badge dulu (tak bergantung paging)
+            // Get badge first (doesn't depend on paging)
             const token = await AsyncStorage.getItem('userToken');
             if (token) {
                 const badgeCount = await getBadgeCount(token);
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#EEF3F7', paddingHorizontal: 20, paddingTop: 20 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
     h1: { fontSize: 32, fontWeight: '800', color: BLUE },
-    headerRight: { flexDirection: 'row', alignItems: 'center' }, // buang 'gap' untuk compatibility
+    headerRight: { flexDirection: 'row', alignItems: 'center' }, // remove 'gap' for compatibility
     markAllBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#D9ECF8' },
     markAllText: { color: BLUE, fontWeight: '600' },
 

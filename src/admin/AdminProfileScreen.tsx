@@ -368,14 +368,14 @@ const AdminProfileScreen = () => {
     //             setLngInput(String(c.longitude));
     //             await saveSettings({ enabled: prayerEnabled ? 1 : 0, latitude: c.latitude, longitude: c.longitude });
     //             if (toast) {
-    //                 Alert.alert('Lokasi Dikemaskini', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
+    //                 Alert.alert('Location Updated', `Lat: ${c.latitude.toFixed(5)}, Lng: ${c.longitude.toFixed(5)}`);
     //             }
     //         } else {
     //             await saveSettings({ enabled: prayerEnabled ? 1 : 0 });
-    //             if (!quiet) Alert.alert('Gagal', 'Tidak dapat mendapatkan lokasi semasa.');
+    //             if (!quiet) Alert.alert('Failed', 'Cannot get current location.');
     //         }
     //     } catch (e: any) {
-    //         if (!quiet) Alert.alert('Gagal', e?.message ?? 'Ralat tidak diketahui');
+    //         if (!quiet) Alert.alert('Failed', e?.message ?? 'Unknown error');
     //     }
     // }, [coords, prayerEnabled, userToken, installId]);
 
@@ -552,7 +552,7 @@ const AdminProfileScreen = () => {
                                 </View>
 
                                 <Text style={styles.hint}>
-                                    Sistem akan guna lat/long ini untuk ambil waktu solat harian dan hantar notifikasi tepat pada waktunya.
+                                    The system will use these lat/long coordinates to get daily prayer times and send notifications at the exact time.
                                 </Text>
 
                                 {/* Manual Location Capture Button */}

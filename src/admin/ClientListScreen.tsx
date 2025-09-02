@@ -72,14 +72,14 @@ const getProgressColor = (progress: number) => {
 const ClientListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    // ---- state (letak SEMUA hooks sebelum sebarang return)
+    // ---- state (place ALL hooks before any return)
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState<(typeof statusOptions)[number]>('all');
     const [dropdownVisible, setDropdownVisible] = useState(false);
 
-    // Optional: projek ringkas (kalau tak guna, boleh buang block ni)
+    // Optional: simple projects (if not used, can remove this block)
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [err, setErr] = useState<string | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -118,7 +118,7 @@ const ClientListScreen = () => {
         }
     }, []);
 
-    // Refresh bila screen fokus
+    // Refresh when screen is focused
     useFocusEffect(
         useCallback(() => {
             console.log('ClientListScreen: Screen focused, fetching clients...');
@@ -127,7 +127,7 @@ const ClientListScreen = () => {
         }, [fetchClients])
     );
 
-    // Refresh bila filter berubah (jika backend support filter server-side boleh tambah query)
+    // Refresh when filter changes (if backend supports server-side filtering, can add query)
     useEffect(() => {
         console.log('ClientListScreen: Filter changed to:', selectedFilter);
         setLoading(true);
@@ -325,7 +325,7 @@ const ClientListScreen = () => {
                                 </View>
                             </View>
 
-                            {/* (Optional) progress – uncomment kalau nak */}
+                            {/* (Optional) progress – uncomment if needed */}
                             {/* {typeof item.progress === 'number' && (
                 <>
                   <View style={styles.progressBarContainer}>

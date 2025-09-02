@@ -172,7 +172,7 @@ const CreateProjectScreen = () => {
     }
   };
 
-  // Item untuk modal Client
+  // Items for Client modal
   const clientItems = useMemo(
     () =>
       clients.map(c => ({
@@ -209,7 +209,7 @@ const CreateProjectScreen = () => {
             activeOpacity={0.9}
           >
             <Text style={styles.selectText}>
-              {selectedClient ? selectedClient.label : 'Pilih client'}
+              {selectedClient ? selectedClient.label : 'Select client'}
             </Text>
           </TouchableOpacity>
 
@@ -244,12 +244,12 @@ const CreateProjectScreen = () => {
             activeOpacity={0.9}
           >
             <Text style={styles.selectText}>
-              {priority ? PRIORITIES.find(p => p.value === priority)?.label : 'Pilih priority'}
+              {priority ? PRIORITIES.find(p => p.value === priority)?.label : 'Select priority'}
             </Text>
           </TouchableOpacity>
 
           {/* Progress */}
-          <Text style={styles.label}>Progress</Text>
+          {/* <Text style={styles.label}>Progress</Text>
           <TextInput
             style={styles.input}
             placeholder="0 - 100"
@@ -258,18 +258,18 @@ const CreateProjectScreen = () => {
             onChangeText={(t) => setProgress(t.replace(/[^\d]/g, '').slice(0, 3))}
             keyboardType="number-pad"
             maxLength={3}
-          />
+          /> */}
 
           {/* Start Date/Time */}
           <Text style={styles.label}>Start Date/Time</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowStartDate(true)}>
-            <Text style={styles.selectText}>{startDate || 'Pilih tarikh & masa mula'}</Text>
+            <Text style={styles.selectText}>{startDate || 'Select start date & time'}</Text>
           </TouchableOpacity>
 
           {/* End Date/Time */}
           <Text style={styles.label}>End Date/Time</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowEndDate(true)}>
-            <Text style={styles.selectText}>{endDate || 'Pilih tarikh & masa tamat'}</Text>
+            <Text style={styles.selectText}>{endDate || 'Select end date & time'}</Text>
           </TouchableOpacity>
 
           {/* Submit */}
@@ -278,14 +278,14 @@ const CreateProjectScreen = () => {
             onPress={onSubmit}
             disabled={!canSubmit || loading}
           >
-            <Text style={styles.submitText}>{loading ? 'Menyimpan...' : 'Cipta Project'}</Text>
+            <Text style={styles.submitText}>{loading ? 'Saving...' : 'Create Project'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
         {/* Client Modal */}
         <SelectionModal
           visible={showClientPicker}
-          title="Pilih Client"
+          title="Select Client"
           items={clientItems}
           value={selectedClient?.value ?? null}
           onClose={() => setShowClientPicker(false)}
@@ -294,13 +294,13 @@ const CreateProjectScreen = () => {
             if (found) setSelectedClient(found);
           }}
           showSearch
-          placeholder="Cari client"
+          placeholder="Search client"
         />
 
         {/* Status Modal */}
         <SelectionModal
           visible={showStatusPicker}
-          title="Pilih Status"
+          title="Select Status"
           items={STATUSES}
           value={status}
           onClose={() => setShowStatusPicker(false)}
@@ -311,7 +311,7 @@ const CreateProjectScreen = () => {
         {/* Priority Modal */}
         <SelectionModal
           visible={showPriorityPicker}
-          title="Pilih Priority"
+          title="Select Priority"
           items={PRIORITIES}
           value={priority}
           onClose={() => setShowPriorityPicker(false)}

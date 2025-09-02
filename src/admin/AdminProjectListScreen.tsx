@@ -378,7 +378,7 @@ const AdminProjectListScreen = () => {
       >
         {(filteredProjects || []).length === 0 ? (
           <Text style={styles.emptyText}>
-            {debouncedQuery ? 'Tiada projek sepadan dengan carian.' : 'Tiada projek dijumpai.'}
+            {debouncedQuery ? 'No projects match your search.' : 'No projects found.'}
           </Text>
         ) : (
           (filteredProjects || []).map(item => {
