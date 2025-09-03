@@ -288,7 +288,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
         }
     };
 
-    const openAddAssignee = () => { setShowAddModal(true); /* panggil fetch options di sini kalau perlu */ };
+    const openAddAssignee = () => { setShowAddModal(true); /* call fetch options here if needed */ };
 
     const fetchOptions = useCallback(async () => {
         if (!token) return;
@@ -469,7 +469,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     <Text style={styles.cardTitle}>● Link</Text>
                     <View style={styles.linkRow}>
                         <TextInput
-                            placeholder="https://contoh.com/doc"
+                            placeholder="https://example.com/doc"
                             placeholderTextColor="#9dc9e4"
                             style={styles.input}
                             value={linkUrl}
@@ -547,11 +547,11 @@ const AdminTaskDetailsScreen: React.FC = () => {
                 <View style={styles.cardBlock}>
                     <Text style={styles.cardTitle}>● Notes</Text>
 
-                    {/* Senarai nota (oldest → newest) — disusun masa load */}
+                    {/* Note list (oldest → newest) — sorted during load */}
                     {loading && (notes || []).length === 0 ? (
                         <Text style={styles.muted}>Loading notes…</Text>
                     ) : (notes || []).length === 0 ? (
-                        <Text style={styles.muted}>Belum ada nota.</Text>
+                        <Text style={styles.muted}>No notes yet.</Text>
                     ) : (
                         (notes || []).map((n) => (
                             <View key={n.id} style={styles.noteRow}>
@@ -571,7 +571,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                     {/* INPUT di PALING BAWAH */}
                     <View style={[styles.noteInputBox, { marginTop: 12 }]}>
                         <TextInput
-                            placeholder="Tulis nota…"
+                            placeholder="Write a note…"
                             placeholderTextColor="#9dc9e4"
                             style={styles.textarea}
                             value={noteText}
@@ -592,7 +592,7 @@ const AdminTaskDetailsScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Anchor untuk scrollToEnd yang tepat */}
+                    {/* Precise anchor for scrollToEnd */}
                     <View ref={notesBottomAnchor} />
                 </View>
 

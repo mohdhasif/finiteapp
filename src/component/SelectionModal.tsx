@@ -70,7 +70,7 @@ const SelectionModal: React.FC<Props> = ({
                 </ScrollView>
 
                 <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                    <Text style={styles.closeTxt}>Tutup</Text>
+                    <Text style={styles.closeTxt}>Close</Text>
                 </TouchableOpacity>
             </View>
         </Modal>

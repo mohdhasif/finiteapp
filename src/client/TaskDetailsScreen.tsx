@@ -21,20 +21,14 @@ import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     listAttachments,
-    uploadAttachment,
-    deleteAttachment,
     getTaskLink,
-    setTaskLink,
     listNotes,
     addNote,
     type TaskAttachment,
     type TaskNote,
 } from '../services/taskDetailsService';
 import { BASE_URL } from '../constants/apiConfig';
-import { launchImageLibrary } from 'react-native-image-picker';
-import DocumentPicker, { types } from 'react-native-document-picker';
 import { getTaskDetails } from '../services/taskService';
-import Modal from 'react-native-modal';
 
 const { width } = Dimensions.get('window');
 type TaskDetailsScreenRouteProp = RouteProp<RootStackParamList, 'TaskDetailsScreen'>;
@@ -61,11 +55,9 @@ const TaskDetailsScreen = () => {
 
     // Attachments
     const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
-    const [uploading, setUploading] = useState(false);
 
     // Single Link
     const [linkUrl, setLinkUrlState] = useState<string>('');
-    const [savingLink, setSavingLink] = useState(false);
 
     // Notes
     const [notes, setNotes] = useState<TaskNote[]>([]);
@@ -126,52 +118,7 @@ const TaskDetailsScreen = () => {
         })();
     }, [taskId, loadAll]);
 
-    // ===== Actions =====
-    const handlePickAndUpload = async () => {
-        if (!token) return;
-        try {
-            const res = await DocumentPicker.pickSingle({
-                type: [types.allFiles], // all file types
-            });
-
-            const uri = res.uri;
-            if (!uri) return;
-
-            setUploading(true);
-            const name = res.name || `attachment_${Date.now()}`;
-            const type = res.type || 'application/octet-stream';
-
-            const uploaded = await uploadAttachment(token, taskId, { uri, name, type });
-            setAttachments((prev) => [uploaded, ...prev]);
-            Alert.alert('Success', 'Attachment uploaded successfully.');
-        } catch (err: any) {
-            if (!DocumentPicker.isCancel(err)) {
-                Alert.alert('Upload failed', err?.message || 'Unknown error');
-            }
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleDeleteAttachment = (id: number) => {
-        if (!token) return;
-        Alert.alert('Delete attachment?', 'This action cannot be undone.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        const ok = await deleteAttachment(token, id);
-                        if (ok) setAttachments((prev) => prev.filter((x) => x.id !== id));
-                        else Alert.alert('Failed', 'Cannot delete attachment.');
-                    } catch (e: any) {
-                        Alert.alert('Failed', e?.message || 'Unknown error');
-                    }
-                },
-            },
-        ]);
-    };
+    // ===== Actions (view-only for attachments/links; notes can be added) =====
 
     const normalizeUrl = (s: string) => {
         const trimmed = (s || '').trim();
@@ -189,18 +136,7 @@ const TaskDetailsScreen = () => {
         }
     };
 
-    const handleSaveLink = async () => {
-        if (!token) return;
-        setSavingLink(true);
-        try {
-            await setTaskLink(token, taskId, linkUrl.trim());
-            Alert.alert('Success', 'Link has been saved.');
-        } catch (e: any) {
-            Alert.alert('Failed', e?.message || 'Unknown error');
-        } finally {
-            setSavingLink(false);
-        }
-    };
+    // No link saving on client side
 
     const handleSendNote = async () => {
         if (!token || !canSend) return;
@@ -277,7 +213,7 @@ const TaskDetailsScreen = () => {
                     {loading && attachments.length === 0 ? (
                         <Text style={styles.muted}>Loading attachments…</Text>
                     ) : attachments.length === 0 ? (
-                        <Text style={styles.muted}>Tiada lampiran.</Text>
+                        <Text style={styles.muted}>No attachments.</Text>
                     ) : (
                         attachments.map((att) => (
                             <View key={att.id} style={styles.attachmentRow}>
@@ -334,11 +270,11 @@ const TaskDetailsScreen = () => {
                 <View style={styles.cardBlock}>
                     <Text style={styles.cardTitle}>● Notes</Text>
 
-                    {/* Senarai nota (oldest → newest) — disusun masa load */}
+                    {/* Note list (oldest → newest) — sorted during load */}
                     {loading && notes.length === 0 ? (
                         <Text style={styles.muted}>Loading notes…</Text>
                     ) : notes.length === 0 ? (
-                        <Text style={styles.muted}>Belum ada nota.</Text>
+                        <Text style={styles.muted}>No notes yet.</Text>
                     ) : (
                         notes.map((n) => (
                             <View key={n.id} style={styles.noteRow}>
@@ -358,7 +294,7 @@ const TaskDetailsScreen = () => {
                     {/* INPUT di PALING BAWAH */}
                     <View style={[styles.noteInputBox, { marginTop: 12 }]}>
                         <TextInput
-                            placeholder="Tulis nota…"
+                            placeholder="Write a note…"
                             placeholderTextColor="#9dc9e4"
                             style={styles.textarea}
                             value={noteText}

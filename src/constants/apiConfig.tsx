@@ -1,9 +1,9 @@
 // src/constants/apiConfig.ts
 
-// 1) Buang trailing slash untuk elak `//`
+// 1) Remove trailing slash to avoid `//`
 export const BASE_URL = 'https://app.finite.my';
 
-// 2) Helper untuk build URL + query params dengan selamat
+// 2) Helper to build URL + query params safely
 const join = (base: string, path: string) =>
     `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
 

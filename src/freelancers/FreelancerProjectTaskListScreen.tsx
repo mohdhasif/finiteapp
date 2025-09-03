@@ -112,7 +112,7 @@ const ProjectTaskListScreen = () => {
                 setProjectDetails(projectData);
                 setProjectFreelancers(Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []);
 
-                // init checkbox mengikut id (preserve bila re-fetch)
+                // init checkbox by id (preserve when re-fetching)
                 setCheckedById(() => {
                     const next: Record<number, boolean> = {};
                     for (const t of list) {
@@ -351,7 +351,7 @@ const ProjectTaskListScreen = () => {
                         ))
                     ) : (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
-                            Tiada task dijumpai.
+                            No tasks found.
                         </Text>
                     )}
                 </ScrollView>

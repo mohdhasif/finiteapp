@@ -241,7 +241,7 @@ const MyProfileScreen = () => {
                     style={styles.input}
                     value={name}
                     onChangeText={setName}
-                    placeholder="Nama penuh"
+                    placeholder="Full name"
                     editable={!loading}
                 />
 
@@ -250,7 +250,7 @@ const MyProfileScreen = () => {
                     style={styles.input}
                     value={phone}
                     onChangeText={setPhone}
-                    placeholder="Nombor telefon"
+                    placeholder="Phone number"
                     editable={!loading}
                     keyboardType="phone-pad"
                 />

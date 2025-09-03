@@ -141,7 +141,7 @@ const ProfileScreen = () => {
                 });
         } catch (err: any) {
             clearTimeout(tm);
-            if (err?.name === 'AbortError') throw new Error('Request timeout. Sila cuba lagi.');
+            if (err?.name === 'AbortError') throw new Error('Request timeout. Please try again.');
             throw new Error(err?.message || 'Network error');
         } finally {
             clearTimeout(tm);
@@ -199,10 +199,10 @@ const ProfileScreen = () => {
         if (res === RESULTS.BLOCKED) {
             Alert.alert(
                 'Location Disabled',
-                'Sila benarkan lokasi dalam Settings untuk kemaskini waktu solat.',
+                'Please allow location in Settings to update prayer times.',
                 [
-                    { text: 'Buka Settings', onPress: () => { openSettings().catch(() => { }); } },
-                    { text: 'Batal', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => { openSettings().catch(() => { }); } },
+                    { text: 'Cancel', style: 'cancel' },
                 ]
             );
             return false;
@@ -429,7 +429,7 @@ const ProfileScreen = () => {
                                 </View>
 
                                 <Text style={styles.hint}>
-                                    Sistem akan guna lat/long ini untuk ambil waktu solat harian dan hantar notifikasi tepat pada waktunya.
+                                    The system will use these lat/long coordinates to retrieve daily prayer times and send notifications at the correct time.
                                 </Text>
 
                                 {/* Manual Location Capture Button */}

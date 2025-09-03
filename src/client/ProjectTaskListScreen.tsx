@@ -114,7 +114,7 @@ const ProjectTaskListScreen = () => {
             
             try {
                 const token = await AsyncStorage.getItem('userToken');
-                if (!token) throw new Error('Token tidak dijumpai');
+                if (!token) throw new Error('Token not found');
 
                 // Load user info first
                 await loadUserInfo();
@@ -146,7 +146,7 @@ const ProjectTaskListScreen = () => {
         const run = async () => {
             try {
                 const token = await AsyncStorage.getItem('userToken');
-                if (!token) throw new Error('Token tidak dijumpai');
+                if (!token) throw new Error('Token not found');
 
                 await fetchTasks(async () => {
                     const arr = await getTasksByProjectPublic(token, route.params.projectId);
@@ -429,7 +429,7 @@ const ProjectTaskListScreen = () => {
                         ))
                     ) : (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
-                            Tiada task dijumpai.
+                            No tasks found.
                         </Text>
                     )}
                 </ScrollView>

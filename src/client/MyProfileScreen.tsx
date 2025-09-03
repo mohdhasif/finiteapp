@@ -288,7 +288,7 @@ const MyProfileScreen = () => {
                     style={styles.input}
                     value={name}
                     onChangeText={setName}
-                    placeholder="Nama penuh"
+                    placeholder="Full name"
                     editable={!loading}
                 />
 

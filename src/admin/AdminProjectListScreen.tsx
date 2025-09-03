@@ -255,7 +255,7 @@ const AdminProjectListScreen = () => {
     }
   };
 
-  // Gabung carian + tabs
+  // Combine search + tabs
   const filteredProjects = useMemo(() => {
     const projectsList = projects || [];
     

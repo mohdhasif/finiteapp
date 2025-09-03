@@ -242,10 +242,10 @@ const AdminHomeScreen = () => {
         }
     }, [selectedFilter, fetchTasksData]);
 
-    // ================= Refresh setiap kali screen FOKUS
+    // ================= Refresh every time screen FOCUSES
     useFocusEffect(
         useCallback(() => {
-            // bila masuk screen / kembali fokus -> tarik data latest
+            // when entering screen / regaining focus -> fetch latest data
             loadMasters();
             loadTasks(); // Will use current selectedFilter
             loadUserData(); // Load user profile data
@@ -255,7 +255,7 @@ const AdminHomeScreen = () => {
         }, [loadMasters, loadUserData]) // Remove loadTasks from dependency to prevent reloading on filter change
     );
 
-    // ================= Bila filter berubah (semasa screen aktif), refresh tasks sahaja
+    // ================= When filter changes (while screen active), refresh tasks only
     useEffect(() => {
         // Only reload tasks when filter changes, not the entire screen
         loadTasks(selectedFilter);

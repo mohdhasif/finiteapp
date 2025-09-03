@@ -40,13 +40,13 @@ export type RootStackParamList = {
 
   ClientListScreen: undefined;
 
-  ClientApprovalScreen: { client: any }; // tukar `any` ke type sebenar kalau ada
+  ClientApprovalScreen: { client: any }; // change `any` to actual type if available
 
   FreelancerListScreen: undefined;
 
 
 
-  FreelancerApprovalScreen: { freelancer: any }; // tukar `any` ke type sebenar kalau ada
+  FreelancerApprovalScreen: { freelancer: any }; // change `any` to actual type if available
 
 
   AddTaskScreen: undefined;
