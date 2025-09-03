@@ -9,6 +9,7 @@ import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { API_ENDPOINTS } from './src/constants/apiConfig';
 import { Platform } from 'react-native';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 async function postJSON(url: string, body: any, token?: string) {
   const res = await fetch(url, {
@@ -84,10 +85,12 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <ErrorBoundary>
-        <AppNavigator />
-      </ErrorBoundary>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <ErrorBoundary>
+          <AppNavigator />
+        </ErrorBoundary>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

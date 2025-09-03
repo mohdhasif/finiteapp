@@ -11,6 +11,7 @@ import {
   Dimensions,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,7 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getProjectSummaries, getProjectFreelancers } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ProjectCardScreen from '../component/ProjectCardScreen';
+import SwipeableProjectCard from '../component/SwipeableProjectCard';
 import { BASE_URL } from '../constants/apiConfig';
 import { useDebouncedState } from '../hooks/useOptimizedState';
 import { useAsyncState } from '../hooks/useOptimizedState';
@@ -33,6 +34,8 @@ type ProjectFreelancer = {
   freelancer_id: number;
   user_id: number;
   avatar_url: string | null;
+  // Some APIs return avatar under this key
+  freelancer_avatar_url?: string | null;
   skillset: string;
   freelancer_status: string;
   freelancer_name: string;
@@ -63,7 +66,7 @@ const AdminProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
-  
+
   // Performance optimized state management
   const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -110,7 +113,7 @@ const AdminProjectListScreen = () => {
   // Debounced search for better performance
   const [query, setQuery, debouncedQuery] = useDebouncedState('', 300);
   const [showSearch, setShowSearch] = useState(false);
-  
+
   // Performance monitoring
   const renderCount = useRef(0);
   renderCount.current++;
@@ -127,26 +130,29 @@ const AdminProjectListScreen = () => {
 
   const fetchData = useCallback(async (isRefreshing = false) => {
     performanceMonitor.startTimer('fetchAdminProjects');
-    
+
     try {
       if (!isRefreshing) setRefreshing(true);
-      
+
       const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
-      
+
       await fetchProjects(async () => {
         // Fetch project summaries first
         const result = await getProjectSummaries(token);
         console.log('result:', JSON.stringify(result, null, 2));
-        
+
         const projectsData = Array.isArray(result) ? result : [];
 
         // OPTIMIZATION: Fetch freelancer data for all projects in parallel
         const projectIds = projectsData.map(p => p.project_id);
-        
+
         // Fetch freelancers for all projects in parallel (much better than sequential)
         const freelancersPromises = projectIds.map(async (projectId) => {
           try {
             const freelancersData = await getProjectFreelancers(token, projectId);
+
+            console.log('freelancersData:', freelancersData);
+            
             return {
               projectId,
               freelancers: Array.isArray(freelancersData?.freelancers) ? freelancersData.freelancers : []
@@ -156,35 +162,35 @@ const AdminProjectListScreen = () => {
             return { projectId, freelancers: [] };
           }
         });
-        
+
         const freelancersResults = await Promise.all(freelancersPromises);
-        
+
         // Create a map for quick lookup
         const freelancersMap = new Map(
           freelancersResults.map(result => [result.projectId, result.freelancers])
         );
-        
+
         // Process projects with their freelancers
         return projectsData.map(project => {
           const freelancers = freelancersMap.get(project.project_id) || [];
-          
-          // Construct full avatar URLs with BASE_URL, include all freelancers (with or without avatars)
-          const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
-              if (!f.avatar_url) return null; // Will be handled by ProjectCardScreen with default image
-              // If it's already a full URL, use as is, otherwise prepend BASE_URL
-              return f.avatar_url.startsWith('http') ? f.avatar_url : `${BASE_URL}${f.avatar_url}`;
-            });
 
-            return {
-              ...project,
-              projectFreelancers: freelancers,
-              // Update freelancer_avatars with full URLs (for backward compatibility)
-              freelancer_avatars: avatarUrls,
-              freelancer_count: freelancers.length,
-            };
+          // Construct full avatar URLs with BASE_URL, supporting both avatar_url and freelancer_avatar_url
+          const avatarUrls = freelancers.map((f: ProjectFreelancer) => {
+            const raw = f.avatar_url || f.freelancer_avatar_url || null;
+            if (!raw) return null; // default handled by card
+            return raw.startsWith('http') ? raw : `${BASE_URL}${raw}`;
+          });
+
+          return {
+            ...project,
+            projectFreelancers: freelancers,
+            // Update freelancer_avatars with full URLs (for backward compatibility)
+            freelancer_avatars: avatarUrls,
+            freelancer_count: freelancers.length,
+          };
         });
       });
-      
+
     } catch (error) {
       console.error('Fetch projects error:', error);
     } finally {
@@ -221,7 +227,7 @@ const AdminProjectListScreen = () => {
   const normalizeStatus = (status: string | undefined): string => {
     if (!status) return '';
     const normalized = status.toLowerCase().trim();
-    
+
     // Map various status formats to tab values
     if (normalized.includes('complete') || normalized.includes('completed') || normalized.includes('finish')) {
       return 'completed';
@@ -232,18 +238,18 @@ const AdminProjectListScreen = () => {
     if (normalized.includes('pending') || normalized.includes('waiting')) {
       return 'pending';
     }
-    
+
     return normalized;
   };
 
   // Helper function to format date
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'No due date';
-    
+
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Invalid date';
-      
+
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -258,7 +264,7 @@ const AdminProjectListScreen = () => {
   // Combine search + tabs
   const filteredProjects = useMemo(() => {
     const projectsList = projects || [];
-    
+
     // Debug: Log status mapping for troubleshooting
     if (activeTab !== 'All') {
       console.log(`Filtering for tab: "${activeTab}"`);
@@ -266,17 +272,17 @@ const AdminProjectListScreen = () => {
         console.log(`Project: "${p.project_title}" - Original Status: "${p.status}" - Normalized: "${normalizeStatus(p.status)}"`);
       });
     }
-    
+
     const list =
       activeTab === 'All'
         ? projectsList
         : projectsList.filter(p => {
-            const projectStatus = normalizeStatus(p.status);
-            const tabStatus = activeTab.toLowerCase();
-            const matches = projectStatus === tabStatus;
-            console.log(`Project "${p.project_title}": ${projectStatus} === ${tabStatus} = ${matches}`);
-            return matches;
-          });
+          const projectStatus = normalizeStatus(p.status);
+          const tabStatus = activeTab.toLowerCase();
+          const matches = projectStatus === tabStatus;
+          console.log(`Project "${p.project_title}": ${projectStatus} === ${tabStatus} = ${matches}`);
+          return matches;
+        });
 
     if (!debouncedQuery.trim()) return list;
 
@@ -390,15 +396,16 @@ const AdminProjectListScreen = () => {
             //   assignees: item.freelancer_avatars?.map((avatar, index) => ({ id: index, avatar_url: avatar })) ?? []
             // });
 
-            const assigneesData = item.projectFreelancers?.map((freelancer, index) => ({ 
-              id: freelancer.freelancer_id, 
-              avatar_url: freelancer.avatar_url 
-            })) ?? [];
-            
-            // console.log('Sending assignees for project', item.project_id, ':', JSON.stringify(assigneesData, null, 2));
-            
+            const assigneesData = item.projectFreelancers?.map((freelancer, index) => {
+              const raw = freelancer.freelancer_avatar_url || freelancer.avatar_url || null;
+              return {
+                id: freelancer.freelancer_id,
+                avatar_url: raw,
+              };
+            }) ?? [];
+
             return (
-              <ProjectCardScreen
+              <SwipeableProjectCard
                 key={item.project_id}
                 id={item.project_id}
                 title={item.project_title}
@@ -412,6 +419,16 @@ const AdminProjectListScreen = () => {
                 total_tasks={item.total_tasks ?? undefined}
                 assignees={assigneesData}
                 onPress={() => goToTasks(item)}
+                onDelete={(id) => {
+                  // Handle delete - you can implement the actual delete logic here
+                  console.log('Delete project:', id);
+                  Alert.alert('Delete Project', 'Delete functionality will be implemented here');
+                }}
+                onUpdate={(id) => {
+                  // Handle update - you can implement the actual update logic here
+                  console.log('Update project:', id);
+                  Alert.alert('Update Project', 'Update functionality will be implemented here');
+                }}
               />
             );
           })
