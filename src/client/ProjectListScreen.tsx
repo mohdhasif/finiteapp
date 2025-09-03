@@ -94,13 +94,16 @@ const ProjectListScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      // Fetch only when the screen gains focus, not on tab/status switches
       fetchData(true);
-    }, [activeTab])
+      return () => {};
+    }, [])
   );
 
       // Combine search + tabs
   const filteredProjects = useMemo(() => {
     const projectsList = projects || [];
+    // Avoid layout jump by keeping a stable key ordering
     const list =
       activeTab === 'All'
         ? projectsList
@@ -117,6 +120,13 @@ const ProjectListScreen = () => {
       return title.includes(q) || client.includes(q);
     });
   }, [projects, activeTab, debouncedQuery]);
+
+  // Prevent re-render glitches on tab change by deferring state commit to next frame
+  const [visibleTab, setVisibleTab] = useState<Tab>('All');
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => setVisibleTab(activeTab));
+    return () => cancelAnimationFrame(raf);
+  }, [activeTab]);
 
   const goToTasks = (p: Project) => {
     navigation.navigate('ProjectTaskListScreen', { projectId: p.project_id, projectTitle: p.project_title });
@@ -179,7 +189,7 @@ const ProjectListScreen = () => {
       {/* Segmented tabs */}
       <View style={styles.tabContainer}>
         {tabs.map(tab => {
-          const active = activeTab === tab;
+          const active = visibleTab === tab;
           return (
             <TouchableOpacity
               key={tab}
