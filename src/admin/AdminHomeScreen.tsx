@@ -19,6 +19,7 @@ import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchClients, fetchFreelancers } from '../services/adminService';
 import AdminTaskCard from '../component/AdminTaskCard';
+import SwipeableTaskCard from '../component/SwipeableTaskCard';
 import { getAllTasks, updateTaskStatus, type Task } from '../services/taskService';
 
 import ProjectCard from '../component/ProjectCard';
@@ -516,22 +517,30 @@ const AdminHomeScreen = () => {
 
                     </View>
 
-                    {(tasks || []).map((t, idx) => {
-                        const isCompleted = (t.status || '').toLowerCase() === 'completed';
-                        return (
-                            <AdminTaskCard
-                                key={t.id ?? idx}
-                                task={t}
-                                checked={isCompleted}
-                                onToggleCheck={() => handleToggleCheck(idx, t)}
-                                onPress={() =>
-                                    navigation.push('AdminTaskDetailsScreen', {
-                                        task_title: t.title ?? 'Task',
-                                        task_id: t.id,
-                                    })}
-                            />
-                        );
-                    })}
+                    {(tasks || []).map((t, idx) => (
+                        <SwipeableTaskCard
+                            key={t.id ?? idx}
+                            task={t}
+                            onPress={() =>
+                                navigation.push('AdminTaskDetailsScreen', {
+                                    task_title: t.title ?? 'Task',
+                                    task_id: t.id,
+                                })
+                            }
+                            onDelete={(taskId) => {
+                                console.log('Delete task:', taskId);
+                                Alert.alert('Delete Task', 'Delete functionality will be implemented here');
+                            }}
+                            onUpdate={(taskId) => {
+                                console.log('Update task:', taskId);
+                                // You can navigate to an edit screen or open a modal here
+                                navigation.push('AdminTaskDetailsScreen', {
+                                    task_title: t.title ?? 'Task',
+                                    task_id: taskId,
+                                });
+                            }}
+                        />
+                    ))}
                     {!loadingTasks && (tasks || []).length === 0 && (
                         <Text style={{ color: '#666' }}>No tasks found.</Text>
                     )}

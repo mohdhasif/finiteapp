@@ -13,7 +13,7 @@ import { getTasksByProject, updateTaskStatus } from '../services/taskService';
 import { getProjectDetails, getProjectFreelancers } from '../services/projectService';
 import { BASE_URL } from '../constants/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AdminTaskCard from '../component/AdminTaskCard';
+import SwipeableTaskCard from '../component/SwipeableTaskCard';
 import Svg, { G, Circle } from 'react-native-svg';
 import { performanceMonitor } from '../utils/performance';
 
@@ -415,23 +415,28 @@ const AdminProjectTaskListScreen = () => {
                             Loading...
                         </Text>
                     ) : Array.isArray(tasks) && tasks.length > 0 ? (
-                        tasks.map((task: any) => {
-                            const isCompleted = (task.status || '').toLowerCase() === 'completed';
-                            return (
-                                <AdminTaskCard
-                                    key={task.id}
-                                    task={task}
-                                    checked={isCompleted}
-                                    onToggleCheck={() => handleToggleCheck(task.id)}
-                                    onPress={() =>
-                                        navigation.push('AdminTaskDetailsScreen', {
-                                            task_title: task.title,
-                                            task_id: task.id,
-                                        })
-                                    }
-                                />
-                            );
-                        })
+                        tasks.map((task: any) => (
+                            <SwipeableTaskCard
+                                key={task.id}
+                                task={task}
+                                onPress={() =>
+                                    navigation.push('AdminTaskDetailsScreen', {
+                                        task_title: task.title,
+                                        task_id: task.id,
+                                    })
+                                }
+                                onDelete={(taskId) => {
+                                    console.log('Delete task:', taskId);
+                                    Alert.alert('Delete Task', 'Delete functionality will be implemented here');
+                                }}
+                                onUpdate={(taskId) => {
+                                    navigation.push('AdminTaskDetailsScreen', {
+                                        task_title: task.title,
+                                        task_id: taskId,
+                                    });
+                                }}
+                            />
+                        ))
                     ) : (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
                             No tasks found.
