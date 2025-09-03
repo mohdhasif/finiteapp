@@ -255,8 +255,6 @@ export const getAllTasksFreelancer = async (
     return Array.isArray(json?.data) ? (json.data as Task[]) : [];
 };
 
-
-
 export type CreateTaskPayload = {
     title: string;
     description?: string;

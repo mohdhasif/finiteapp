@@ -13,6 +13,7 @@ import { getProjectsOptions, type ProjectOption } from '../services/projectServi
 import { saveTask, getTaskForForm } from '../services/taskService';
 import { performanceMonitor } from '../utils/performance';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import { DeviceEventEmitter } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -223,6 +224,20 @@ const AddTaskScreen: React.FC<any> = () => {
         end_at: endAt || undefined,
         project_id: selectedProject.id,
       });
+      // Emit event so AdminHomeScreen can update immediately
+      if (taskId) {
+        DeviceEventEmitter.emit('TASK_SAVED', {
+          id: taskId,
+          title: title.trim(),
+          description: description.trim(),
+          status,
+          due_date: dueDate || undefined,
+          start_at: startAt || undefined,
+          end_at: endAt || undefined,
+          project_id: selectedProject?.id,
+          project: selectedProject ? { id: selectedProject.id, title: selectedProject.title } : undefined,
+        });
+      }
       Alert.alert('Success', taskId ? 'Task has been updated' : 'Task has been added', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);

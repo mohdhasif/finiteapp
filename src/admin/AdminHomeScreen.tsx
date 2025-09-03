@@ -11,6 +11,7 @@ import {
     Alert,
     Animated,
     Easing,
+    DeviceEventEmitter,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -281,6 +282,28 @@ const AdminHomeScreen = () => {
         // Only reload tasks when filter changes, not the entire screen
         loadTasks(selectedFilter);
     }, [selectedFilter]); // Only depend on selectedFilter, not loadTasks
+    // Listen for task saved events and update list immediately
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('TASK_SAVED', (payload: any) => {
+            const savedId = Number(payload?.id);
+            if (!savedId) return;
+            // Update tasks list locally if present; otherwise refetch tasks
+            fetchTasksData(async () => {
+                const list = Array.isArray(tasks) ? [...tasks] : [];
+                const idx = list.findIndex(t => Number(t.id) === savedId);
+                if (idx >= 0) {
+                    list[idx] = { ...list[idx], ...payload };
+                    // Maintain checkbox state based on updated status
+                    setCheckedById(prev => ({ ...prev, [savedId]: String(payload?.status || '').toLowerCase() === 'completed' }));
+                    return list;
+                }
+                // If not found, just return old list and trigger a refetch
+                setTimeout(() => { loadTasks(); }, 0);
+                return list;
+            });
+        });
+        return () => { sub.remove(); };
+    }, [tasks, fetchTasksData, loadTasks]);
 
 
     ///////////////////////////// START
