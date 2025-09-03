@@ -2,15 +2,20 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView
+  SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView,
+  ActivityIndicator
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import SelectionModal from '../component/SelectionModal';
 import { getProjectsOptions, type ProjectOption } from '../services/projectService';
-import { createTask } from '../services/taskService';
+import { saveTask, getTaskForForm } from '../services/taskService';
 import { performanceMonitor } from '../utils/performance';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 
 const BLUE = '#0B7EBE';
 const BG = '#EFEFEF';
@@ -31,7 +36,13 @@ const toMySQLDate = (d: Date) =>
 const toMySQLDateTime = (d: Date) =>
   `${toMySQLDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 
-const AddTaskScreen: React.FC<any> = ({ navigation }) => {
+type ScreenRoute = RouteProp<RootStackParamList, 'AddTaskScreen'>;
+const AddTaskScreen: React.FC<any> = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<ScreenRoute>();
+  
+  const taskId = route.params?.task_id as number | undefined;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed'>('pending');
@@ -58,8 +69,10 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
   const [tmpEndDate, setTmpEndDate] = useState<Date | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [projectsReady, setProjectsReady] = useState(false);
 
-      // Load project list for dropdown
+  // Load project list for dropdown
   const loadProjects = useCallback(async () => {
     try {
       performanceMonitor.startTimer('loadProjects');
@@ -72,12 +85,58 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
       Alert.alert('Failed', e.message || 'Failed to get project list');
     } finally {
       performanceMonitor.endTimer('loadProjects');
+      setProjectsReady(true);
     }
   }, []);
 
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  // Prefill form when editing (reusable)
+  const prefillFromServer = useCallback(async () => {
+    if (!taskId) { setInitializing(false); return; }
+    try {
+      setInitializing(true);
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) throw new Error('No token found. Please log in again.');
+      const t = await getTaskForForm(token, taskId);
+      if (t) {
+        setTitle(String(t.title || ''));
+        setDescription(String(t.description || ''));
+        const st = (t.status || 'pending') as 'pending' | 'in_progress' | 'completed';
+        setStatus(st);
+        if (t.due_date) setDueDate(String(t.due_date));
+        if (t.start_at) setStartAt(String(t.start_at));
+        if (t.end_at) setEndAt(String(t.end_at));
+        const pid = t.project_id;
+        if (pid && Array.isArray(projects) && projects.length > 0) {
+          const found = projects.find(p => p.id === pid);
+          if (found) setSelectedProject(found);
+          else setSelectedProject({ id: pid, title: `Project #${pid}` } as any);
+        }
+      }
+    } catch (e) {
+      // silent; form still editable
+    } finally {
+      setInitializing(false);
+    }
+  }, [taskId, projects]);
+
+  // Fetch on focus
+  useFocusEffect(
+    useCallback(() => {
+      if (projectsReady) {
+        prefillFromServer();
+      }
+      return () => {};
+    }, [prefillFromServer, projectsReady])
+  );
+
+  // Re-run when projects first finish loading
+  useEffect(() => {
+    if (projectsReady) prefillFromServer();
+  }, [projectsReady, prefillFromServer]);
 
   // handlers — due date
   const onPickDueDate = (date: Date) => {
@@ -128,11 +187,11 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
 
   const onSubmit = async () => {
     if (!canSubmit || !selectedProject) {
-              Alert.alert('Warning', 'Please fill in Title and select Project');
+      Alert.alert('Warning', 'Please fill in Title and select Project');
       return;
     }
     if (!startAt || !endAt) {
-              Alert.alert('Incomplete information', 'Please select start and end dates.');
+      Alert.alert('Incomplete information', 'Please select start and end dates.');
       return;
     }
 
@@ -146,22 +205,29 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
       setLoading(true);
       const token = await AsyncStorage.getItem('userToken');
       if (!token) throw new Error('No token found. Please log in again.');
-
-      await createTask(token, {
+      await saveTask(token, taskId ? {
+        task_id: taskId,
         title: title.trim(),
         description: description.trim(),
         status,
-        due_date: dueDate,   // optional
-        start_at: startAt,   // optional
-        end_at: endAt,       // optional
+        due_date: dueDate || undefined,
+        start_at: startAt || undefined,
+        end_at: endAt || undefined,
+        project_id: selectedProject?.id,
+      } : {
+        title: title.trim(),
+        description: description.trim(),
+        status,
+        due_date: dueDate || undefined,
+        start_at: startAt || undefined,
+        end_at: endAt || undefined,
         project_id: selectedProject.id,
       });
-
-              Alert.alert('Success', 'Task has been added', [
+      Alert.alert('Success', taskId ? 'Task has been updated' : 'Task has been added', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e: any) {
-              Alert.alert('Error', e.message || 'Failed to add task');
+      Alert.alert('Error', e.message || 'Failed to add task');
     } finally {
       setLoading(false);
     }
@@ -185,7 +251,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-          <Text style={styles.header}>Add Task</Text>
+          <Text style={styles.header}>{taskId ? 'Edit Task' : 'Add Task'}</Text>
 
           {/* Project */}
           <Text style={styles.label}>Project</Text>
@@ -257,7 +323,7 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
             onPress={onSubmit}
             disabled={!canSubmit || loading}
           >
-            <Text style={styles.submitText}>{loading ? 'Saving...' : 'Add Task'}</Text>
+            <Text style={styles.submitText}>{loading ? 'Saving...' : (taskId ? 'Save Changes' : 'Add Task')}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -328,6 +394,12 @@ const AddTaskScreen: React.FC<any> = ({ navigation }) => {
           onCancel={() => setShowEndTime(false)}
         />
       </KeyboardAvoidingView>
+      {initializing && (
+        <View style={styles.initOverlay} pointerEvents="auto">
+          <ActivityIndicator size="large" color={BLUE} />
+          <Text style={styles.initText}>Loading…</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -356,4 +428,9 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  initOverlay: {
+    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.6)', justifyContent: 'center', alignItems: 'center'
+  },
+  initText: { marginTop: 8, color: SUB },
 });

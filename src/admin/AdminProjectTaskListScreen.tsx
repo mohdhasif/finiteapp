@@ -430,10 +430,7 @@ const AdminProjectTaskListScreen = () => {
                                     Alert.alert('Delete Task', 'Delete functionality will be implemented here');
                                 }}
                                 onUpdate={(taskId) => {
-                                    navigation.push('AdminTaskDetailsScreen', {
-                                        task_title: task.title,
-                                        task_id: taskId,
-                                    });
+                                    navigation.navigate('AddTaskScreen', { task_id: taskId });
                                 }}
                             />
                         ))

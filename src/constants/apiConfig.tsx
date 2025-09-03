@@ -36,6 +36,8 @@ export const API_ENDPOINTS = {
     projectTasks: (projectId: number) => buildUrl('project_tasks.php', { project_id: projectId }),
     projectTasksPublic: (projectId: number) => buildUrl('project_tasks_public.php', { project_id: projectId }),
     taskDetails: (taskId: number) => buildUrl('task_details.php', { task_id: taskId }),
+    // Note: API expects POST; do not append query params
+    getTaskDetailsForm: (taskId: number) => buildUrl('get_task_details.php'),
 
     // ---- Forms / Auth / Uploads
     submitJoinForm: buildUrl('freelancers.php'),
@@ -63,6 +65,7 @@ export const API_ENDPOINTS = {
     createProject: buildUrl('create_project.php'),
     projectsOptions: buildUrl('get_projects_options.php'),
     createTask: buildUrl('create_task.php'),
+    updateTask: buildUrl('update_task.php'),
 
     claimInstallSubscriptions: buildUrl('claim_install_subscriptions.php'),
     savePushNotifications: buildUrl('save_push_subscription.php'),

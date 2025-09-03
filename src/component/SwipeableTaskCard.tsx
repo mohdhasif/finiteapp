@@ -65,8 +65,9 @@ const SwipeableTaskCard: React.FC<Props> = ({ task, onPress, onDelete, onUpdate 
   };
 
   const handleUpdate = () => {
-    if (!onUpdate) return;
-    onUpdate(id);
+    if (onUpdate) {
+      onUpdate(id);
+    }
     reset();
   };
 

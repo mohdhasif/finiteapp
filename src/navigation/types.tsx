@@ -49,7 +49,7 @@ export type RootStackParamList = {
   FreelancerApprovalScreen: { freelancer: any }; // change `any` to actual type if available
 
 
-  AddTaskScreen: undefined;
+  AddTaskScreen: { task_id?: number } | undefined;
 
   AdminNotificationsScreen: undefined;
 

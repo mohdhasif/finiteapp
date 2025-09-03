@@ -602,12 +602,7 @@ const AdminHomeScreen = () => {
                                 Alert.alert('Delete Task', 'Delete functionality will be implemented here');
                             }}
                             onUpdate={(taskId) => {
-                                console.log('Update task:', taskId);
-                                // You can navigate to an edit screen or open a modal here
-                                navigation.push('AdminTaskDetailsScreen', {
-                                    task_title: t.title ?? 'Task',
-                                    task_id: taskId,
-                                });
+                                navigation.navigate('AddTaskScreen', { task_id: taskId });
                             }}
                         />
                     ))}
