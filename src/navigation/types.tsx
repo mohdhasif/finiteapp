@@ -26,7 +26,7 @@ export type RootStackParamList = {
   AdminMyProfileScreen: undefined;
   AdminFAQScreen: undefined;
 
-  AdminCreateProjectScreen: undefined;
+  AdminCreateProjectScreen: { project_id?: number } | undefined;
   AdminCreateTaskScreen: undefined;
 
 

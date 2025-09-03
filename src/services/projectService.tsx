@@ -139,6 +139,34 @@ export const createProject = async (token: string, body: CreateProjectPayload) =
     return json;
 };
 
+type UpdateProjectPayload = CreateProjectPayload & { project_id: number };
+
+export const updateProject = async (token: string, body: UpdateProjectPayload) => {
+    const res = await fetch(API_ENDPOINTS.updateProject, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try {
+        json = JSON.parse(raw);
+    } catch {
+        throw new Error('Server did not return valid JSON');
+    }
+
+    if (!res.ok || json?.success === false) {
+        const msg = json?.error || `Failed to update project (HTTP ${res.status})`;
+        throw new Error(msg);
+    }
+    return json;
+};
+
 export const getProjectSummariesClient = async (userToken: string): Promise<ProjectSummary[]> => {
     const res = await fetch(API_ENDPOINTS.projectSummariesClient, { headers: auth(userToken) });
     const json = await parse(res);

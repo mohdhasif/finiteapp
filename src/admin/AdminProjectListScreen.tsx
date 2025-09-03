@@ -425,9 +425,7 @@ const AdminProjectListScreen = () => {
                   Alert.alert('Delete Project', 'Delete functionality will be implemented here');
                 }}
                 onUpdate={(id) => {
-                  // Handle update - you can implement the actual update logic here
-                  console.log('Update project:', id);
-                  Alert.alert('Update Project', 'Update functionality will be implemented here');
+                  navigation.navigate('AdminCreateProjectScreen', { project_id: id });
                 }}
               />
             );

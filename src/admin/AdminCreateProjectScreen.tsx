@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { createProject } from '../services/projectService';
+import { createProject, updateProject, getProjectDetails } from '../services/projectService';
 import { getClientsOptions } from '../services/adminService';
 import SelectionModal from '../component/SelectionModal';
 import { performanceMonitor } from '../utils/performance';
@@ -33,6 +33,8 @@ const STATUSES = [
 
 const CreateProjectScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<any>();
+  const projectId = route?.params?.project_id as number | undefined;
 
   // Form states
   const [projectName, setProjectName] = useState('');
@@ -95,6 +97,35 @@ const CreateProjectScreen = () => {
   useEffect(() => {
     loadClients();
   }, [loadClients]);
+
+  // Prefill when editing
+  useEffect(() => {
+    (async () => {
+      if (!projectId) return;
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) return;
+        const data = await getProjectDetails(token, projectId);
+        const proj = data?.data || data;
+        if (proj) {
+          setProjectName(String(proj.title || proj.project_title || ''));
+          setDescription(String(proj.description || ''));
+          const st = (proj.status || 'pending').toLowerCase();
+          setStatus(st === 'completed' || st === 'in_progress' || st === 'pending' ? st : 'pending');
+          if (proj.priority && ['low','medium','high'].includes(String(proj.priority))) setPriority(proj.priority);
+          if (proj.start_at) setStartDate(String(proj.start_at));
+          if (proj.end_at) setEndDate(String(proj.end_at));
+          // client prefill if available
+          if (proj.client_id && Array.isArray(clients) && clients.length > 0) {
+            const found = clients.find(c => c.value === proj.client_id);
+            if (found) setSelectedClient(found);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [projectId, clients]);
 
   // handlers — start_at (date -> time)
   const onPickStartDate = (date: Date) => {
@@ -159,12 +190,19 @@ const CreateProjectScreen = () => {
         end_at: endDate,
         status,
         progress: Math.max(0, Math.min(100, parseInt(progress || '0', 10) || 0)),
-      };
+      } as const;
 
-      await createProject(token, payload);
-              Alert.alert('Success', 'Project has been created', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      if (projectId) {
+        await updateProject(token, { project_id: projectId, ...payload });
+        Alert.alert('Success', 'Project has been updated', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await createProject(token, { ...payload });
+        Alert.alert('Success', 'Project has been created', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (e: any) {
               Alert.alert('Error', e?.message || 'Failed to create project');
     } finally {
@@ -182,6 +220,8 @@ const CreateProjectScreen = () => {
     [clients]
   );
 
+  console.log('projectId:', projectId);
+  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -189,7 +229,7 @@ const CreateProjectScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-          <Text style={styles.header}>Create Project</Text>
+          <Text style={styles.header}>{projectId ? 'Edit Project' : 'Create Project'}</Text>
 
           {/* Project Name */}
           <Text style={styles.label}>Project Name</Text>
@@ -278,7 +318,7 @@ const CreateProjectScreen = () => {
             onPress={onSubmit}
             disabled={!canSubmit || loading}
           >
-            <Text style={styles.submitText}>{loading ? 'Saving...' : 'Create Project'}</Text>
+            <Text style={styles.submitText}>{loading ? 'Saving...' : (projectId ? 'Save Changes' : 'Create Project')}</Text>
           </TouchableOpacity>
         </ScrollView>
 

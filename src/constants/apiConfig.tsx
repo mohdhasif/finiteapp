@@ -63,6 +63,7 @@ export const API_ENDPOINTS = {
     projectSummary: (projectId: number) => buildUrl('get_project_summaries.php', { project_id: projectId }),
 
     createProject: buildUrl('create_project.php'),
+    updateProject: buildUrl('update_project.php'),
     projectsOptions: buildUrl('get_projects_options.php'),
     createTask: buildUrl('create_task.php'),
     updateTask: buildUrl('update_task.php'),
