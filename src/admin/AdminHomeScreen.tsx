@@ -20,7 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchClients, fetchFreelancers } from '../services/adminService';
+import { fetchClientsOnlyApproved, fetchFreelancersOnlyApproved } from '../services/adminService';
 import AdminTaskCard from '../component/AdminTaskCard';
 import SwipeableTaskCard from '../component/SwipeableTaskCard';
 import { getAllTasks, updateTaskStatus, type Task } from '../services/taskService';
@@ -171,11 +171,13 @@ const AdminHomeScreen = () => {
             // Fetch all data in parallel for better performance
             await Promise.all([
                 fetchClientsData(async () => {
-                    return await fetchClients(token);
+                    return await fetchClientsOnlyApproved(token);
                 }),
+
                 fetchFreelancersData(async () => {
-                    return await fetchFreelancers(token);
+                    return await fetchFreelancersOnlyApproved(token);
                 }),
+                
                 fetchProjectsData(async () => {
                     const projectData = await getProjectSummaries(token);
                     

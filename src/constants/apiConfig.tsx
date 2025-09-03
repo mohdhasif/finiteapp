@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
     approveFreelancer: buildUrl('approve_freelancer.php'),
     getFreelancers: buildUrl('get_freelancers.php'),
     getClients: buildUrl('get_clients.php'),
+    getApprovedFreelancers: buildUrl('get_approved_freelancers.php'),
+    getApprovedClients: buildUrl('get_approved_clients.php'),
     updateClient: buildUrl('update_client.php'),
     updateFreelancer: buildUrl('update_freelancer.php'),
 

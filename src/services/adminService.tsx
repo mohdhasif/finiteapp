@@ -40,7 +40,35 @@ export const fetchFreelancers = async (token: string) => {
 
 
 
+export const fetchClientsOnlyApproved = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.getApprovedClients, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    const text = await res.text();
+    try {
+        const result = JSON.parse(text);
+        // Return the data array from the response
+        return result.data || [];
+    } catch (error) {
+        // Remove console.log for production
+        throw new Error('Invalid JSON response');
+    }
+};
 
+export const fetchFreelancersOnlyApproved = async (token: string) => {
+    const res = await fetch(API_ENDPOINTS.getApprovedFreelancers, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    const text = await res.text();
+    try {
+        const result = JSON.parse(text);
+        // Freelancers API returns data directly, not wrapped in data property
+        return Array.isArray(result) ? result : (result.data || []);
+    } catch (error) {
+        // Remove console.log for production
+        throw new Error('Invalid JSON response');
+    }
+};
 
 
 export type AdminRawClient = {
@@ -73,7 +101,7 @@ export async function fetchAdminClients(token?: string): Promise<AdminRawClient[
     console.log('fetchAdminClients called with token:', !!token);
 
     try {
-        const res = await fetch(API_ENDPOINTS.getClients, {
+        const res = await fetch(API_ENDPOINTS.getApprovedClients, {
             headers: {
                 Accept: 'application/json',
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
