@@ -631,6 +631,23 @@ const AdminHomeScreen = () => {
                                         delete next[Number(taskId)];
                                         return next;
                                     });
+
+                                    // Smoothly update related project's totals/progress
+                                    const projectId = t.project?.id;
+                                    const wasCompleted = String(t.status || '').toLowerCase() === 'completed';
+                                    if (projectId) {
+                                        fetchProjectsData(async () => {
+                                            const currentProjects = Array.isArray(projects) ? projects : [];
+                                            return currentProjects.map(p => {
+                                                if (p.project_id !== projectId) return p;
+                                                const newTotal = Math.max(0, (Number(p.total_tasks) || 0) - 1);
+                                                let newCompleted = Math.max(0, (Number(p.completed_tasks) || 0) - (wasCompleted ? 1 : 0));
+                                                if (newCompleted > newTotal) newCompleted = newTotal;
+                                                const newProgress = newTotal > 0 ? Math.round((newCompleted / newTotal) * 100) : 0;
+                                                return { ...p, total_tasks: newTotal, completed_tasks: newCompleted, progress_percent: newProgress } as typeof p;
+                                            });
+                                        });
+                                    }
                                     // Optionally refetch to ensure consistency
                                     loadTasks();
                                 } catch (e) {
