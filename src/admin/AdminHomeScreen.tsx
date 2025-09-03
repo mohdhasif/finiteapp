@@ -8,7 +8,9 @@ import {
     StyleSheet,
     Dimensions,
     SafeAreaView,
-    Alert
+    Alert,
+    Animated,
+    Easing,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -91,6 +93,11 @@ const AdminHomeScreen = () => {
     const renderCount = useRef(0);
     renderCount.current++;
 
+    // Swipe tutorial states
+    const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
+    const tutorialTranslateX = useRef(new Animated.Value(0)).current;
+    const tutorialAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
     // Memoized user avatar source for better performance
     const userAvatarSource = useMemo(() => {
         return userAvatar ? { uri: userAvatar } : require('../assets/user.png');
@@ -127,6 +134,18 @@ const AdminHomeScreen = () => {
             console.log('Error loading user data:', error);
         } finally {
             performanceMonitor.endTimer('loadUserData');
+        }
+    }, []);
+
+    // Check tutorial view state
+    const checkAndShowTutorial = useCallback(async () => {
+        try {
+            const seen = await AsyncStorage.getItem('hasSeenSwipeTutorial');
+            if (seen !== 'true') {
+                setShowSwipeTutorial(true);
+            }
+        } catch (err) {
+            // no-op
         }
     }, []);
 
@@ -250,10 +269,11 @@ const AdminHomeScreen = () => {
             loadMasters();
             loadTasks(); // Will use current selectedFilter
             loadUserData(); // Load user profile data
+            checkAndShowTutorial();
 
             // no special cleanup required here
             return () => { };
-        }, [loadMasters, loadUserData]) // Remove loadTasks from dependency to prevent reloading on filter change
+        }, [loadMasters, loadUserData, checkAndShowTutorial]) // Remove loadTasks from dependency to prevent reloading on filter change
     );
 
     // ================= When filter changes (while screen active), refresh tasks only
@@ -323,6 +343,56 @@ const AdminHomeScreen = () => {
             pendingIdsRef.current.delete(id);
         }
     }, [tasks, checkedById, refetchProjectsOnly, loadTasks]);
+
+    // Start/stop tutorial animation
+    useEffect(() => {
+        if (showSwipeTutorial) {
+            tutorialTranslateX.setValue(0);
+            const distance = Math.round(width * 0.2);
+            const anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(tutorialTranslateX, {
+                        toValue: distance,
+                        duration: 700,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(tutorialTranslateX, {
+                        toValue: -distance,
+                        duration: 700,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(tutorialTranslateX, {
+                        toValue: 0,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            tutorialAnimationRef.current = anim;
+            anim.start();
+        } else {
+            tutorialAnimationRef.current?.stop();
+            tutorialAnimationRef.current = null;
+            tutorialTranslateX.stopAnimation();
+            tutorialTranslateX.setValue(0);
+        }
+        return () => {
+            tutorialAnimationRef.current?.stop();
+            tutorialAnimationRef.current = null;
+        };
+    }, [showSwipeTutorial, tutorialTranslateX]);
+
+    const dismissSwipeTutorial = useCallback(async () => {
+        try {
+            await AsyncStorage.setItem('hasSeenSwipeTutorial', 'true');
+        } catch (e) {
+            // ignore
+        }
+        setShowSwipeTutorial(false);
+    }, []);
 
     // Define tab configuration
     const tabConfig = [
@@ -553,6 +623,30 @@ const AdminHomeScreen = () => {
                 quickActions={quickActions}
                 activeTab="home"
             />
+
+            {showSwipeTutorial && (
+                <View style={styles.tutorialOverlay} pointerEvents="auto">
+                    <View style={styles.tutorialContent}>
+                        <Text style={styles.tutorialTitle}>Swipe tasks left or right</Text>
+                        <Text style={styles.tutorialSubtitle}>Swipe to reveal actions like Update or Delete.</Text>
+                        <View style={styles.tutorialDemoArea}>
+                            <Animated.View style={[styles.tutorialCard, { transform: [{ translateX: tutorialTranslateX }] }]}> 
+                                <View style={styles.tutorialCardHeader} />
+                                <View style={styles.tutorialCardLine} />
+                                <View style={styles.tutorialCardLineShort} />
+                            </Animated.View>
+                            <View style={styles.tutorialArrowsRow}>
+                                <Icon name="arrow-back-outline" size={22} color="#fff" />
+                                <Text style={styles.tutorialSwipeText}>Swipe</Text>
+                                <Icon name="arrow-forward-outline" size={22} color="#fff" />
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={dismissSwipeTutorial} style={styles.tutorialButton}>
+                            <Text style={styles.tutorialButtonText}>Got it</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
         </SafeAreaView>
     );
 };
@@ -607,4 +701,57 @@ const styles = StyleSheet.create({
     dropdownItemActive: { backgroundColor: '#0072B5' },
     dropdownItemText: { fontSize: 14, color: '#0072B5' },
     dropdownItemTextActive: { color: '#fff' },
+
+    // Tutorial overlay
+    tutorialOverlay: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
+    },
+    tutorialContent: {
+        width: '86%',
+        backgroundColor: 'rgba(7,59,97,0.92)',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#0a5b91',
+    },
+    tutorialTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+    tutorialSubtitle: { color: '#d6e9f7', fontSize: 13, textAlign: 'center', marginTop: 6 },
+    tutorialDemoArea: { marginTop: 16, paddingVertical: 16, alignItems: 'center' },
+    tutorialCard: {
+        width: '92%',
+        height: 70,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        justifyContent: 'center',
+        paddingHorizontal: 14,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
+    },
+    tutorialCardHeader: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        height: 10,
+        backgroundColor: '#e9f2fb',
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+    },
+    tutorialCardLine: { height: 8, backgroundColor: '#e6eef6', borderRadius: 4, marginTop: 16, width: '80%' },
+    tutorialCardLineShort: { height: 8, backgroundColor: '#e6eef6', borderRadius: 4, marginTop: 8, width: '60%' },
+    tutorialArrowsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+    tutorialSwipeText: { color: '#fff', marginHorizontal: 10, fontSize: 14 },
+    tutorialButton: { alignSelf: 'center', marginTop: 16, backgroundColor: '#00A3FF', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999 },
+    tutorialButtonText: { color: '#fff', fontWeight: 'bold' },
 });
