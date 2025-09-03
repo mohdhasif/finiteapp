@@ -167,6 +167,38 @@ export const updateProject = async (token: string, body: UpdateProjectPayload) =
     return json;
 };
 
+export const deleteProject = async (token: string, projectId: number) => {
+    const t = (token ?? '').trim();
+    if (!t) throw new Error('Missing userToken');
+    if (!projectId) throw new Error('Invalid projectId');
+
+    const res = await fetch(API_ENDPOINTS.deleteProject, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${t}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_id: projectId }),
+    });
+
+    const raw = await res.text();
+    let json: any;
+    try { json = JSON.parse(raw); } catch { throw new Error('Server did not return valid JSON'); }
+
+    if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || `Failed to delete project (HTTP ${res.status})`);
+    }
+
+    return json as {
+        success: true;
+        message?: string;
+        project_title?: string;
+        client_company?: string;
+        notification_sent?: boolean;
+    };
+};
+
 export const getProjectSummariesClient = async (userToken: string): Promise<ProjectSummary[]> => {
     const res = await fetch(API_ENDPOINTS.projectSummariesClient, { headers: auth(userToken) });
     const json = await parse(res);

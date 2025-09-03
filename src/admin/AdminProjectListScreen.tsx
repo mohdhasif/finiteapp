@@ -18,7 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { getProjectSummaries, getProjectFreelancers } from '../services/projectService';
+import { getProjectSummaries, getProjectFreelancers, deleteProject } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SwipeableProjectCard from '../component/SwipeableProjectCard';
 import { BASE_URL } from '../constants/apiConfig';
@@ -419,10 +419,21 @@ const AdminProjectListScreen = () => {
                 total_tasks={item.total_tasks ?? undefined}
                 assignees={assigneesData}
                 onPress={() => goToTasks(item)}
-                onDelete={(id) => {
-                  // Handle delete - you can implement the actual delete logic here
-                  console.log('Delete project:', id);
-                  Alert.alert('Delete Project', 'Delete functionality will be implemented here');
+                onDelete={async (id) => {
+                  try {
+                    const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+                    if (!token) throw new Error('No token found. Please log in again.');
+                    const result = await deleteProject(token, id);
+                    Alert.alert('Success', result?.message || 'Project deleted');
+                    fetchData(true);
+                  } catch (e: any) {
+                    const msg = String(e?.message || 'Failed to delete project');
+                    if (msg.toLowerCase().includes('active task')) {
+                      Alert.alert('Cannot delete', 'Please delete all tasks first before deleting the project.');
+                    } else {
+                      Alert.alert('Failed', msg);
+                    }
+                  }
                 }}
                 onUpdate={(id) => {
                   navigation.navigate('AdminCreateProjectScreen', { project_id: id });
