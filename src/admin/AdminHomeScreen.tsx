@@ -332,8 +332,29 @@ const AdminHomeScreen = () => {
 
         try {
             await updateTaskStatus(token, id, newStatus);
-            // success: refetch data to ensure consistency
-            await Promise.all([refetchProjectsOnly(), loadTasks()]);
+
+            // Smoothly update project progress without refetching whole projects list
+            const projectId = t.project?.id;
+            if (projectId) {
+                await fetchProjectsData(async () => {
+                    const currentProjects = Array.isArray(projects) ? projects : [];
+                    return currentProjects.map(p => {
+                        if (p.project_id !== projectId) return p;
+                        const total = Math.max(0, Number(p.total_tasks) || 0);
+                        let completed = Math.max(0, Number(p.completed_tasks) || 0);
+                        if (!isCurrentlyCompleted && newStatus === 'completed') {
+                            completed = Math.min(total, completed + 1);
+                        } else if (isCurrentlyCompleted && newStatus !== 'completed') {
+                            completed = Math.max(0, completed - 1);
+                        }
+                        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                        return { ...p, completed_tasks: completed, progress_percent: progress } as typeof p;
+                    });
+                });
+            }
+
+            // Refresh tasks list only (avoid project flicker)
+            await loadTasks();
 
         } catch (e: any) {
             // rollback
@@ -342,7 +363,7 @@ const AdminHomeScreen = () => {
         } finally {
             pendingIdsRef.current.delete(id);
         }
-    }, [tasks, checkedById, refetchProjectsOnly, loadTasks]);
+    }, [projects, tasks, checkedById, fetchProjectsData, loadTasks]);
 
     // Start/stop tutorial animation
     useEffect(() => {
