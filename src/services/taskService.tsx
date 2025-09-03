@@ -373,3 +373,27 @@ export const updateTaskStatus = async (
 
     return json.data as Task;
 };
+
+export const deleteTask = async (token: string, taskId: number) => {
+    const t = (token ?? '').trim();
+    if (!t) throw new Error('Missing userToken');
+    if (!taskId) throw new Error('Invalid taskId');
+
+    const form = new FormData();
+    form.append('task_id', String(taskId));
+
+    const res = await fetch(API_ENDPOINTS.deleteTask, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${t}`,
+            Accept: 'application/json',
+        },
+        body: form as any,
+    });
+
+    const { json } = await safeJson(res);
+    if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || `Failed to delete task (HTTP ${res.status})`);
+    }
+    return true;
+};

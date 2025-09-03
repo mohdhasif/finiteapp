@@ -425,9 +425,25 @@ const AdminProjectTaskListScreen = () => {
                                         task_id: task.id,
                                     })
                                 }
+                                onToggle={() => handleToggleCheck(task.id)}
                                 onDelete={(taskId) => {
-                                    console.log('Delete task:', taskId);
-                                    Alert.alert('Delete Task', 'Delete functionality will be implemented here');
+                                    try {
+                                        // Optimistically remove from tasksAll
+                                        setTasksAll((prev) => prev.filter((x) => x.id !== taskId));
+                                        setCheckedById((prev) => {
+                                            const next = { ...prev };
+                                            delete next[Number(taskId)];
+                                            return next;
+                                        });
+                                        // Optionally you can refetch list for consistency
+                                        // (async () => {
+                                        //   const tk = (await AsyncStorage.getItem('userToken')) || '';
+                                        //   const arr = await getTasksByProject(tk, route.params.project_id);
+                                        //   setTasksAll(Array.isArray(arr) ? arr : []);
+                                        // })();
+                                    } catch (e) {
+                                        // ignore
+                                    }
                                 }}
                                 onUpdate={(taskId) => {
                                     navigation.navigate('AddTaskScreen', { task_id: taskId });

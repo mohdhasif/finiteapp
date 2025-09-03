@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
     projectsOptions: buildUrl('get_projects_options.php'),
     createTask: buildUrl('create_task.php'),
     updateTask: buildUrl('update_task.php'),
+    deleteTask: buildUrl('delete_task.php'),
 
     claimInstallSubscriptions: buildUrl('claim_install_subscriptions.php'),
     savePushNotifications: buildUrl('save_push_subscription.php'),

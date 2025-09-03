@@ -597,9 +597,24 @@ const AdminHomeScreen = () => {
                                     task_id: t.id,
                                 })
                             }
+                            onToggle={() => handleToggleCheck(idx, t)}
                             onDelete={(taskId) => {
-                                console.log('Delete task:', taskId);
-                                Alert.alert('Delete Task', 'Delete functionality will be implemented here');
+                                // Remove from local list and checkbox map
+                                try {
+                                    fetchTasksData(async () => {
+                                        const list = Array.isArray(tasks) ? tasks : [];
+                                        return list.filter((x) => x.id !== taskId);
+                                    });
+                                    setCheckedById((prev) => {
+                                        const next = { ...prev };
+                                        delete next[Number(taskId)];
+                                        return next;
+                                    });
+                                    // Optionally refetch to ensure consistency
+                                    loadTasks();
+                                } catch (e) {
+                                    // no-op; user already saw delete confirmation from card
+                                }
                             }}
                             onUpdate={(taskId) => {
                                 navigation.navigate('AddTaskScreen', { task_id: taskId });

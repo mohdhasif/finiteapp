@@ -4,12 +4,15 @@ import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import type { Task } from '../services/taskService';
+import { deleteTask } from '../services/taskService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   task: Task;
   onPress: () => void;
   onDelete?: (taskId: number) => void;
   onUpdate?: (taskId: number) => void;
+  onToggle?: () => void;
 };
 
 const SWIPE_THRESHOLD = 80;
@@ -21,7 +24,7 @@ const statusStyles = (status?: string) => {
   return { bg: '#FFB800', text: '#1F2D3D' }; // pending / default
 };
 
-const SwipeableTaskCard: React.FC<Props> = ({ task, onPress, onDelete, onUpdate }) => {
+const SwipeableTaskCard: React.FC<Props> = ({ task, onPress, onDelete, onUpdate, onToggle }) => {
   const id = task.id ?? 0;
   const pill = statusStyles(task.status);
 
@@ -57,10 +60,20 @@ const SwipeableTaskCard: React.FC<Props> = ({ task, onPress, onDelete, onUpdate 
   };
 
   const handleDelete = () => {
-    if (!onDelete) return;
     Alert.alert('Delete Task', `Delete "${task.title || 'Task'}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { onDelete(id); reset(); } },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          const token = (await AsyncStorage.getItem('userToken')) || '';
+          if (!token) throw new Error('Missing token');
+          await deleteTask(token, id);
+          if (onDelete) onDelete(id);
+        } catch (e: any) {
+          Alert.alert('Failed', e?.message || 'Failed to delete task');
+        } finally {
+          reset();
+        }
+      } },
     ]);
   };
 
@@ -98,9 +111,13 @@ const SwipeableTaskCard: React.FC<Props> = ({ task, onPress, onDelete, onUpdate 
           <TouchableOpacity style={styles.cardWrap} onPress={onPress} activeOpacity={0.9} onLongPress={reset}>
             <LinearGradient colors={['#0580C7', '#004A84']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
               {/* LEFT: centered status checkbox lookalike (no toggle here) */}
-              <View style={[styles.checkbox, { backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#28a745' : '#E3E8EF' }]}>
+              <TouchableOpacity
+                onPress={onToggle}
+                activeOpacity={0.8}
+                style={[styles.checkbox, { backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#28a745' : '#E3E8EF' }]}
+              >
                 {(task.status || '').toLowerCase() === 'completed' && <Icon name="checkmark" size={16} color="#fff" />}
-              </View>
+              </TouchableOpacity>
 
               {/* MIDDLE: titles */}
               <View style={styles.middleCol}>
