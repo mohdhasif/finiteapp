@@ -73,10 +73,14 @@ const AdminProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<AdminProjectTaskListScreenRouteProp>();
 
-    // Drawer positions
-    const BOTTOM_TOP = height * 0.25;
-    const slideAnim = useRef(new Animated.Value(BOTTOM_TOP)).current;
-    const lastPosition = useRef(BOTTOM_TOP);
+    // Drawer snap positions (top=0, middle ~75% height shown, bottom leaves a peek)
+    const SNAP_TOP = 0;
+    // Start with drawer covering ~75% of screen → translateY ≈ 25% of screen
+    const SNAP_MIDDLE = Math.round(height * 0.25);
+    const SNAP_BOTTOM = Math.round(height - 160);
+    const slideAnim = useRef(new Animated.Value(SNAP_MIDDLE)).current;
+    const lastPosition = useRef(SNAP_MIDDLE);
+    const [scrollEnabled, setScrollEnabled] = useState(false);
 
     // UI states
     const [filterVisible, setFilterVisible] = useState(false);
@@ -130,8 +134,10 @@ const AdminProjectTaskListScreen = () => {
     // });
 
     useEffect(() => {
-        slideAnim.setValue(BOTTOM_TOP);
-    }, [BOTTOM_TOP, slideAnim]);
+        // Ensure drawer starts from middle on mount
+        slideAnim.setValue(SNAP_MIDDLE);
+        lastPosition.current = SNAP_MIDDLE;
+    }, [SNAP_MIDDLE, slideAnim]);
 
     // Fetch tasks and project details on mount
     useEffect(() => {
@@ -245,29 +251,52 @@ const AdminProjectTaskListScreen = () => {
     // Drawer pan responder
     const panResponder = useRef(
         PanResponder.create({
-            onMoveShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponder: (_, g) => {
+                // If not at top (content not scrollable), always capture; at top capture only on vertical intent
+                return lastPosition.current !== SNAP_TOP || Math.abs(g.dy) > 6;
+            },
+            onMoveShouldSetPanResponder: (_, g) => {
+                // From top: only start if dragging down noticeably to avoid stealing inner scroll
+                if (lastPosition.current === SNAP_TOP) return g.dy > 8;
+                return Math.abs(g.dy) > 6;
+            },
+            onPanResponderGrant: () => {
+                // disable inner scroll while dragging the drawer
+                setScrollEnabled(false);
+            },
             onPanResponderMove: (_, gestureState) => {
                 let newY = lastPosition.current + gestureState.dy;
-                const minY = 0;
-                const maxY = BOTTOM_TOP;
-                newY = Math.max(minY, Math.min(newY, maxY));
+                const minY = SNAP_TOP;
+                const maxY = SNAP_BOTTOM;
+                if (newY < minY) newY = minY;
+                if (newY > maxY) newY = maxY;
                 slideAnim.setValue(newY);
             },
             onPanResponderRelease: (_, gestureState) => {
-                const threshold = 80;
-                if (gestureState.dy < -threshold) {
-                    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: false })
-                        .start(() => (lastPosition.current = 0));
-                } else if (gestureState.dy > threshold) {
-                    Animated.spring(slideAnim, { toValue: BOTTOM_TOP, useNativeDriver: false })
-                        .start(() => (lastPosition.current = BOTTOM_TOP));
-                } else {
-                    Animated.spring(slideAnim, { toValue: lastPosition.current, useNativeDriver: false })
-                        .start();
-                }
+                const projected = lastPosition.current + gestureState.dy + gestureState.vy * 120;
+                // snap to nearest of TOP, MIDDLE, BOTTOM
+                const points = [SNAP_TOP, SNAP_MIDDLE, SNAP_BOTTOM];
+                let nearest = points.reduce((prev, curr) => (Math.abs(curr - projected) < Math.abs(prev - projected) ? curr : prev));
+                // Bias towards middle when release happens near it to avoid sticking slightly above/below
+                const biasRadius = 60;
+                if (Math.abs(projected - SNAP_MIDDLE) <= biasRadius) nearest = SNAP_MIDDLE;
+                Animated.spring(slideAnim, { toValue: nearest, useNativeDriver: false, friction: 9, tension: 90 })
+                    .start(() => {
+                        lastPosition.current = nearest;
+                        setScrollEnabled(nearest === SNAP_TOP);
+                    });
             }
         })
     ).current;
+
+    const snapTo = useCallback((target: number) => {
+        const bounded = Math.max(SNAP_TOP, Math.min(target, SNAP_BOTTOM));
+        Animated.spring(slideAnim, { toValue: bounded, useNativeDriver: false, friction: 9, tension: 90 })
+            .start(() => {
+                lastPosition.current = bounded;
+                setScrollEnabled(bounded === SNAP_TOP);
+            });
+    }, [SNAP_BOTTOM, slideAnim]);
 
     return (
         <View style={styles.container}>
@@ -370,7 +399,9 @@ const AdminProjectTaskListScreen = () => {
             {/* Bottom Task Drawer */}
             <Animated.View style={[styles.taskContainer, { transform: [{ translateY: slideAnim }] }]}>
                 <View {...panResponder.panHandlers} style={styles.handle}>
-                    <Icon name="remove-outline" size={40} color="#999" />
+                    <TouchableOpacity onPress={() => snapTo(SNAP_TOP)} style={{ padding: 6 }}>
+                        <Icon name="remove-outline" size={40} color="#999" />
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.taskHeader}>
@@ -425,9 +456,11 @@ const AdminProjectTaskListScreen = () => {
                 {/* Task List */}
                 <View style={styles.taskListCard}>
                     <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ paddingBottom: 150 }}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={{ paddingBottom: 150 }}
+                        scrollEnabled={scrollEnabled}
+                        nestedScrollEnabled
                     >
                     {loading ? (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
