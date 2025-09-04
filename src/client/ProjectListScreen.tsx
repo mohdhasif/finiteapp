@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getProjectSummariesClient } from '../services/projectService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AccessRestrictedModal from '../components/AccessRestrictedModal';
 import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
 import { useDebouncedState } from '../hooks/useOptimizedState';
 import { useAsyncState } from '../hooks/useOptimizedState';
@@ -52,6 +53,7 @@ const ProjectListScreen = () => {
   const isBarred = clientStatus === 'barred';
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
+  const [showRestrictedModal, setShowRestrictedModal] = useState(false);
   
   // Performance optimized state management
   const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
@@ -264,7 +266,7 @@ const ProjectListScreen = () => {
           style={[styles.navItem, isBarred && { opacity: 0.5 }]} 
           onPress={() => {
             if (isBarred) {
-              Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+              setShowRestrictedModal(true);
             } else {
               navigation.navigate('NotificationsScreen');
             }
@@ -279,6 +281,14 @@ const ProjectListScreen = () => {
           <Icon name="person-outline" size={26} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* Access Restricted Modal */}
+      <AccessRestrictedModal
+        visible={showRestrictedModal}
+        onClose={() => setShowRestrictedModal(false)}
+        title="Access Restricted"
+        message="Your account is currently restricted. You cannot access notifications."
+      />
     </View>
   );
 };

@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
 import Geolocation from 'react-native-geolocation-service';
 import { check, request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
+import AccessRestrictedModal from '../components/AccessRestrictedModal';
 
 
 type Coords = { latitude: number; longitude: number } | null;
@@ -31,6 +32,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const ProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus, clientStatus, checkClientStatus } = useAuth();
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     // Toggle general app (project/task etc)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
@@ -536,7 +538,7 @@ const ProfileScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('NotificationsScreen');
                         }
@@ -548,7 +550,7 @@ const ProfileScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('ProjectListScreen');
                         }
@@ -560,6 +562,14 @@ const ProfileScreen = () => {
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {/* Access Restricted Modal */}
+            <AccessRestrictedModal
+                visible={showRestrictedModal}
+                onClose={() => setShowRestrictedModal(false)}
+                title="Access Restricted"
+                message="Your account is currently restricted. You cannot access this feature."
+            />
         </SafeAreaView>
     );
 };

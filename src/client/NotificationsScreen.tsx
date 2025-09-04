@@ -24,6 +24,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
+import AccessRestrictedModal from '../components/AccessRestrictedModal';
 
 const BLUE = '#0B7EBE';
 const SUB = '#6B7C8F';
@@ -69,6 +70,7 @@ const NotificationRow: React.FC<{
 const NotificationsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { clientStatus, checkClientStatus } = useAuth();
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     const [list, setList] = useState<NotificationItem[]>([]);
     const [loadingFirst, setLoadingFirst] = useState(true);
@@ -260,7 +262,7 @@ const NotificationsScreen = () => {
                     style={styles.navItem} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('ProjectListScreen');
                         }
@@ -272,6 +274,14 @@ const NotificationsScreen = () => {
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {/* Access Restricted Modal */}
+            <AccessRestrictedModal
+                visible={showRestrictedModal}
+                onClose={() => setShowRestrictedModal(false)}
+                title="Access Restricted"
+                message="Your account is currently restricted. You cannot access project lists."
+            />
         </View>
     );
 };

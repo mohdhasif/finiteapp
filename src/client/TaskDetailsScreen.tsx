@@ -20,6 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
+import AccessRestrictedModal from '../components/AccessRestrictedModal';
 import {
     listAttachments,
     getTaskLink,
@@ -48,6 +49,7 @@ const TaskDetailsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<TaskDetailsScreenRouteProp>();
     const { clientStatus } = useAuth();
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
     const taskId = route.params?.task_id as number || 0;
     const taskTitle = route.params?.task_title ?? 'Task';
 
@@ -142,7 +144,7 @@ const TaskDetailsScreen = () => {
 
     const handleSendNote = async () => {
         if (clientStatus === 'barred') {
-            Alert.alert('Restricted', 'Your account is currently restricted. You cannot add notes.');
+            setShowRestrictedModal(true);
             return;
         }
         if (!token || !canSend) return;
@@ -334,7 +336,7 @@ const TaskDetailsScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('NotificationsScreen');
                         }
@@ -347,7 +349,7 @@ const TaskDetailsScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('ProjectListScreen');
                         }
@@ -360,6 +362,14 @@ const TaskDetailsScreen = () => {
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {/* Access Restricted Modal */}
+            <AccessRestrictedModal
+                visible={showRestrictedModal}
+                onClose={() => setShowRestrictedModal(false)}
+                title="Access Restricted"
+                message="Your account is currently restricted. You cannot access this feature."
+            />
         </KeyboardAvoidingView>
     );
 };

@@ -16,6 +16,7 @@ import TaskCard from '../component/TaskCard';
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { performanceMonitor } from '../utils/performance';
 import { useAuth } from '../context/AuthContext';
+import AccessRestrictedModal from '../components/AccessRestrictedModal';
 
 // Type definitions for API responses
 type ProjectFreelancer = {
@@ -43,6 +44,7 @@ const ProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<ProjectTaskListScreenRouteProp>();
     const { clientStatus } = useAuth();
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     // Drawer positions
     const BOTTOM_TOP = height * 0.25;
@@ -453,7 +455,7 @@ const ProjectTaskListScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('NotificationsScreen');
                         }
@@ -465,7 +467,7 @@ const ProjectTaskListScreen = () => {
                     style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
                     onPress={() => {
                         if (clientStatus === 'barred') {
-                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                            setShowRestrictedModal(true);
                         } else {
                             navigation.navigate('ProjectListScreen');
                         }
@@ -477,6 +479,14 @@ const ProjectTaskListScreen = () => {
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {/* Access Restricted Modal */}
+            <AccessRestrictedModal
+                visible={showRestrictedModal}
+                onClose={() => setShowRestrictedModal(false)}
+                title="Access Restricted"
+                message="Your account is currently restricted. You cannot access this feature."
+            />
         </View>
     );
 };
