@@ -37,6 +37,7 @@ type AuthContextType = {
         lastUpdated: string | null;
     }>;
     debugAsyncStorage: () => Promise<void>;
+    checkClientStatus: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,7 +70,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         let status: any = storedClientStatus;
                         if (!status && storedUserInfo) {
                             const info = JSON.parse(storedUserInfo || '{}');
-                            status = info?.client_status || info?.status || null;
+                            status = info?.client_status || 
+                                    info?.additional_info?.client?.status || 
+                                    info?.status || 
+                                    null;
                         }
                         setClientStatus((status as any) ?? null);
                     } catch {
@@ -120,6 +124,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         return () => { sub.remove(); };
     }, []);
+
+    // Periodic status checking to detect admin changes
+    useEffect(() => {
+        let statusCheckInterval: NodeJS.Timeout | null = null;
+        
+        const checkClientStatus = async () => {
+            try {
+                const token = await AsyncStorage.getItem('userToken');
+                if (!token) return;
+                
+                // Only check if user is a client
+                if (userRole !== 'client') return;
+                
+                const response = await fetch(`${API_ENDPOINTS.getUserDetails}?me=1`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    },
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    // Extract client status from the nested structure
+                    const currentStatus = userData?.user?.client_status || 
+                                        userData?.user?.additional_info?.client?.status || 
+                                        userData?.user?.status || 
+                                        null;
+                    
+                    // If status changed, update it
+                    if (currentStatus !== clientStatus) {
+                        setClientStatus(currentStatus);
+                        if (currentStatus) {
+                            await AsyncStorage.setItem('clientStatus', String(currentStatus));
+                        } else {
+                            await AsyncStorage.removeItem('clientStatus');
+                        }
+                        
+                        // Emit event to notify other components
+                        DeviceEventEmitter.emit('CLIENT_STATUS_CHANGED', currentStatus);
+                    }
+                }
+            } catch (error) {
+                console.warn('Status check failed:', error);
+            }
+        };
+        
+        // Start periodic checking when user is a client
+        if (userRole === 'client' && !loading) {
+            // Check immediately
+            checkClientStatus();
+            
+            // Then check every 30 seconds
+            statusCheckInterval = setInterval(checkClientStatus, 30000);
+        }
+        
+        return () => {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+        };
+    }, [userRole, loading, clientStatus]);
 
 
 
@@ -501,16 +566,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('response login', data);
 
             // ✅ Simpan dalam AsyncStorage - CRITICAL PATH (blocking)
+            const clientStatus = data?.user?.client_status || 
+                               data?.user?.additional_info?.client?.status || 
+                               data?.user?.status || 
+                               'active';
+            
             await Promise.all([
                 AsyncStorage.setItem('userToken', data.token),
                 AsyncStorage.setItem('userRole', data.user.role),
                 AsyncStorage.setItem('userInfo', JSON.stringify(data.user)),
-                AsyncStorage.setItem('clientStatus', String(data?.user?.client_status || data?.user?.status || 'active'))
+                AsyncStorage.setItem('clientStatus', String(clientStatus))
             ]);
 
             // 🚀 Return role immediately for fast navigation
             const userRole = data.user.role;
-            const status = (data?.user?.client_status || data?.user?.status || 'active') as any;
+            const status = clientStatus as any;
             setClientStatus(status);
 
             // 🔄 Background tasks - NON-BLOCKING (fire and forget)
@@ -573,6 +643,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    // Manual status check function
+    const checkClientStatus = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            if (!token || userRole !== 'client') return;
+            
+            const response = await fetch(`${API_ENDPOINTS.getUserDetails}?me=1`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+            
+            if (response.ok) {
+                const userData = await response.json();
+                // Extract client status from the nested structure
+                const currentStatus = userData?.user?.client_status || 
+                                    userData?.user?.additional_info?.client?.status || 
+                                    userData?.user?.status || 
+                                    null;
+                
+                console.log('🔍 Status check - API Response:', userData);
+                console.log('🔍 Status check - Extracted status:', currentStatus);
+                console.log('🔍 Status check - Current stored status:', clientStatus);
+                
+                // If status changed, update it
+                if (currentStatus !== clientStatus) {
+                    setClientStatus(currentStatus);
+                    if (currentStatus) {
+                        await AsyncStorage.setItem('clientStatus', String(currentStatus));
+                    } else {
+                        await AsyncStorage.removeItem('clientStatus');
+                    }
+                    
+                    // Emit event to notify other components
+                    DeviceEventEmitter.emit('CLIENT_STATUS_CHANGED', currentStatus);
+                }
+            }
+        } catch (error) {
+            console.warn('Manual status check failed:', error);
+        }
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -630,6 +743,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 getPrayerNotificationStatus,
                 checkGeolocationStatus,
                 debugAsyncStorage,
+                checkClientStatus,
             }}
         >
             {children}

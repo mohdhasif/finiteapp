@@ -30,7 +30,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const ProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus, clientStatus } = useAuth();
+    const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus, clientStatus, checkClientStatus } = useAuth();
 
     // Toggle general app (project/task etc)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
@@ -91,8 +91,10 @@ const ProfileScreen = () => {
                 const parsedUserInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
                 setUserInfo(parsedUserInfo);
             };
+            // Check client status when screen gains focus
+            checkClientStatus();
             loadUserData();
-        }, [])
+        }, [checkClientStatus])
     );
 
     // Check geolocation status when screen loads

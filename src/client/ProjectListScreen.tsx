@@ -48,7 +48,7 @@ type Tab = (typeof tabs)[number];
 
 const ProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { clientStatus } = useAuth();
+  const { clientStatus, checkClientStatus } = useAuth();
   const isBarred = clientStatus === 'barred';
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
@@ -98,10 +98,12 @@ const ProjectListScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      // Check client status when screen gains focus
+      checkClientStatus();
       // Fetch only when the screen gains focus, not on tab/status switches
       fetchData(true);
       return () => {};
-    }, [])
+    }, [checkClientStatus])
   );
 
       // Combine search + tabs

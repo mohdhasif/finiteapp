@@ -68,7 +68,7 @@ const NotificationRow: React.FC<{
 
 const NotificationsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { clientStatus } = useAuth();
+    const { clientStatus, checkClientStatus } = useAuth();
 
     const [list, setList] = useState<NotificationItem[]>([]);
     const [loadingFirst, setLoadingFirst] = useState(true);
@@ -97,9 +97,11 @@ const NotificationsScreen = () => {
             // Auto refresh every time screen focuses
     useFocusEffect(
         useCallback(() => {
+            // Check client status when screen gains focus
+            checkClientStatus();
             refresh();
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [])
+        }, [checkClientStatus])
     );
 
     const loadPage = useCallback(
