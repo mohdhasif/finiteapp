@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as loginService, claimInstallSubscriptions } from '../services/authService';
 import { API_ENDPOINTS } from '../constants/apiConfig';
@@ -8,10 +9,12 @@ import * as Geolocation from 'react-native-geolocation-service';
 
 type AuthContextType = {
     userRole: string | null;
+    clientStatus: 'active' | 'barred' | 'inactive' | null;
     login: (email: string, password: string) => Promise<string>;
     logout: () => Promise<void>;
     loading: boolean;
     setUserRoleManual: (role: string | null) => void;
+    setClientStatusManual?: (status: 'active' | 'barred' | 'inactive' | null) => Promise<void>;
     captureLocation: () => Promise<void>;
     resetLocationCaptured: () => Promise<void>;
     isLocationCaptured: () => Promise<boolean>;
@@ -40,14 +43,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [clientStatus, setClientStatus] = useState<'active' | 'barred' | 'inactive' | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadUser = async () => {
             try {
-                const [token, storedRole] = await Promise.all([
+                const [token, storedRole, storedUserInfo, storedClientStatus] = await Promise.all([
                     AsyncStorage.getItem('userToken'),
                     AsyncStorage.getItem('userRole'),
+                    AsyncStorage.getItem('userInfo'),
+                    AsyncStorage.getItem('clientStatus'),
                 ]);
 
                 // console.log('LOADING USER:', token, storedRole);
@@ -58,6 +64,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 } else {
                     // 🚀 Set user role immediately for fast UI response
                     setUserRole(storedRole);
+                    // derive client status from stored value or userInfo
+                    try {
+                        let status: any = storedClientStatus;
+                        if (!status && storedUserInfo) {
+                            const info = JSON.parse(storedUserInfo || '{}');
+                            status = info?.client_status || info?.status || null;
+                        }
+                        setClientStatus((status as any) ?? null);
+                    } catch {
+                        setClientStatus(null);
+                    }
 
                     // 🔄 Background tasks - NON-BLOCKING (fire and forget)
                     setImmediate(async () => {
@@ -92,6 +109,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         };
         loadUser();
+    }, []);
+
+    // Listen for client status changes fired by API client
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('CLIENT_STATUS_CHANGED', async (status: any) => {
+            const next = (status as any) ?? null;
+            setClientStatus(next);
+            if (next) await AsyncStorage.setItem('clientStatus', String(next));
+        });
+        return () => { sub.remove(); };
     }, []);
 
 
@@ -477,11 +504,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await Promise.all([
                 AsyncStorage.setItem('userToken', data.token),
                 AsyncStorage.setItem('userRole', data.user.role),
-                AsyncStorage.setItem('userInfo', JSON.stringify(data.user))
+                AsyncStorage.setItem('userInfo', JSON.stringify(data.user)),
+                AsyncStorage.setItem('clientStatus', String(data?.user?.client_status || data?.user?.status || 'active'))
             ]);
 
             // 🚀 Return role immediately for fast navigation
             const userRole = data.user.role;
+            const status = (data?.user?.client_status || data?.user?.status || 'active') as any;
+            setClientStatus(status);
 
             // 🔄 Background tasks - NON-BLOCKING (fire and forget)
             setImmediate(async () => {
@@ -537,6 +567,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             await AsyncStorage.clear();
             setUserRole(null);
+            setClientStatus(null);
         } catch (error) {
             console.error('Logout error:', error);
         }
@@ -546,10 +577,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         <AuthContext.Provider
             value={{
                 userRole,
+                clientStatus,
                 login,
                 logout,
                 loading,
                 setUserRoleManual: setUserRole,
+                setClientStatusManual: async (s) => {
+                    setClientStatus(s);
+                    if (s) await AsyncStorage.setItem('clientStatus', s);
+                    else await AsyncStorage.removeItem('clientStatus');
+                },
                 captureLocation: async () => {
                     const token = await AsyncStorage.getItem('userToken');
                     if (token) {

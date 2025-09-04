@@ -30,7 +30,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const ProfileScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus } = useAuth();
+    const { logout, captureLocation, configurePrayerNotification, checkGeolocationStatus, clientStatus } = useAuth();
 
     // Toggle general app (project/task etc)
     const [isNotificationOn, setIsNotificationOn] = useState(true);
@@ -343,6 +343,14 @@ const ProfileScreen = () => {
                     </View>
                 </View>
 
+                {/* Account Status Banner */}
+                {clientStatus === 'barred' && (
+                    <View style={styles.statusBanner}>
+                        <Icon name="warning-outline" size={20} color="#dc3545" />
+                        <Text style={styles.statusBannerText}>Account Restricted</Text>
+                    </View>
+                )}
+
                 <View style={styles.menuList}>
                     <MenuItem icon="person-outline" label="My Profile" />
                     <MenuItem icon="lock-closed-outline" label="Change Password" />
@@ -522,10 +530,28 @@ const ProfileScreen = () => {
 
             {/* Bottom Navigation - Client Version */}
             <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                        } else {
+                            navigation.navigate('NotificationsScreen');
+                        }
+                    }}
+                >
                     <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                        } else {
+                            navigation.navigate('ProjectListScreen');
+                        }
+                    }}
+                >
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
@@ -754,6 +780,26 @@ const styles = StyleSheet.create({
     statusValue: {
         fontSize: 12,
         fontWeight: '600',
+    },
+
+    // Account Status Banner
+    statusBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8d7da',
+        borderColor: '#f5c6cb',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 20,
+        marginHorizontal: 10,
+    },
+    statusBannerText: {
+        color: '#721c24',
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 8,
     },
 });
 

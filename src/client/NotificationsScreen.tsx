@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +23,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 
 const BLUE = '#0B7EBE';
 const SUB = '#6B7C8F';
@@ -66,6 +68,7 @@ const NotificationRow: React.FC<{
 
 const NotificationsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const { clientStatus } = useAuth();
 
     const [list, setList] = useState<NotificationItem[]>([]);
     const [loadingFirst, setLoadingFirst] = useState(true);
@@ -251,7 +254,16 @@ const NotificationsScreen = () => {
                 <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
                     <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity 
+                    style={styles.navItem} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                        } else {
+                            navigation.navigate('ProjectListScreen');
+                        }
+                    }}
+                >
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>

@@ -19,6 +19,7 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
 import {
     listAttachments,
     getTaskLink,
@@ -46,6 +47,7 @@ const sortOldest = (arr: TaskNote[]) => arr.slice().sort((a, b) => toMs(a.create
 const TaskDetailsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<TaskDetailsScreenRouteProp>();
+    const { clientStatus } = useAuth();
     const taskId = route.params?.task_id as number || 0;
     const taskTitle = route.params?.task_title ?? 'Task';
 
@@ -139,6 +141,10 @@ const TaskDetailsScreen = () => {
     // No link saving on client side
 
     const handleSendNote = async () => {
+        if (clientStatus === 'barred') {
+            Alert.alert('Restricted', 'Your account is currently restricted. You cannot add notes.');
+            return;
+        }
         if (!token || !canSend) return;
         setSendingNote(true);
         try {
@@ -302,9 +308,9 @@ const TaskDetailsScreen = () => {
                             multiline
                         />
                         <TouchableOpacity
-                            style={[styles.primaryBtn, { alignSelf: 'flex-end', marginTop: 10, opacity: canSend ? 1 : 0.6 }]}
+                            style={[styles.primaryBtn, { alignSelf: 'flex-end', marginTop: 10, opacity: clientStatus === 'barred' ? 0.5 : (canSend ? 1 : 0.6) }]}
                             onPress={handleSendNote}
-                            disabled={!canSend || sendingNote}
+                            disabled={clientStatus === 'barred' || !canSend || sendingNote}
                         >
                             {sendingNote ? (
                                 <ActivityIndicator size="small" color="#0B2C3F" />
@@ -324,21 +330,33 @@ const TaskDetailsScreen = () => {
 
             {/* Bottom Nav */}
             <View style={styles.bottomNav}>
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('NotificationsScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                        } else {
+                            navigation.navigate('NotificationsScreen');
+                        }
+                    }}
+                >
                     <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                        } else {
+                            navigation.navigate('ProjectListScreen');
+                        }
+                    }}
+                >
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('ProfileScreen')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
                     <Icon name="person-outline" size={26} color="#fff" />
                 </TouchableOpacity>
             </View>

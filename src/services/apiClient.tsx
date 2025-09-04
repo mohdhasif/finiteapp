@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 import { API_ENDPOINTS, BASE_URL } from '../constants/apiConfig';
 
 // Cache configuration
@@ -85,6 +86,15 @@ class ApiClient {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    // Hard client barred guard (block non-GET)
+    try {
+      const clientStatus = await AsyncStorage.getItem('clientStatus');
+      const method = (options.method || 'GET').toUpperCase();
+      if (clientStatus === 'barred' && method !== 'GET') {
+        throw new Error('Your account is restricted (barred). Contact support.');
+      }
+    } catch {}
+
     const requestPromise = fetch(url, {
       ...options,
       headers,
@@ -100,6 +110,14 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = data as unknown as ErrorResponse;
+        // If backend flags barred, broadcast and persist
+        const isBarred = (errorData?.error || errorData?.message || '').toLowerCase().includes('barred');
+        if (response.status === 403 && isBarred) {
+          try {
+            await AsyncStorage.setItem('clientStatus', 'barred');
+          } catch {}
+          DeviceEventEmitter.emit('CLIENT_STATUS_CHANGED', 'barred');
+        }
         throw new Error(errorData?.error || errorData?.message || `HTTP ${response.status}`);
       }
 

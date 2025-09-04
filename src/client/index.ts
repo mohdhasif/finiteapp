@@ -7,6 +7,7 @@ export { default as ProfileScreen } from './ProfileScreen';
 export { default as MyProfileScreen } from './MyProfileScreen';
 export { default as ChangePasswordScreen } from './ChangePasswordScreen';
 export { default as FAQScreen } from './FAQScreen';
+export { default as BarredInfoScreen } from './BarredInfoScreen';
 
 // Client Components (if any)
 // export { default as ClientComponent } from './components/ClientComponent';

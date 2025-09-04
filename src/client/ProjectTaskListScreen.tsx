@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskCard from '../component/TaskCard';
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { performanceMonitor } from '../utils/performance';
+import { useAuth } from '../context/AuthContext';
 
 // Type definitions for API responses
 type ProjectFreelancer = {
@@ -41,6 +42,7 @@ type FilterValue = (typeof FILTERS)[number]['value'];
 const ProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<ProjectTaskListScreenRouteProp>();
+    const { clientStatus } = useAuth();
 
     // Drawer positions
     const BOTTOM_TOP = height * 0.25;
@@ -304,6 +306,16 @@ const ProjectTaskListScreen = () => {
         })
     ).current;
 
+    if (clientStatus === 'barred') {
+        return (
+            <View style={styles.container}>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                    <Text style={{ color: '#fff' }}>Access restricted. Please contact support.</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             {/* Top Card */}
@@ -437,10 +449,28 @@ const ProjectTaskListScreen = () => {
 
             {/* Bottom Navigation */}
             <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+                        } else {
+                            navigation.navigate('NotificationsScreen');
+                        }
+                    }}
+                >
                     <Icon name="notifications-outline" size={26} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+                <TouchableOpacity 
+                    style={[styles.navItem, clientStatus === 'barred' && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (clientStatus === 'barred') {
+                            Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access project lists.');
+                        } else {
+                            navigation.navigate('ProjectListScreen');
+                        }
+                    }}
+                >
                     <Icon name="home-outline" size={26} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Dimensions,
   TextInput,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -22,6 +23,7 @@ import { useDebouncedState } from '../hooks/useOptimizedState';
 import { useAsyncState } from '../hooks/useOptimizedState';
 import { api } from '../services/apiClient';
 import { performanceMonitor } from '../utils/performance';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -46,6 +48,8 @@ type Tab = (typeof tabs)[number];
 
 const ProjectListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { clientStatus } = useAuth();
+  const isBarred = clientStatus === 'barred';
   const [displayName, setDisplayName] = useState('User');
   const [activeTab, setActiveTab] = useState<Tab>('All');
   
@@ -136,6 +140,17 @@ const ProjectListScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
+
+  console.log('clientStatus', clientStatus);
+  
+  // Block access completely when barred (navigator already routes to BarredInfo, this is a fail-safe)
+  if (isBarred) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: '#fff' }}>Access restricted. Please contact support.</Text>
       </View>
     );
   }
@@ -243,7 +258,16 @@ const ProjectListScreen = () => {
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+        <TouchableOpacity 
+          style={[styles.navItem, isBarred && { opacity: 0.5 }]} 
+          onPress={() => {
+            if (isBarred) {
+              Alert.alert('Access Restricted', 'Your account is currently restricted. You cannot access notifications.');
+            } else {
+              navigation.navigate('NotificationsScreen');
+            }
+          }}
+        >
           <Icon name="notifications-outline" size={26} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
