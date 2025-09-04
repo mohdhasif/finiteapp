@@ -1,5 +1,6 @@
 // src/services/clientService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 const parse = async (res: Response) => {
     const raw = await res.text();
@@ -13,9 +14,17 @@ export const getClients = async (token?: string) => {
     if (token) {
         headers.Authorization = `Bearer ${token}`;
     }
-    
-    const res = await fetch(API_ENDPOINTS.getClients, { headers });
-    return parse(res);
+
+    try {
+        const res = await fetch(API_ENDPOINTS.getClients, { headers });
+        const json = await parse(res);
+        const items = Array.isArray((json as any)?.data) ? (json as any).data : Array.isArray(json) ? (json as any) : [];
+        const persisted = await resolveWithLocalIfUnchanged('allClients', items, (x: any) => x.id ?? x.client_id ?? JSON.stringify(x));
+        return { ...json, data: persisted };
+    } catch (e) {
+        const persisted = await fallbackToLocal<any>('allClients', []);
+        return { success: true, data: persisted } as any;
+    }
 };
 
 export const updateClient = async (

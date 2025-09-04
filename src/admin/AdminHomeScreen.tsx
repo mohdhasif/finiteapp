@@ -40,6 +40,58 @@ const SIDE = 20;
 
 import { BASE_URL } from '../constants/apiConfig';
 
+// ===== Finite Brand Theme =====
+const theme = {
+    colors: {
+        primaryDeep: '#003865',
+        primary: '#0072B5',
+        accent: '#00A3FF',
+        background: '#F2F6FA',
+        surface: '#FFFFFF',
+        textPrimary: '#073B61',
+        textSecondary: '#6B7A90',
+        border: '#E1E8F0',
+    },
+    radius: {
+        m: 12,
+        l: 16,
+        pill: 999,
+    },
+};
+
+// Shimmer skeleton utilities
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+const Shimmer: React.FC<{ style?: any }> = ({ style }) => {
+    const shimmerX = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        const loop = Animated.loop(
+            Animated.timing(shimmerX, {
+                toValue: 1,
+                duration: 1200,
+                easing: Easing.linear,
+                useNativeDriver: true,
+            })
+        );
+        loop.start();
+        return () => { loop.stop(); };
+    }, [shimmerX]);
+    const translateX = shimmerX.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+    return (
+        <View style={[styles.shimmerBase, style]}>
+            <AnimatedLinearGradient
+                colors={[
+                    'rgba(255,255,255,0)',
+                    'rgba(255,255,255,0.35)',
+                    'rgba(255,255,255,0)'
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFillObject as any, { transform: [{ translateX }] }]}
+            />
+        </View>
+    );
+};
+
 type Client = {
     client_id: string;
     name: string;
@@ -78,8 +130,8 @@ const AdminHomeScreen = () => {
     const [selectedFilter, setSelectedFilter] = useState<FilterValue>('All');
 
     // ================= Performance optimized data states
-    const { data: clients = [], execute: fetchClientsData } = useAsyncState<Client[]>([]);
-    const { data: freelancers = [], execute: fetchFreelancersData } = useAsyncState<Freelancer[]>([]);
+    const { data: clients = [], loading: loadingClients, execute: fetchClientsData } = useAsyncState<Client[]>([]);
+    const { data: freelancers = [], loading: loadingFreelancers, execute: fetchFreelancersData } = useAsyncState<Freelancer[]>([]);
     const { data: projects = [], loading: loadingProjects, error: projError, execute: fetchProjectsData } = useAsyncState<ProjectSummary[]>([]);
     const { data: tasks = [], loading: loadingTasks, execute: fetchTasksData } = useAsyncState<Task[]>([]);
     
@@ -98,6 +150,69 @@ const AdminHomeScreen = () => {
     const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
     const tutorialTranslateX = useRef(new Animated.Value(0)).current;
     const tutorialAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+    // Header clients entrance animation (safe on Android)
+    const headerClientAnimMapRef = useRef<Map<string, Animated.Value>>(new Map());
+    const headerClientsSignatureRef = useRef<string>('');
+    const animateHeaderClients = useCallback(() => {
+        const list = Array.isArray(clients) ? clients : [];
+        const signature = list.map((c, i) => String(c?.client_id ?? i)).join('|');
+        if (signature === headerClientsSignatureRef.current) return; // nothing new → don't re-animate
+        headerClientsSignatureRef.current = signature;
+
+        const animations: Animated.CompositeAnimation[] = [];
+        list.forEach((c, idx) => {
+            const key = String(c.client_id ?? idx);
+            let v = headerClientAnimMapRef.current.get(key);
+            if (!v) {
+                v = new Animated.Value(1);
+                headerClientAnimMapRef.current.set(key, v);
+            }
+            // animate from 0 → 1 for current run
+            v.setValue(0);
+            animations.push(
+                Animated.timing(v, {
+                    toValue: 1,
+                    duration: 220,
+                    delay: idx * 36,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                })
+            );
+        });
+        if (animations.length > 0) Animated.parallel(animations).start();
+    }, [clients]);
+
+    // Freelancers stagger animation (match clients behavior)
+    const freelancersAnimMapRef = useRef<Map<string, Animated.Value>>(new Map());
+    const freelancersSignatureRef = useRef<string>('');
+    const animateFreelancers = useCallback(() => {
+        const list = Array.isArray(freelancers) ? freelancers : [];
+        const signature = list.map((f, i) => String(f?.id ?? f?.user_id ?? i)).join('|');
+        if (signature === freelancersSignatureRef.current) return;
+        freelancersSignatureRef.current = signature;
+
+        const animations: Animated.CompositeAnimation[] = [];
+        list.forEach((f, idx) => {
+            const key = String(f?.id ?? f?.user_id ?? idx);
+            let v = freelancersAnimMapRef.current.get(key);
+            if (!v) {
+                v = new Animated.Value(1);
+                freelancersAnimMapRef.current.set(key, v);
+            }
+            v.setValue(0);
+            animations.push(
+                Animated.timing(v, {
+                    toValue: 1,
+                    duration: 220,
+                    delay: idx * 36,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                })
+            );
+        });
+        if (animations.length > 0) Animated.parallel(animations).start();
+    }, [freelancers]);
 
     // Memoized user avatar source for better performance
     const userAvatarSource = useMemo(() => {
@@ -276,7 +391,12 @@ const AdminHomeScreen = () => {
 
             // no special cleanup required here
             return () => { };
-        }, [loadMasters, loadUserData, checkAndShowTutorial]) // Remove loadTasks from dependency to prevent reloading on filter change
+            // run once on focus to animate newly loaded header clients
+            setTimeout(() => { try { animateHeaderClients(); } catch {} }, 0);
+
+            setTimeout(() => { try { animateHeaderClients(); animateFreelancers(); } catch {} }, 0);
+
+        }, [loadMasters, loadUserData, checkAndShowTutorial, animateHeaderClients, animateFreelancers]) // Remove loadTasks from dependency to prevent reloading on filter change
     );
 
     // ================= When filter changes (while screen active), refresh tasks only
@@ -306,6 +426,10 @@ const AdminHomeScreen = () => {
         });
         return () => { sub.remove(); };
     }, [tasks, fetchTasksData, loadTasks]);
+
+    // re-run header clients animation when clients list changes
+    useEffect(() => { animateHeaderClients(); }, [clients, animateHeaderClients]);
+    useEffect(() => { animateFreelancers(); }, [freelancers, animateFreelancers]);
 
 
     ///////////////////////////// START
@@ -489,7 +613,7 @@ const AdminHomeScreen = () => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
-                <LinearGradient colors={['#003865', '#0072B5']} style={styles.header}>
+                <LinearGradient colors={[theme.colors.primaryDeep, theme.colors.primary]} style={styles.header}>
                     <View style={styles.userRow}>
                         <Image 
                             source={userAvatarSource} 
@@ -503,26 +627,53 @@ const AdminHomeScreen = () => {
 
                     <View style={styles.clientHeader}>
                         <Text style={styles.clientTitle}>FINITE’s Clients</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('ClientListScreen')}>
-                            <Text style={styles.addText}>Add Client</Text>
+                        <TouchableOpacity style={styles.headerSeeAllRow} onPress={() => navigation.navigate('ClientListScreen')}>
+                            <Text style={styles.headerSeeAll}>See all</Text>
+                            <Icon name="chevron-forward-outline" size={16} color="#fff" />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {Array.isArray(clients) && clients.map(c => (
-                            <View key={c.client_id} style={styles.clientCard}>
-                                <View style={styles.clientCircle}>
-                                    <Image
-                                        source={typeof c.avatar_url === 'string'
-                                            ? { uri: BASE_URL.replace(/\/+$/, '') + c.avatar_url }
-                                            : require('../assets/user.png')}
-                                        style={styles.clientLogo}
-                                        resizeMode="contain"
-                                    />
+                        {loadingClients && (clients?.length ?? 0) === 0 ? (
+                            Array.from({ length: 6 }).map((_, i) => (
+                                <View key={`client-skel-${i}`} style={styles.clientCard}>
+                                    <View style={styles.clientCircleHeader}>
+                                        <Shimmer style={{ width: 50, height: 50, borderRadius: 25 }} />
+                                    </View>
+                                    <Shimmer style={{ width: 70, height: 12, borderRadius: 6, marginTop: 6 }} />
                                 </View>
-                                <Text style={styles.clientName} numberOfLines={1}>{c.name}</Text>
-                            </View>
-                        ))}
+                            ))
+                        ) : (
+                            Array.isArray(clients) && clients.map((c, idx) => {
+                                const key = String(c.client_id ?? idx);
+                                let v = headerClientAnimMapRef.current.get(key);
+                                if (!v) {
+                                    v = new Animated.Value(1);
+                                    headerClientAnimMapRef.current.set(key, v);
+                                }
+                                const itemStyle = {
+                                    opacity: v,
+                                    transform: [
+                                        { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+                                        { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+                                    ],
+                                } as const;
+                                return (
+                                    <Animated.View key={c.client_id} style={[styles.clientCard, itemStyle]}>
+                                        <View style={styles.clientCircleHeader}>
+                                            <Image
+                                                source={typeof c.avatar_url === 'string'
+                                                    ? { uri: BASE_URL.replace(/\/+$/, '') + c.avatar_url }
+                                                    : require('../assets/user.png')}
+                                                style={styles.clientLogo}
+                                                resizeMode="contain"
+                                            />
+                                        </View>
+                                        <Text style={styles.clientNameHeader} numberOfLines={1}>{c.name}</Text>
+                                    </Animated.View>
+                                );
+                            })
+                        )}
                     </ScrollView>
                 </LinearGradient>
 
@@ -534,21 +685,46 @@ const AdminHomeScreen = () => {
                             <Text style={styles.seeAll}>See all</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientScroll}>
-                        {Array.isArray(freelancers) && freelancers.map(f => (
-                            <View key={f.id} style={styles.clientCard}>
-                                <View style={styles.clientCircle}>
-                                    <Image
-                                        source={typeof f.avatar === 'string'
-                                            ? { uri: BASE_URL.replace(/\/+$/, '') + f.avatar }
-                                            : require('../assets/user.png')}
-                                        style={styles.clientLogo}
-                                    />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.clientScroll, { paddingVertical: 6 }]}>
+                        {loadingFreelancers && (freelancers?.length ?? 0) === 0 ? (
+                            Array.from({ length: 8 }).map((_, i) => (
+                                <View key={`freelancer-skel-${i}`} style={styles.clientCard}>
+                                    <View style={styles.clientCircleHeader}>
+                                        <Shimmer style={{ width: 50, height: 50, borderRadius: 25 }} />
+                                    </View>
+                                    <Shimmer style={{ width: 70, height: 12, borderRadius: 6, marginTop: 6 }} />
                                 </View>
-                                <Text style={styles.freelancersName} numberOfLines={1}>{f.name}</Text>
-                            </View>
-                        ))}
+                            ))
+                        ) : (
+                            Array.isArray(freelancers) && freelancers.map((f, idx) => {
+                                const key = String(f?.id ?? f?.user_id ?? idx);
+                                let v = freelancersAnimMapRef.current.get(key);
+                                if (!v) {
+                                    v = new Animated.Value(1);
+                                    freelancersAnimMapRef.current.set(key, v);
+                                }
+                                const itemStyle = {
+                                    opacity: v,
+                                    transform: [
+                                        { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+                                        { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+                                    ],
+                                } as const;
+                                return (
+                                    <Animated.View key={f.id} style={[styles.clientCard, itemStyle]}>
+                                        <View style={styles.clientCircleHeader}>
+                                            <Image
+                                                source={typeof f.avatar === 'string'
+                                                    ? { uri: BASE_URL.replace(/\\+$/, '') + f.avatar }
+                                                    : require('../assets/user.png')}
+                                                style={styles.clientLogo}
+                                            />
+                                        </View>
+                                        <Text style={styles.freelancersName} numberOfLines={1}>{f.name}</Text>
+                                    </Animated.View>
+                                );
+                            })
+                        )}
                     </ScrollView>
                 </View>
 
@@ -561,8 +737,17 @@ const AdminHomeScreen = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {loadingProjects ? (
-                        <Text style={{ paddingHorizontal: 20, color: '#666' }}>Loading…</Text>
+                    {loadingProjects && ((projects?.length ?? 0) === 0) ? (
+                        <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+                            <Shimmer style={{ height: 18, width: 120, borderRadius: 6, marginBottom: 12 }} />
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SIDE }}>
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <View key={`proj-skel-${i}`} style={{ width: CARD, marginRight: GAP }}>
+                                        <Shimmer style={{ height: 140, width: CARD, borderRadius: 12 }} />
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
                     ) : (!Array.isArray(projects) || projects.length === 0) ? (
                         <Text style={{ paddingHorizontal: 20, color: '#666' }}>
                             {projError ? `No projects (${projError})` : 'No projects found.'}
@@ -575,6 +760,7 @@ const AdminHomeScreen = () => {
                             snapToInterval={CARD + GAP}
                             snapToAlignment="start"
                             decelerationRate="fast"
+                            removeClippedSubviews={false}
                         >
                             {Array.isArray(projects) && projects.map(p => (
                                 <View key={p.project_id} style={{ width: CARD, marginRight: GAP, flexShrink: 0 }}>
@@ -633,60 +819,56 @@ const AdminHomeScreen = () => {
 
                     </View>
 
-                    {(tasks || []).map((t, idx) => (
-                        <SwipeableTaskCard
-                            key={t.id ?? idx}
-                            task={t}
-                            onPress={() =>
-                                navigation.push('AdminTaskDetailsScreen', {
-                                    task_title: t.title ?? 'Task',
-                                    task_id: t.id,
-                                })
-                            }
-                            onToggle={() => handleToggleCheck(idx, t)}
-                            onDelete={(taskId) => {
-                                // Remove from local list and checkbox map
-                                try {
-                                    fetchTasksData(async () => {
-                                        const list = Array.isArray(tasks) ? tasks : [];
-                                        return list.filter((x) => x.id !== taskId);
-                                    });
-                                    setCheckedById((prev) => {
-                                        const next = { ...prev };
-                                        delete next[Number(taskId)];
-                                        return next;
-                                    });
-
-                                    // Smoothly update related project's totals/progress
-                                    const projectId = t.project?.id;
-                                    const wasCompleted = String(t.status || '').toLowerCase() === 'completed';
-                                    if (projectId) {
-                                        fetchProjectsData(async () => {
-                                            const currentProjects = Array.isArray(projects) ? projects : [];
-                                            return currentProjects.map(p => {
-                                                if (p.project_id !== projectId) return p;
-                                                const newTotal = Math.max(0, (Number(p.total_tasks) || 0) - 1);
-                                                let newCompleted = Math.max(0, (Number(p.completed_tasks) || 0) - (wasCompleted ? 1 : 0));
-                                                if (newCompleted > newTotal) newCompleted = newTotal;
-                                                const newProgress = newTotal > 0 ? Math.round((newCompleted / newTotal) * 100) : 0;
-                                                return { ...p, total_tasks: newTotal, completed_tasks: newCompleted, progress_percent: newProgress } as typeof p;
-                                            });
-                                        });
-                                    }
-                                    // Optionally refetch to ensure consistency
-                                    loadTasks();
-                                } catch (e) {
-                                    // no-op; user already saw delete confirmation from card
+                    <View style={styles.card}>
+                        {(tasks || []).map((t, idx) => (
+                            <SwipeableTaskCard
+                                key={t.id ?? idx}
+                                task={t}
+                                onPress={() =>
+                                    navigation.push('AdminTaskDetailsScreen', {
+                                        task_title: t.title ?? 'Task',
+                                        task_id: t.id,
+                                    })
                                 }
-                            }}
-                            onUpdate={(taskId) => {
-                                navigation.navigate('AddTaskScreen', { task_id: taskId });
-                            }}
-                        />
-                    ))}
-                    {!loadingTasks && (tasks || []).length === 0 && (
-                        <Text style={{ color: '#666' }}>No tasks found.</Text>
-                    )}
+                                onToggle={() => handleToggleCheck(idx, t)}
+                                onDelete={(taskId) => {
+                                    try {
+                                        fetchTasksData(async () => {
+                                            const list = Array.isArray(tasks) ? tasks : [];
+                                            return list.filter((x) => x.id !== taskId);
+                                        });
+                                        setCheckedById((prev) => {
+                                            const next = { ...prev };
+                                            delete next[Number(taskId)];
+                                            return next;
+                                        });
+                                        const projectId = t.project?.id;
+                                        const wasCompleted = String(t.status || '').toLowerCase() === 'completed';
+                                        if (projectId) {
+                                            fetchProjectsData(async () => {
+                                                const currentProjects = Array.isArray(projects) ? projects : [];
+                                                return currentProjects.map(p => {
+                                                    if (p.project_id !== projectId) return p;
+                                                    const newTotal = Math.max(0, (Number(p.total_tasks) || 0) - 1);
+                                                    let newCompleted = Math.max(0, (Number(p.completed_tasks) || 0) - (wasCompleted ? 1 : 0));
+                                                    if (newCompleted > newTotal) newCompleted = newTotal;
+                                                    const newProgress = newTotal > 0 ? Math.round((newCompleted / newTotal) * 100) : 0;
+                                                    return { ...p, total_tasks: newTotal, completed_tasks: newCompleted, progress_percent: newProgress } as typeof p;
+                                                });
+                                            });
+                                        }
+                                        loadTasks();
+                                    } catch (e) {}
+                                }}
+                                onUpdate={(taskId) => {
+                                    navigation.navigate('AddTaskScreen', { task_id: taskId });
+                                }}
+                            />
+                        ))}
+                        {!loadingTasks && (tasks || []).length === 0 && (
+                            <Text style={styles.mutedText}>No tasks found.</Text>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
 
@@ -727,7 +909,7 @@ const AdminHomeScreen = () => {
 export default AdminHomeScreen;
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#f0f4f7' },
+    safeArea: { flex: 1, backgroundColor: theme.colors.background },
     scrollContent: { paddingBottom: 200 },
 
     // Header
@@ -735,44 +917,75 @@ const styles = StyleSheet.create({
     userRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
     username: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
-    welcome: { color: '#fff', fontSize: 13 },
+    welcome: { color: '#E4F0FA', fontSize: 13 },
     clientHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     clientTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
     addText: { color: '#fff', textDecorationLine: 'underline' },
+    headerSeeAll: { color: '#fff', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
+    headerSeeAllRow: { flexDirection: 'row', alignItems: 'center' },
+    headerListCard: { },
+    clientCircleHeader: {
+        width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.9)',
+        justifyContent: 'center', alignItems: 'center', borderWidth: 0, borderColor: 'transparent',
+    },
+    clientNameHeader: { color: '#fff', fontSize: 12, marginTop: 6, maxWidth: 80, textAlign: 'center', alignSelf: 'center' },
+    pillButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.accent,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: theme.radius.pill,
+    },
+    pillButtonText: { color: '#fff', fontWeight: '600', fontSize: 12 },
 
     // Client/Freelancer carousel
     clientScroll: { paddingHorizontal: 20, gap: 16 },
     clientCard: { alignItems: 'center', marginRight: 16 },
     clientCircle: {
         width: 60, height: 60, borderRadius: 30, backgroundColor: '#fff',
-        justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ccc',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
+        justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
     },
     clientLogo: { width: 50, height: 50, borderRadius: 25, resizeMode: 'cover' },
     clientName: { color: '#fff', fontSize: 12, marginTop: 6, maxWidth: 80, textAlign: 'center', alignSelf: 'center' },
-    freelancersName: { color: 'black', fontSize: 12, marginTop: 6, maxWidth: 80, textAlign: 'center', alignSelf: 'center' },
+    freelancersName: { color: theme.colors.textPrimary, fontSize: 12, marginTop: 6, maxWidth: 80, textAlign: 'center', alignSelf: 'center' },
 
     // Sections
     section: { padding: 20 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold' },
-    seeAll: { fontSize: 14, color: '#0072B5', fontWeight: '500' },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.textPrimary },
+    seeAll: { fontSize: 14, color: theme.colors.primary, fontWeight: '500' },
+    card: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.l,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 2,
+    },
+    mutedText: { paddingHorizontal: 20, color: theme.colors.textSecondary },
 
     // Filter/dropdown (Tasks)
     taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    taskHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: '#073B61' },
+    taskHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: theme.colors.textPrimary },
     filterButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
-    filterButtonText: { color: '#999', fontSize: 14, marginRight: 6 },
+    filterButtonText: { color: theme.colors.textSecondary, fontSize: 14, marginRight: 6 },
     dropdownMenu: {
-        position: 'absolute', top: 45, right: 20, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 4,
+        position: 'absolute', top: 45, right: 20, backgroundColor: theme.colors.surface, borderRadius: 12, paddingVertical: 4,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, width: 160, zIndex: 10,
     },
 
     dropdownItem: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: 'transparent' },
     dropdownItemFirst: { borderTopLeftRadius: 12, borderTopRightRadius: 12 },
     dropdownItemLast: { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
-    dropdownItemActive: { backgroundColor: '#0072B5' },
-    dropdownItemText: { fontSize: 14, color: '#0072B5' },
+    dropdownItemActive: { backgroundColor: theme.colors.primary },
+    dropdownItemText: { fontSize: 14, color: theme.colors.primary },
     dropdownItemTextActive: { color: '#fff' },
 
     // Tutorial overlay
@@ -825,6 +1038,11 @@ const styles = StyleSheet.create({
     tutorialCardLineShort: { height: 8, backgroundColor: '#e6eef6', borderRadius: 4, marginTop: 8, width: '60%' },
     tutorialArrowsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
     tutorialSwipeText: { color: '#fff', marginHorizontal: 10, fontSize: 14 },
-    tutorialButton: { alignSelf: 'center', marginTop: 16, backgroundColor: '#00A3FF', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999 },
+    tutorialButton: { alignSelf: 'center', marginTop: 16, backgroundColor: theme.colors.accent, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999 },
     tutorialButtonText: { color: '#fff', fontWeight: 'bold' },
+    shimmerBase: {
+        backgroundColor: '#E6EEF6',
+        overflow: 'hidden',
+        borderRadius: 12,
+    },
 });

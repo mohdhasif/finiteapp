@@ -1,5 +1,6 @@
 // src/services/notificationService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 export type NotificationItem = {
     id: number;
@@ -94,30 +95,37 @@ export const getNotifications = async (
 
     // console.log('[SVC][REQ]', { url, tokenLen: token?.length || 0 });
 
-    const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token || ''}`, Accept: 'application/json' },
-    });
-    const raw = await res.text();
-    // console.log('[SVC][RES]', { status: res.status, ok: res.ok });
-    // console.log('[SVC][RAW]', raw.slice(0, 200));
+    try {
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${token || ''}`, Accept: 'application/json' },
+        });
+        const raw = await res.text();
 
-    let json: any;
-    try { json = JSON.parse(raw); }
-    catch { throw new Error('Invalid JSON from server: ' + raw.slice(0, 120)); }
+        let json: any;
+        try { json = JSON.parse(raw); }
+        catch { throw new Error('Invalid JSON from server: ' + raw.slice(0, 120)); }
 
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const data =
-        (Array.isArray(json?.data) && json.data) ||
-        (Array.isArray(json?.notifications) && json.notifications) ||
-        (Array.isArray(json?.items) && json.items) ||
-        (Array.isArray(json) && json) ||
-        [];
+        const data =
+            (Array.isArray(json?.data) && json.data) ||
+            (Array.isArray(json?.notifications) && json.notifications) ||
+            (Array.isArray(json?.items) && json.items) ||
+            (Array.isArray(json) && json) ||
+            [];
 
-    const total =
-        typeof json?.total === 'number' ? json.total :
-            typeof json?.count === 'number' ? json.count :
-                (Array.isArray(data) ? data.length : 0);
+        const key = `notifications:status=${opts.status}`;
+        const persisted = await resolveWithLocalIfUnchanged(key, data as any[], (x: any) => x.id ?? JSON.stringify(x));
 
-    return { data, total };
+        const total =
+            typeof json?.total === 'number' ? json.total :
+                typeof json?.count === 'number' ? json.count :
+                    (Array.isArray(persisted) ? persisted.length : 0);
+
+        return { data: persisted, total };
+    } catch (e) {
+        const key = `notifications:status=${opts.status}`;
+        const persisted = await fallbackToLocal<any>(key, []);
+        return { data: persisted, total: persisted.length };
+    }
 };

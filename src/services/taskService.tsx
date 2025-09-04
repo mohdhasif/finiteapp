@@ -1,5 +1,6 @@
 // src/services/taskService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 export type Task = {
     id: number;
@@ -214,18 +215,26 @@ export const getAllTasks = async (
         project_id: opts.projectId,
     });
 
-    const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
-    });
+    try {
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
+        });
 
-    const { json } = await safeJson(res);
+        const { json } = await safeJson(res);
 
-    if (json && json.success === false) {
-        throw new Error(json.error || 'Server returned an error');
+        if (json && json.success === false) {
+            throw new Error(json.error || 'Server returned an error');
+        }
+        if (!res.ok) throw new Error((json && json.error) || `HTTP ${res.status}`);
+
+        const items = Array.isArray(json?.data) ? (json.data as Task[]) : [];
+        // collection key includes filter so lists are separable
+        const key = `tasks:status=${opts.status ?? 'all'}:project=${opts.projectId ?? 'all'}`;
+        return await resolveWithLocalIfUnchanged<Task>(key, items, (x) => x.id);
+    } catch (e) {
+        const key = `tasks:status=${opts.status ?? 'all'}:project=${opts.projectId ?? 'all'}`;
+        return await fallbackToLocal<Task>(key, []);
     }
-    if (!res.ok) throw new Error((json && json.error) || `HTTP ${res.status}`);
-
-    return Array.isArray(json?.data) ? (json.data as Task[]) : [];
 };
 
 export const getAllTasksFreelancer = async (

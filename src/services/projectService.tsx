@@ -1,5 +1,6 @@
 // src/services/projectService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 export type ProjectSummary = {
     project_id: number;
@@ -75,21 +76,20 @@ export const fetchProjectTasks = async (token: string, projectId: number) => {
 };
 
 export const getProjectSummaries = async (userToken: string): Promise<ProjectSummary[]> => {
-    const res = await fetch(API_ENDPOINTS.projectSummaries, { headers: auth(userToken) });
-    const json = await parse(res);
-    // console.log('getProjectSummaries raw response:', JSON.stringify(json, null, 2));
-
-    const projects = Array.isArray(json) ? json as ProjectSummary[] : (json ? [json as ProjectSummary] : []);
-
-    // Ensure freelancer_avatars is properly set for each project
-    const projectsWithAvatars = projects.map(project => ({
-        ...project,
-        freelancer_avatars: project.freelancer_avatars || [],
-        freelancer_count: project.freelancer_count || 0,
-        extra_freelancers: project.extra_freelancers || 0,
-    }));
-
-    return projectsWithAvatars;
+    try {
+        const res = await fetch(API_ENDPOINTS.projectSummaries, { headers: auth(userToken) });
+        const json = await parse(res);
+        const projects = Array.isArray(json) ? json as ProjectSummary[] : (json ? [json as ProjectSummary] : []);
+        const projectsWithAvatars = projects.map(project => ({
+            ...project,
+            freelancer_avatars: project.freelancer_avatars || [],
+            freelancer_count: project.freelancer_count || 0,
+            extra_freelancers: project.extra_freelancers || 0,
+        }));
+        return await resolveWithLocalIfUnchanged('projectSummaries', projectsWithAvatars, (p) => p.project_id);
+    } catch (e) {
+        return await fallbackToLocal<ProjectSummary>('projectSummaries', []);
+    }
 };
 
 export const getProjectSummaryById = async (userToken: string, projectId: number): Promise<ProjectSummary> => {

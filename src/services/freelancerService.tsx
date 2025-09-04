@@ -1,5 +1,6 @@
 // src/services/freelancerService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 const parse = async (res: Response) => {
     const raw = await res.text();
@@ -14,8 +15,16 @@ export const getFreelancers = async (token?: string) => {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    const res = await fetch(API_ENDPOINTS.getFreelancers, { headers });
-    return parse(res);
+    try {
+        const res = await fetch(API_ENDPOINTS.getFreelancers, { headers });
+        const json = await parse(res);
+        const items = Array.isArray(json) ? (json as any[]) : Array.isArray((json as any)?.data) ? (json as any).data : [];
+        const persisted = await resolveWithLocalIfUnchanged('allFreelancers', items, (x: any) => x.id ?? x.user_id ?? JSON.stringify(x));
+        return Array.isArray(json) ? persisted : { ...(json as any), data: persisted } as any;
+    } catch (e) {
+        const persisted = await fallbackToLocal<any>('allFreelancers', []);
+        return { success: true, data: persisted } as any;
+    }
 };
 
 export const updateFreelancer = async (token: string, payload: {

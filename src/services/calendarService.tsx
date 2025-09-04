@@ -1,5 +1,6 @@
 // src/services/calendarService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 export type ProjectCalendarEvent = {
     id: number;
@@ -29,27 +30,34 @@ export const getProjectsCalendar = async (
         url += `?${queryParts.join('&')}`;
     }
 
-    const res = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-        },
-    });
-
-    const raw = await res.text();
-    let json: any;
     try {
-        json = JSON.parse(raw);
-    } catch {
-        throw new Error('Server did not return valid JSON');
-    }
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+            },
+        });
 
-    if (!res.ok || json?.success === false) {
-        const msg = json?.error || `Failed to fetch calendar data (HTTP ${res.status})`;
-        throw new Error(msg);
-    }
+        const raw = await res.text();
+        let json: any;
+        try {
+            json = JSON.parse(raw);
+        } catch {
+            throw new Error('Server did not return valid JSON');
+        }
 
-    return Array.isArray(json?.data) ? json.data : [];
+        if (!res.ok || json?.success === false) {
+            const msg = json?.error || `Failed to fetch calendar data (HTTP ${res.status})`;
+            throw new Error(msg);
+        }
+
+        const items = Array.isArray(json?.data) ? json.data : [];
+        const key = `calendar:${opts.start_date ?? ''}:${opts.end_date ?? ''}`;
+        return await resolveWithLocalIfUnchanged<ProjectCalendarEvent>(key, items, (x) => x.id);
+    } catch (e) {
+        const key = `calendar:${opts.start_date ?? ''}:${opts.end_date ?? ''}`;
+        return await fallbackToLocal<ProjectCalendarEvent>(key, []);
+    }
 };
 
 export const toYMD = (d: Date) => {

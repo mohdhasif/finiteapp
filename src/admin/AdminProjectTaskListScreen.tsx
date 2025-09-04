@@ -51,6 +51,24 @@ const FILTERS = [
 ] as const;
 type FilterValue = (typeof FILTERS)[number]['value'];
 
+// ===== Finite brand theme (aligned with AdminHomeScreen) =====
+const theme = {
+    colors: {
+        primaryDeep: '#003865',
+        primary: '#0072B5',
+        accent: '#00A3FF',
+        background: '#F2F6FA',
+        surface: '#FFFFFF',
+        textPrimary: '#073B61',
+        textSecondary: '#6B7A90',
+        border: '#E1E8F0',
+    },
+    radius: {
+        l: 16,
+        pill: 999,
+    },
+};
+
 const AdminProjectTaskListScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<AdminProjectTaskListScreenRouteProp>();
@@ -405,11 +423,12 @@ const AdminProjectTaskListScreen = () => {
                 </View>
 
                 {/* Task List */}
-                <ScrollView
+                <View style={styles.taskListCard}>
+                    <ScrollView
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 150 }}
-                >
+                    >
                     {loading ? (
                         <Text style={{ textAlign: 'center', color: '#073B61', marginTop: 12 }}>
                             Loading...
@@ -455,9 +474,8 @@ const AdminProjectTaskListScreen = () => {
                             No tasks found.
                         </Text>
                     )}
-
-
-                </ScrollView>
+                    </ScrollView>
+                </View>
             </Animated.View>
 
             {/* Floating Menu */}
@@ -511,11 +529,11 @@ const AdminProjectTaskListScreen = () => {
 export default AdminProjectTaskListScreen;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#073B61' },
+    container: { flex: 1, backgroundColor: theme.colors.textPrimary },
     taskContainer: {
         position: 'absolute',
         left: 0, right: 0, height: height,
-        backgroundColor: '#e1e1e1',
+        backgroundColor: theme.colors.background,
         borderTopLeftRadius: 30,
         borderTopRightRadius: 30,
         padding: 20,
@@ -525,7 +543,7 @@ const styles = StyleSheet.create({
     taskHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20,
     },
-    taskHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: '#073B61' },
+    taskHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: theme.colors.textPrimary },
     bottomNav: {
         position: 'absolute', bottom: 0, width: width, height: 70, backgroundColor: '#007baf',
         borderTopLeftRadius: 24, borderTopRightRadius: 24, flexDirection: 'row',
@@ -561,7 +579,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end',
         backgroundColor: 'transparent', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
     },
-    filterButtonText: { color: '#999', fontSize: 14, marginRight: 6 },
+    filterButtonText: { color: theme.colors.textSecondary, fontSize: 14, marginRight: 6 },
 
     dropdownMenu: {
         position: 'absolute', top: 45, right: 20, backgroundColor: '#fff',
@@ -571,9 +589,22 @@ const styles = StyleSheet.create({
     dropdownItem: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: 'transparent' },
     dropdownItemFirst: { borderTopLeftRadius: 12, borderTopRightRadius: 12 },
     dropdownItemLast: { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
-    dropdownItemActive: { backgroundColor: '#0072B5' },
-    dropdownItemText: { fontSize: 14, color: '#0072B5' },
+    dropdownItemActive: { backgroundColor: theme.colors.primary },
+    dropdownItemText: { fontSize: 14, color: theme.colors.primary },
     dropdownItemTextActive: { color: '#fff' },
+    taskListCard: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.l,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 2,
+    },
 
     topCard: {
         flexDirection: 'row', justifyContent: 'space-between', padding: 20,

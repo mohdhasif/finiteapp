@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal } from './localDb';
 
 export type Assignee = {
     id: number;           // freelancer_id
@@ -13,21 +14,19 @@ export type Assignee = {
 
 export async function listTaskAssignees(token: string, taskId: number): Promise<Assignee[]> {
     const url = `${API_ENDPOINTS.urlListTaskAssignees}?task_id=${encodeURIComponent(taskId)}`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-
-    // Baca sebagai text dulu
-    const text = await r.text();
-    // console.log('[ASSIGNEES][RAW]', text); // log response mentah
-
-    let j;
     try {
-        j = JSON.parse(text);
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const text = await r.text();
+        let j;
+        try { j = JSON.parse(text); } catch { throw new Error('Response is not valid JSON'); }
+        if (!j.success) throw new Error(j.error || 'Failed to load assignees');
+        const items: Assignee[] = j.data || [];
+        const key = `taskAssignees:${taskId}`;
+        return await resolveWithLocalIfUnchanged<Assignee>(key, items, (x) => x.id);
     } catch (e) {
-        throw new Error('Response is not valid JSON');
+        const key = `taskAssignees:${taskId}`;
+        return await fallbackToLocal<Assignee>(key, []);
     }
-
-    if (!j.success) throw new Error(j.error || 'Failed to load assignees');
-    return j.data || [];
 }
 
 

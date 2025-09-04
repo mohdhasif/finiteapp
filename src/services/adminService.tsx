@@ -1,5 +1,6 @@
 // src/services/adminService.ts
 import { API_ENDPOINTS } from '../constants/apiConfig';
+import { resolveWithLocalIfUnchanged, fallbackToLocal, computeDigest } from './localDb';
 
 const parse = async (res: Response) => {
     const raw = await res.text();
@@ -41,32 +42,32 @@ export const fetchFreelancers = async (token: string) => {
 
 
 export const fetchClientsOnlyApproved = async (token: string) => {
-    const res = await fetch(API_ENDPOINTS.getApprovedClients, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
-    const text = await res.text();
     try {
+        const res = await fetch(API_ENDPOINTS.getApprovedClients, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        });
+        const text = await res.text();
         const result = JSON.parse(text);
-        // Return the data array from the response
-        return result.data || [];
+        const items = result.data || [];
+        // If server returns same content (by digest), serve locally stored list instead
+        return await resolveWithLocalIfUnchanged('approvedClients', items, (x: any) => x.client_id ?? x.id ?? JSON.stringify(x));
     } catch (error) {
-        // Remove console.log for production
-        throw new Error('Invalid JSON response');
+        // Network or parse failed → fallback to local NoSQL
+        return await fallbackToLocal('approvedClients', []);
     }
 };
 
 export const fetchFreelancersOnlyApproved = async (token: string) => {
-    const res = await fetch(API_ENDPOINTS.getApprovedFreelancers, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
-    const text = await res.text();
     try {
+        const res = await fetch(API_ENDPOINTS.getApprovedFreelancers, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        });
+        const text = await res.text();
         const result = JSON.parse(text);
-        // Freelancers API returns data directly, not wrapped in data property
-        return Array.isArray(result) ? result : (result.data || []);
+        const items = Array.isArray(result) ? result : (result.data || []);
+        return await resolveWithLocalIfUnchanged('approvedFreelancers', items, (x: any) => x.id ?? x.user_id ?? JSON.stringify(x));
     } catch (error) {
-        // Remove console.log for production
-        throw new Error('Invalid JSON response');
+        return await fallbackToLocal('approvedFreelancers', []);
     }
 };
 
