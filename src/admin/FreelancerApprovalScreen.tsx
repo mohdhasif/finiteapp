@@ -36,7 +36,7 @@ type Freelancer = {
     skillset: string;
     avatar: string | null;
     availability: boolean;
-    status: 'pending' | 'approved' | 'rejected' | 'inactive';
+    status: 'pending' | 'rejected' | 'inactive';
 };
 
 const availabilityOptions = [true, false];

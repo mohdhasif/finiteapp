@@ -29,7 +29,7 @@ const { width } = Dimensions.get('window');
 
 type ClientApprovalScreenRouteProp = RouteProp<RootStackParamList, 'ClientApprovalScreen'>;
 
-const statusOptions = ['pending', 'approved', 'rejected', 'active', 'non-active', 'barred'];
+const statusOptions = ['pending', 'rejected', 'active', 'non-active', 'barred'];
 const typeOptions = ['individual', 'company'];
 
 const ClientApprovalScreen = () => {
