@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -9,8 +9,9 @@ import {
     TouchableOpacity,
     SafeAreaView,
     StatusBar,
+    Alert,
+    ScrollView,
 } from 'react-native';
-import AppIntroSlider from 'react-native-app-intro-slider';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -60,7 +61,7 @@ const AboutUs = () => {
 
     const [activeSlide, setActiveSlide] = useState(0);
 
-    const renderItem = ({ item }: any) => {
+    const renderItem = ({ item, index }: { item: any; index: number }) => {
         switch (item.type) {
             case 'slide1':
                 return (
@@ -88,7 +89,7 @@ const AboutUs = () => {
                             <Text style={styles.slide2Text}>Build Your{'\n'}Future,{'\n'}Build Your Dream</Text>
                         </View>
 
-                        {/* Subtitle bawah */}
+                        {/* Subtitle below */}
                         <View style={styles.slide2SubtitleWrap}>
                             <Text style={styles.slide2Subtitle}>
                                 {item.subtitle}
@@ -136,7 +137,19 @@ const AboutUs = () => {
                         <Text style={styles.buttonText}>Get Started</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('FreelancerFormScreen')}>
+                        onPress={() => {
+                            // Check if we can navigate to FreelancerFormScreen
+                            try {
+                                navigation.navigate('FreelancerFormScreen');
+                            } catch (error) {
+                                // If navigation fails, show an alert
+                                Alert.alert(
+                                    'Navigation Error',
+                                    'Please logout first to access the freelancer form.',
+                                    [{ text: 'OK' }]
+                                );
+                            }
+                        }}>
                         <Text style={styles.secondary}>Join us as a Freelancer</Text>
                     </TouchableOpacity>
                 </>
@@ -144,7 +157,14 @@ const AboutUs = () => {
                 <>
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={() => navigation.navigate('HomeScreen')}>
+                        onPress={() => {
+                            try {
+                                navigation.navigate('HomeScreen');
+                            } catch (error) {
+                                // If navigation fails, go back to previous screen
+                                navigation.goBack();
+                            }
+                        }}>
                         <Text style={styles.buttonText}>Back</Text>
                     </TouchableOpacity>
                     <TouchableOpacity>
@@ -155,18 +175,32 @@ const AboutUs = () => {
         </View>
     );
 
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    const handleScroll = (event: any) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffset / width);
+        setActiveSlide(index);
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-            <AppIntroSlider
-                data={slides}
-                renderItem={renderItem}
-                renderPagination={renderPagination}
-                onSlideChange={(index) => setActiveSlide(index)}
-                showDoneButton={false}
-                showNextButton={false}
-                showSkipButton={false}
-            />
+            <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+            >
+                {slides.map((slide, index) => (
+                    <View key={slide.key} style={{ width }}>
+                        {renderItem({ item: slide, index })}
+                    </View>
+                ))}
+            </ScrollView>
+            {renderPagination(activeSlide)}
         </SafeAreaView>
     );
 };

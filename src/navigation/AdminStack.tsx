@@ -9,6 +9,13 @@ import AdminChangePasswordScreen from '../admin/AdminChangePasswordScreen';
 import AdminMyProfileScreen from '../admin/AdminMyProfileScreen';
 import AdminFAQScreen from '../admin/AdminFAQScreen';
 import AdminCreateProjectScreen from '../admin/AdminCreateProjectScreen';
+import ClientListScreen from '../admin/ClientListScreen';
+import ClientApprovalScreen from '../admin/ClientApprovalScreen';
+import FreelancerListScreen from '../admin/FreelancerListScreen';
+import FreelancerApprovalScreen from '../admin/FreelancerApprovalScreen';
+import AddTaskScreen from '../admin/AddTaskScreen';
+import AdminNotificationsScreen from '../admin/AdminNotificationsScreen';
+import AdminCalendarScreen from '../admin/AdminCalendarScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,14 +26,34 @@ export default function AdminStack() {
             <Stack.Screen name="AdminProjectListScreen" component={AdminProjectListScreen} />
             <Stack.Screen name="AdminProjectTaskListScreen" component={AdminProjectTaskListScreen} />
             <Stack.Screen name="AdminTaskDetailsScreen" component={AdminTaskDetailsScreen} />
-
             <Stack.Screen name="AdminProfileScreen" component={AdminProfileScreen} />
             <Stack.Screen name="AdminChangePasswordScreen" component={AdminChangePasswordScreen} />
             <Stack.Screen name="AdminMyProfileScreen" component={AdminMyProfileScreen} />
             <Stack.Screen name="AdminFAQScreen" component={AdminFAQScreen} />
-
             <Stack.Screen name="AdminCreateProjectScreen" component={AdminCreateProjectScreen} />
-
+            <Stack.Screen name="ClientListScreen" component={ClientListScreen} />
+            <Stack.Screen name="ClientApprovalScreen" component={ClientApprovalScreen} />
+            <Stack.Screen name="FreelancerListScreen" component={FreelancerListScreen} />
+            <Stack.Screen
+                name="FreelancerApprovalScreen"
+                component={FreelancerApprovalScreen}
+                options={{ headerShown: false }} // ✅ buang header
+            />
+            <Stack.Screen
+                name="AddTaskScreen"
+                component={AddTaskScreen}
+                options={{ headerShown: false }} // ✅ buang header
+            />
+            <Stack.Screen
+                name="AdminNotificationsScreen"
+                component={AdminNotificationsScreen}
+                options={{ headerShown: false }} // ✅ buang header
+            />
+            <Stack.Screen
+                name="AdminCalendarScreen"
+                component={AdminCalendarScreen}
+                options={{ headerShown: false }} // ✅ buang header
+            />
         </Stack.Navigator>
     );
 }

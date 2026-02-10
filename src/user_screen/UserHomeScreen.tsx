@@ -55,7 +55,7 @@ const UserHomeScreen = () => {
                     </View>
                     < ScrollView horizontal showsHorizontalScrollIndicator={false} >
                         {
-                            clients.map((client) => (
+                            Array.isArray(clients) && clients.map((client) => (
                                 <View key={client.id} style={styles.clientCard} >
                                     <Image source={client.logo} style={styles.clientLogo} />
                                     <Text style={styles.clientName} > {client.name} </Text>
@@ -73,7 +73,7 @@ const UserHomeScreen = () => {
                     </View>
                     < View style={styles.projectRow} >
                         {
-                            projects.map((proj) => (
+                            Array.isArray(projects) && projects.map((proj) => (
                                 <View key={proj.id} style={styles.projectCard} >
                                     <Text style={styles.projectTitle} > {proj.title} </Text>
                                     < Text style={styles.projectClient} > {proj.client} </Text>
@@ -96,7 +96,7 @@ const UserHomeScreen = () => {
                         < Text style={styles.seeAll} > See all </Text>
                     </View>
                     {
-                        tasks.map((task) => (
+                        Array.isArray(tasks) && tasks.map((task) => (
                             <View key={task.id} style={styles.taskCard} >
                                 <View style={styles.taskRow} >
                                     <Icon name="checkmark-circle" size={24} color="#0072B5" />

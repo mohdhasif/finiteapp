@@ -1,303 +1,374 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    ScrollView,
-    TouchableOpacity,
-    Dimensions,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  Dimensions,
+  TextInput,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { getProjectSummariesClient } from '../services/projectService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ClientProjectCardScreen from '../component/ClientProjectCardScreen';
+import { useDebouncedState } from '../hooks/useOptimizedState';
+import { useAsyncState } from '../hooks/useOptimizedState';
+import { api } from '../services/apiClient';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 
-const allProjects = [
-    {
-        title: 'Social Media',
-        subtitle: 'August postings',
-        progress: 50,
-        date: 'Jan 13, 2025',
-        tasks: 24,
-        status: 'Ongoing',
-    },
-    {
-        title: 'App Project',
-        subtitle: 'Digital Product Design',
-        progress: 100,
-        date: 'Jan 13, 2025',
-        tasks: 24,
-        status: 'Completed',
-    },
-    {
-        title: 'Marketing Campaign',
-        subtitle: 'Q3 Strategy',
-        progress: 30,
-        date: 'Jan 13, 2025',
-        tasks: 18,
-        status: 'Ongoing',
-    },
-];
+type Project = {
+  project_id: number;
+  project_title: string;
+  client_name?: string | null;
+  progress_percent?: number; // 0..100
+  status?: 'Ongoing' | 'Completed' | 'Pending' | string;
+  start_at?: string | null;
+  end_at?: string | null;
+  due_date?: string | null;
+  total_tasks?: number;
+  completed_tasks?: number;
+  freelancer_count?: number;
+  freelancer_avatars?: string[];
+  extra_freelancers?: number;
+};
+
+const tabs = ['All', 'Ongoing', 'Completed'] as const;
+type Tab = (typeof tabs)[number];
 
 const ProjectListScreen = () => {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const [activeTab, setActiveTab] = useState<'All' | 'Ongoing' | 'Completed'>('All');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [displayName, setDisplayName] = useState('User');
+  const [activeTab, setActiveTab] = useState<Tab>('All');
+  
+  // Performance optimized state management
+  const { data: projects, loading, error, execute: fetchProjects } = useAsyncState<Project[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Debounced search for better performance
+  const [query, setQuery, debouncedQuery] = useDebouncedState('', 300);
+  const [showSearch, setShowSearch] = useState(false);
+  
+  // Performance monitoring
+  const renderCount = useRef(0);
+  renderCount.current++;
 
-    const filteredProjects =
-        activeTab === 'All'
-            ? allProjects
-            : allProjects.filter(project => project.status === activeTab);
+  const fetchData = useCallback(async (isRefreshing = false) => {
+    performanceMonitor.startTimer('fetchProjects');
+    
+    try {
+      if (!isRefreshing) setRefreshing(true);
+      
+      const token = (await AsyncStorage.getItem('userToken'))?.trim() || '';
+      const result = await fetchProjects(async () => {
+        return await getProjectSummariesClient(token);
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('Fetch projects error:', error);
+    } finally {
+      setRefreshing(false);
+      performanceMonitor.endTimer('fetchProjects');
+    }
+  }, [fetchProjects]);
 
+  useEffect(() => {
+    fetchData();
+    (async () => {
+      const userInfoString = await AsyncStorage.getItem('userInfo');      
+      const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+      // const name = userInfo?.client?.company_name || 'User';
+      const name = userInfo?.name || 'User';
+      setDisplayName(name);
+    })();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Fetch only when the screen gains focus, not on tab/status switches
+      fetchData(true);
+      return () => {};
+    }, [])
+  );
+
+      // Combine search + tabs
+  const filteredProjects = useMemo(() => {
+    const projectsList = projects || [];
+    // Avoid layout jump by keeping a stable key ordering
+    const list =
+      activeTab === 'All'
+        ? projectsList
+        : projectsList.filter(
+            p => (p.status || '').toLowerCase() === activeTab.toLowerCase()
+          );
+
+    if (!debouncedQuery.trim()) return list;
+
+    const q = debouncedQuery.trim().toLowerCase();
+    return list.filter(p => {
+      const title = (p.project_title || '').toLowerCase();
+      const client = (p.client_name || '').toLowerCase();
+      return title.includes(q) || client.includes(q);
+    });
+  }, [projects, activeTab, debouncedQuery]);
+
+  // Prevent re-render glitches on tab change by deferring state commit to next frame
+  const [visibleTab, setVisibleTab] = useState<Tab>('All');
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => setVisibleTab(activeTab));
+    return () => cancelAnimationFrame(raf);
+  }, [activeTab]);
+
+  const goToTasks = (p: Project) => {
+    navigation.navigate('ProjectTaskListScreen', { projectId: p.project_id, projectTitle: p.project_title });
+  };
+
+  if (loading && !refreshing) {
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.greeting}>Hello, Smith!</Text>
-                <TouchableOpacity>
-                    <Image
-                        source={require('../assets/search-icon.png')}
-                        style={styles.searchIcon}
-                    />
-                </TouchableOpacity>
-            </View>
-
-            {/* Tabs */}
-            <View style={styles.tabs}>
-                {['All', 'Ongoing', 'Completed'].map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        style={[styles.tabButton, activeTab === tab && styles.tabActive]}
-                        onPress={() => setActiveTab(tab as 'All' | 'Ongoing' | 'Completed')}
-                    >
-                        <Text style={activeTab === tab ? styles.tabActiveText : styles.tabText}>
-                            {tab}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* Projects List */}
-            <ScrollView contentContainerStyle={styles.projectList}>
-                {filteredProjects.map((project, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={styles.card}
-                        onPress={() => navigation.navigate('ProjectTaskListScreen', { project: project.title })}
-                        activeOpacity={0.8}
-                    >
-                        <View style={styles.cardLeft}>
-                            <Text style={styles.cardTitle}>{project.title}</Text>
-                            <Text style={styles.cardSubtitle}>{project.subtitle}</Text>
-                            <Text style={styles.cardAssigned}>Assigned to</Text>
-                            <View style={styles.avatarRow}>
-                                <View style={styles.avatar} />
-                                <View style={[styles.avatar, { backgroundColor: '#000' }]} />
-                                <View style={[styles.avatar, { backgroundColor: '#007bff' }]} />
-                                {/* <View style={styles.addAvatar}>
-                                    <Text style={styles.plus}>+</Text>
-                                </View> */}
-                            </View>
-                            <View style={styles.cardFooter}>
-                                <Text style={styles.dateText}>📅 {project.date}</Text>
-                                <Text style={styles.taskText}>✔️ {project.tasks} Tasks</Text>
-                            </View>
-                        </View>
-                        <View style={styles.progressRing}>
-                            <Text style={styles.progressText}>{project.progress}%</Text>
-                        </View>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-
-            {/* Bottom Nav */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('NotificationsScreen')}>
-                    <Icon name="notifications-outline" size={26} color="#fff" />
-                    {/* <View style={styles.redDot} /> */}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('ProjectListScreen')}>
-                    <Icon name="home-outline" size={26} color="#fff" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.navItem}
-                    onPress={() => navigation.navigate('ProfileScreen')}>
-                    <Icon name="person-outline" size={26} color="#fff" />
-                </TouchableOpacity>
-            </View>
-        </View>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
     );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Gradient header full-bleed to top */}
+      <LinearGradient
+        colors={['#0064B7', '#00A2E1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <Text style={styles.heroGreeting}>Hello, {displayName}!</Text>
+
+        {/* Search toggle button */}
+        <TouchableOpacity
+          style={styles.heroSearchBtn}
+          onPress={() => setShowSearch(s => !s)}
+          accessibilityRole="button"
+          accessibilityLabel="Search projects"
+        >
+          <Icon name={showSearch ? 'close' : 'search'} size={22} color="#fff" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      {/* Section title */}
+      <Text style={styles.sectionTitle}>Projects</Text>
+
+      {/* Search bar (show/hide) */}
+      {showSearch && (
+        <View style={styles.searchWrap}>
+          <Icon name="search" size={18} style={styles.searchIcon} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by title or client…"
+            placeholderTextColor="#98A6B8"
+            style={styles.searchInput}
+            returnKeyType="search"
+            autoFocus
+          />
+          {!!query && (
+            <TouchableOpacity onPress={() => setQuery('')}>
+              <Icon name="close-circle" size={18} style={styles.clearIcon} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Segmented tabs */}
+      <View style={styles.tabContainer}>
+        {tabs.map(tab => {
+          const active = visibleTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabPill, active && styles.tabPillActive]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.9}
+            >
+              <Text style={active ? styles.tabPillTextActive : styles.tabPillText}>{tab}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* List */}
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchData(true);
+            }}
+          />
+        }
+      >
+        {(filteredProjects || []).length === 0 ? (
+          <Text style={styles.emptyText}>
+            {debouncedQuery ? 'No projects match your search.' : 'No projects found.'}
+          </Text>
+        ) : (
+          (filteredProjects || []).map(item => (
+            <ClientProjectCardScreen
+              key={item.project_id}
+              id={item.project_id}
+              title={item.project_title}
+              subtitle={item.client_name ?? ' '}
+              client_name={item.client_name}
+              progress={item.progress_percent ?? 0}
+              status={item.status}
+              start_date={item.start_at}
+              due_date={item.due_date}
+              logo_url={undefined}
+              total_tasks={item.total_tasks ?? undefined}
+              assignees={item.freelancer_avatars?.map((avatar, index) => ({ id: index, avatar_url: avatar })) ?? []}
+              onPress={() => goToTasks(item)}
+            />
+          ))
+        )}
+      </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('NotificationsScreen')}>
+          <Icon name="notifications-outline" size={26} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProjectListScreen')}>
+          <Icon name="home-outline" size={26} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileScreen')}>
+          <Icon name="person-outline" size={26} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 };
 
 export default ProjectListScreen;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000015',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#0066b2',
-        paddingHorizontal: 20,
-        paddingVertical: 18,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-    },
-    greeting: {
-        fontSize: 24,
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    searchIcon: {
-        width: 22,
-        height: 22,
-        tintColor: '#fff',
-    },
-    tabs: {
-        flexDirection: 'row',
-        marginVertical: 16,
-        justifyContent: 'center',
-    },
-    tabButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: '#e2e2e2',
-        borderRadius: 20,
-        marginHorizontal: 6,
-    },
-    tabActive: {
-        backgroundColor: '#007bff',
-    },
-    tabText: {
-        color: '#333',
-        fontWeight: '500',
-    },
-    tabActiveText: {
-        color: '#fff',
-        fontWeight: '700',
-    },
-    projectList: {
-        paddingBottom: 100,
-        paddingHorizontal: 16,
-    },
-    card: {
-        backgroundColor: '#f2f2f2',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-    cardLeft: {
-        flex: 1,
-        paddingRight: 10,
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#007bff',
-    },
-    cardSubtitle: {
-        fontSize: 14,
-        color: '#444',
-        marginBottom: 8,
-    },
-    cardAssigned: {
-        fontSize: 12,
-        color: '#222',
-        marginBottom: 6,
-    },
-    avatarRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    avatar: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#444',
-        marginRight: 6,
-    },
-    addAvatar: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#007bff',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    plus: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    cardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    dateText: {
-        fontSize: 12,
-        color: '#777',
-    },
-    taskText: {
-        fontSize: 12,
-        color: '#007bff',
-    },
-    progressRing: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 6,
-        borderColor: '#007bff',
-        borderLeftColor: '#eee',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    progressText: {
-        fontWeight: 'bold',
-        color: '#000',
-    },
-    bottomNav: {
-        position: 'absolute',
-        bottom: 0,
-        width: width,
-        height: 70,
-        backgroundColor: '#007baf',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingBottom: 10,
-    },
-    navItem: {
-        position: 'relative',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    redDot: {
-        position: 'absolute',
-        top: 0,
-        right: -2,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'red',
-    },
+  // LAYOUT
+  container: { flex: 1, backgroundColor: '#0B0F17' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+      // HERO full-bleed, radius only bottom
+  hero: {
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroGreeting: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    lineHeight: 34,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    maxWidth: width - 100, // Leave space for search button
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  heroSearchBtn: {
+    position: 'absolute',
+    right: 18,
+    top: 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+
+  // Title
+  sectionTitle: {
+    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '800',
+    marginLeft: 20,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
+  // SEARCH
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E9EDF3',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
+  searchIcon: { color: '#6C7A92', marginRight: 6 },
+  searchInput: {
+    flex: 1,
+    color: '#0B0F17',
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  clearIcon: { color: '#6C7A92', marginLeft: 6 },
+
+  // Segmented tabs
+  tabContainer: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: '#E9EDF3',
+    padding: 6,
+    borderRadius: 20,
+    marginBottom: 6,
+    width: width - 40,
+  },
+  tabPill: {
+    flex: 1,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  tabPillActive: {
+    backgroundColor: '#0A86D7',
+  },
+  tabPillText: {
+    color: '#6C7A92',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  tabPillTextActive: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+
+  // LIST
+  listContent: { paddingHorizontal: 16, paddingBottom: 110, paddingTop: 8 },
+  emptyText: { textAlign: 'center', color: '#96A1B2', marginTop: 24 },
+
+  // BOTTOM NAVIGATION
+  bottomNav: {
+    position: 'absolute', bottom: 0, width: '100%', height: 70, backgroundColor: '#007baf',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 10,
+  },
+  navItem: { alignItems: 'center', justifyContent: 'center' },
 });

@@ -11,6 +11,7 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type LoadingScreenRouteProp = RouteProp<RootStackParamList, 'LoadingScreen'>;
 
@@ -23,19 +24,35 @@ const LoadingScreen = () => {
 
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (route.params.role === 'client') {
-        login('client');
-      } else if (route.params.role === 'admin') {
-        login('admin');
-      } else if (route.params.role === 'freelancer') {
-        login('freelancer');
-      }
-    }, 2000);
+  const { setUserRoleManual } = useAuth();
 
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (route.params.role === 'client') {
+  //       login('client');
+  //     } else if (route.params.role === 'admin') {
+  //       login('admin');
+  //     } else if (route.params.role === 'freelancer') {
+  //       login('freelancer');
+  //     }
+  //   }, 2000);
+
+  //   return () => clearTimeout(timer);
+  // }, [navigation]);
+
+  useEffect(() => {
+    const redirectAfterDelay = async () => {
+      const role = await AsyncStorage.getItem('userRole');
+
+      setTimeout(() => {
+        if (role) {
+          setUserRoleManual(role); // ✅ trigger AppNavigator
+        }
+      }, 1000); // 2 seconds
+    };
+
+    redirectAfterDelay();
+  }, []);
 
   useEffect(() => {
     Animated.loop(

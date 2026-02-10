@@ -9,7 +9,8 @@ import {
     Dimensions,
     Image,
     Button,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useNavigation } from '@react-navigation/native';
@@ -34,57 +35,112 @@ const LoginScreen = () => {
     const [validUsers, setvalidUsers] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
+    // Debug password state
+    const handlePasswordChange = (text: string) => {
+        console.log('Password changed:', text.length, 'characters');
+        setPassword(text);
+    };
+
+    const [isLoading, setIsLoading] = useState(false);
+
     // useEffect(() => {
     //     if (isModalVisible) {
     //         const timer = setTimeout(() => {
-    //             navigation.navigate('LoadingScreen'); // ganti dengan nama screen sebenar
-    //             setModalVisible(false); // optional: tutup modal kalau perlu
-    //         }, 2000); // 2 saat selepas modal appear
-    //         return () => clearTimeout(timer); // clear bila unmount
+                //             navigation.navigate('LoadingScreen'); // replace with actual screen name
+            //             setModalVisible(false); // optional: close modal if needed
+            //         }, 2000); // 2 seconds after modal appears
+        //         return () => clearTimeout(timer); // clear when unmount
     //     }
     // }, [isModalVisible]);
 
-    const handleLogin = () => {
+    // const handleLogin = () => {
+    //     if (!username || !password) {
+    //         Alert.alert('Error', 'Please enter both username and password');
+    //         return;
+    //     }
+
+    //     let role = null;
+
+    //     if (username === 'client@gmail.com') {
+    //         role = 'client';
+    //     } else if (username === 'admin@gmail.com') {
+    //         role = 'admin';
+    //     } else if (username === 'freelancer@gmail.com') {
+    //         role = 'freelancer';
+    //     }
+
+    //     if (!role) {
+    //         Alert.alert('Login Failed', 'Invalid user');
+    //         return;
+    //     }
+
+    //     setvalidUsers(role); // if you still want to save to state
+    //     setModalVisible(true);
+    // };
+
+
+    // const handleNext = () => {
+    //     setModalVisible(false);
+    //     navigation.navigate('LoadingScreen', { role: validUsers }); // Navigate to the next screen
+    //     // Example hardcoded role for testing
+    //     // if (username === 'client') {
+    //     //     login('client');
+    //     // } else if (username === 'admin') {
+    //     //     login('admin');
+    //     // } else if (username === 'freelancer') {
+    //     //     login('freelancer');
+    //     // } else {
+    //     //     Alert.alert('Login Failed', 'Invalid user');
+    //     // }
+
+    //     // Add navigation or next action here
+    // };
+
+    // const handleLogin = async () => {
+    //     console.log('Login button pressed');
+
+    //     if (!username || !password) {
+    //         Alert.alert('Login Failed', 'Please enter both email and password');
+    //         return;
+    //     }
+
+    //     setIsLoading(true); // ✅ Start loading
+
+    //     try {
+            //         // Call login API and update AuthContext
+    //         console.log('Before login');
+    //         await login(username, password);
+    //         console.log('After login');
+
+            //         // Show success modal
+    //         setModalVisible(true);
+    //     } catch (error: any) {
+    //         Alert.alert('Login Failed', error.message || 'Something went wrong');
+    //     } finally {
+    //         setIsLoading(false); // ✅ Stop loading
+    //     }
+    // };
+    const handleLogin = async () => {
         if (!username || !password) {
-            Alert.alert('Error', 'Please enter both username and password');
+            Alert.alert('Login Failed', 'Please enter both email and password');
             return;
         }
 
-        let role = null;
-
-        if (username === 'client@gmail.com') {
-            role = 'client';
-        } else if (username === 'admin@gmail.com') {
-            role = 'admin';
-        } else if (username === 'freelancer@gmail.com') {
-            role = 'freelancer';
+        setIsLoading(true); // 🔄 Show spinner button
+        try {
+            const role = await login(username, password); // ✅ call login from AuthContext and get role
+            setvalidUsers(role);                          // ✅ save role to send to LoadingScreen
+            setModalVisible(true);                        // ✅ show "Login Success!" modal
+        } catch (error: any) {
+            Alert.alert('Login Failed', error.message || 'Something went wrong');
+        } finally {
+            setIsLoading(false); // ✅ close spinner button
         }
-
-        if (!role) {
-            Alert.alert('Login Failed', 'Invalid user');
-            return;
-        }
-
-        setvalidUsers(role); // kalau kau masih nak simpan ke state
-        setModalVisible(true);
     };
-
 
     const handleNext = () => {
         setModalVisible(false);
-        navigation.navigate('LoadingScreen', { role: validUsers }); // Navigate to the next screen
-        // Contoh hardcoded role untuk testing
-        // if (username === 'client') {
-        //     login('client');
-        // } else if (username === 'admin') {
-        //     login('admin');
-        // } else if (username === 'freelancer') {
-        //     login('freelancer');
-        // } else {
-        //     Alert.alert('Login Failed', 'Invalid user');
-        // }
-
-        // Add navigation or next action here
+        navigation.navigate('LoadingScreen', { role: validUsers }); // ⬅️ send role to LoadingScreen
     };
 
     return (
@@ -117,11 +173,17 @@ const LoginScreen = () => {
                         placeholderTextColor="#aaa"
                         secureTextEntry={!showPassword}
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={handlePasswordChange}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        textContentType="password"
+                        returnKeyType="done"
+                        onSubmitEditing={handleLogin}
                     />
                     <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
                         style={styles.eyeIcon}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <Icon
                             name={showPassword ? 'eye-off' : 'eye'}
@@ -132,7 +194,11 @@ const LoginScreen = () => {
                 </View>
 
                 <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                    <Text style={styles.loginText}>Login</Text>
+                    {isLoading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.loginText}>Login</Text>
+                    )}
                 </TouchableOpacity>
 
                 <TouchableOpacity>
@@ -150,7 +216,7 @@ const LoginScreen = () => {
                 style={styles.modal}
             >
                 <View style={styles.modalContent}>
-                    {/* ✅ Guna image atau unicode checkmark */}
+                    {/* ✅ Use image or unicode checkmark */}
                     {/* <Image source={require('../assets/checkmark.png')} style={{ width: 50, height: 50, marginBottom: 20 }} /> */}
                     <Text style={styles.checkmark}>✓</Text>
                     <Text style={styles.modalTitle}>Successfully Login!</Text>
@@ -262,18 +328,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 25,
-        paddingHorizontal: 16,
-        paddingVertical: 4,
+        paddingHorizontal: 20,
+        paddingVertical: 0,
         marginBottom: 20,
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 2,
+        minHeight: 45,
     },
     passwordInput: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 12,
         fontSize: 16,
+        color: '#000',
+        textAlignVertical: 'center',
     },
     eyeIcon: {
         padding: 8,

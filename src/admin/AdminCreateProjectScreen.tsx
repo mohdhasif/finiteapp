@@ -1,197 +1,394 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  SafeAreaView, ScrollView, Alert, Platform, KeyboardAvoidingView
 } from 'react-native';
-import Modal from 'react-native-modal';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import DropDownPicker from 'react-native-dropdown-picker';
-import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { createProject, updateProject, getProjectDetails } from '../services/projectService';
+import { getClientsOptions } from '../services/adminService';
+import SelectionModal from '../component/SelectionModal';
+import { performanceMonitor } from '../utils/performance';
 
-const { width } = Dimensions.get('window');
+const BLUE = '#0B7EBE';
+const BG = '#EFEFEF';
+const TEXT = '#1A2A35';
+const SUB = '#6B7C8F';
+const BORDER = '#E1E6EC';
+
+const PRIORITIES = [
+  { label: 'High', value: 'high' as const },
+  { label: 'Medium', value: 'medium' as const },
+  { label: 'Low', value: 'low' as const },
+];
+
+const STATUSES = [
+  { label: 'Pending', value: 'pending' as const },
+  { label: 'In Progress', value: 'in_progress' as const },
+  { label: 'Completed', value: 'completed' as const },
+];
 
 const CreateProjectScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<any>();
+  const projectId = route?.params?.project_id as number | undefined;
+
+  // Form states
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
-  const [client, setClient] = useState(null);
-  const [priority, setPriority] = useState(null);
-  const [assigned, setAssigned] = useState(null);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed'>('pending');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(null);
+  const [progress, setProgress] = useState<string>('0');
 
-  const [clientOpen, setClientOpen] = useState(false);
-  const [priorityOpen, setPriorityOpen] = useState(false);
-  const [assignedOpen, setAssignedOpen] = useState(false);
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [pickingStartDate, setPickingStartDate] = useState(true);
-  const [isModalVisible, setModalVisible] = useState(false);
+  // Client selection
+  const [clients, setClients] = useState<Array<{ label: string; value: number }>>([]);
+  const [selectedClient, setSelectedClient] = useState<{ label: string; value: number } | null>(null);
+  const [loadingClients, setLoadingClients] = useState(false);
 
-  const handleDateConfirm = (date: Date) => {
-    if (pickingStartDate) {
-      setStartDate(date);
-    } else {
-      setEndDate(date);
+  // Date/time states
+  const [startDate, setStartDate] = useState<string>(''); // YYYY-MM-DD HH:MM:SS
+  const [endDate, setEndDate] = useState<string>(''); // YYYY-MM-DD HH:MM:SS
+
+  // Modal states
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+
+  // Date/time pickers
+  const [showStartDate, setShowStartDate] = useState(false);
+  const [showStartTime, setShowStartTime] = useState(false);
+  const [tmpStartDate, setTmpStartDate] = useState<Date | null>(null);
+
+  const [showEndDate, setShowEndDate] = useState(false);
+  const [showEndTime, setShowEndTime] = useState(false);
+  const [tmpEndDate, setTmpEndDate] = useState<Date | null>(null);
+
+  const [loading, setLoading] = useState(false);
+
+  // helpers
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const toMySQLDate = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const toMySQLDateTime = (d: Date) =>
+    `${toMySQLDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+
+  // Load clients from API
+  const loadClients = useCallback(async () => {
+    setLoadingClients(true);
+    try {
+      performanceMonitor.startTimer('loadClients');
+      const token = await AsyncStorage.getItem('userToken');
+      const options = await getClientsOptions(token ?? undefined, {
+        statusIn: ['approved', 'active'],
+        sort: 'label',
+      });
+      setClients(options.map(o => ({ label: o.label, value: o.value })));
+    } catch {
+      setClients([]);
+    } finally {
+      setLoadingClients(false);
+      performanceMonitor.endTimer('loadClients');
     }
-    setDatePickerVisible(false);
+  }, []);
+
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
+
+  // Prefill when editing
+  useEffect(() => {
+    (async () => {
+      if (!projectId) return;
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) return;
+        const data = await getProjectDetails(token, projectId);
+        const proj = data?.data || data;
+        if (proj) {
+          setProjectName(String(proj.title || proj.project_title || ''));
+          setDescription(String(proj.description || ''));
+          const st = (proj.status || 'pending').toLowerCase();
+          setStatus(st === 'completed' || st === 'in_progress' || st === 'pending' ? st : 'pending');
+          if (proj.priority && ['low','medium','high'].includes(String(proj.priority))) setPriority(proj.priority);
+          if (proj.start_at) setStartDate(String(proj.start_at));
+          if (proj.end_at) setEndDate(String(proj.end_at));
+          // client prefill if available
+          if (proj.client_id && Array.isArray(clients) && clients.length > 0) {
+            const found = clients.find(c => c.value === proj.client_id);
+            if (found) setSelectedClient(found);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [projectId, clients]);
+
+  // handlers — start_at (date -> time)
+  const onPickStartDate = (date: Date) => {
+    setTmpStartDate(date);
+    setShowStartDate(false);
+    setShowStartTime(true);
+  };
+  const onPickStartTime = (time: Date) => {
+    const base = tmpStartDate || new Date();
+    const final = new Date(
+      base.getFullYear(), base.getMonth(), base.getDate(),
+      time.getHours(), time.getMinutes(), 0, 0
+    );
+    setStartDate(toMySQLDateTime(final));
+    setShowStartTime(false);
   };
 
-  const handleSave = () => {
-    setModalVisible(true);
+  // handlers — end_at (date -> time)
+  const onPickEndDate = (date: Date) => {
+    setTmpEndDate(date);
+    setShowEndDate(false);
+    setShowEndTime(true);
+  };
+  const onPickEndTime = (time: Date) => {
+    const base = tmpEndDate || new Date();
+    const final = new Date(
+      base.getFullYear(), base.getMonth(), base.getDate(),
+      time.getHours(), time.getMinutes(), 0, 0
+    );
+    setEndDate(toMySQLDateTime(final));
+    setShowEndTime(false);
   };
 
-  const handleNext = () => {
-    setModalVisible(false);
-    navigation.goBack(); // or navigation.navigate('AdminHomeScreen');
+  const canSubmit = useMemo(() => {
+    return projectName.trim().length > 0 && selectedClient && startDate && endDate;
+  }, [projectName, selectedClient, startDate, endDate]);
+
+  const onSubmit = async () => {
+    if (!canSubmit || !selectedClient) {
+              Alert.alert('Warning', 'Please fill in Project Name, select Client, and set Start/End date');
+      return;
+    }
+
+    if (startDate && endDate) {
+      if (new Date(startDate) > new Date(endDate)) {
+        Alert.alert('Error', 'End time must be after Start time');
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+              if (!token) throw new Error('No token found. Please log in again.');
+
+      const payload = {
+        title: projectName.trim(),
+        client_id: selectedClient.value,
+        description: description || null,
+        priority: priority ?? null,
+        start_at: startDate,
+        end_at: endDate,
+        status,
+        progress: Math.max(0, Math.min(100, parseInt(progress || '0', 10) || 0)),
+      } as const;
+
+      if (projectId) {
+        await updateProject(token, { project_id: projectId, ...payload });
+        Alert.alert('Success', 'Project has been updated', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await createProject(token, { ...payload });
+        Alert.alert('Success', 'Project has been created', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      }
+    } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Failed to create project');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Items for Client modal
+  const clientItems = useMemo(
+    () =>
+      clients.map(c => ({
+        label: c.label,
+        value: c.value,
+      })),
+    [clients]
+  );
+
+  console.log('projectId:', projectId);
+  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
-          <Text style={styles.header}>Create New Project</Text>
+        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+          <Text style={styles.header}>{projectId ? 'Edit Project' : 'Create Project'}</Text>
 
+          {/* Project Name */}
           <Text style={styles.label}>Project Name</Text>
           <TextInput
             style={styles.input}
+            placeholder="Enter project name"
+            placeholderTextColor={SUB}
             value={projectName}
             onChangeText={setProjectName}
-            placeholder="Enter project name"
-            placeholderTextColor="#999"
           />
 
+          {/* Client */}
           <Text style={styles.label}>Client</Text>
-          <DropDownPicker
-            open={clientOpen}
-            setOpen={setClientOpen}
-            value={client}
-            setValue={setClient}
-            items={[
-              { label: 'Client A', value: 'clientA' },
-              { label: 'Client B', value: 'clientB' },
-            ]}
-            placeholder="Select client"
-            listMode="MODAL"
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownContainer}
-          />
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowClientPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {selectedClient ? selectedClient.label : 'Select client'}
+            </Text>
+          </TouchableOpacity>
 
+          {/* Description */}
           <Text style={styles.label}>Description</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.multiline]}
+            placeholder="Project description..."
+            placeholderTextColor={SUB}
             value={description}
             onChangeText={setDescription}
-            placeholder="Project description"
-            placeholderTextColor="#999"
             multiline
           />
 
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Start date/time</Text>
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => {
-                  setPickingStartDate(true);
-                  setDatePickerVisible(true);
-                }}
-              >
-                <Text>{startDate ? startDate.toLocaleString() : 'Select start date'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.column}>
-              <Text style={styles.label}>End date/time</Text>
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => {
-                  setPickingStartDate(false);
-                  setDatePickerVisible(true);
-                }}
-              >
-                <Text>{endDate ? endDate.toLocaleString() : 'Select end date'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Text style={styles.label}>Priority</Text>
-          <DropDownPicker
-            open={priorityOpen}
-            setOpen={setPriorityOpen}
-            value={priority}
-            setValue={setPriority}
-            items={[
-              { label: 'High', value: 'high' },
-              { label: 'Medium', value: 'medium' },
-              { label: 'Low', value: 'low' },
-            ]}
-            placeholder="Select priority"
-            listMode="MODAL"
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownContainer}
-          />
-
-          <Text style={styles.label}>Assigned to</Text>
-          <DropDownPicker
-            open={assignedOpen}
-            setOpen={setAssignedOpen}
-            value={assigned}
-            setValue={setAssigned}
-            items={[
-              { label: 'John Doe', value: 'john' },
-              { label: 'Jane Smith', value: 'jane' },
-            ]}
-            placeholder="Select team member"
-            listMode="MODAL"
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownContainer}
-          />
-        </View>
-
-        <View style={styles.bottomWrapper}>
+          {/* Status */}
+          <Text style={styles.label}>Status</Text>
           <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}>
-            <Text style={styles.saveText}>Save</Text>
+            style={styles.select}
+            onPress={() => setShowStatusPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {STATUSES.find(s => s.value === status)?.label}
+            </Text>
           </TouchableOpacity>
-        </View>
 
-        {/* Modal */}
-        <Modal
-          isVisible={isModalVisible}
-          onBackdropPress={() => setModalVisible(false)}
-          animationIn="slideInUp"
-          animationOut="slideOutDown"
-          useNativeDriver
-          style={styles.modal}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={styles.modalTitle}>Successfully Saved!</Text>
-            <Text style={styles.modalSub}>Your project has been created.</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={handleNext}>
-              <Text style={styles.modalButtonText}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
+          {/* Priority */}
+          <Text style={styles.label}>Priority</Text>
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowPriorityPicker(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.selectText}>
+              {priority ? PRIORITIES.find(p => p.value === priority)?.label : 'Select priority'}
+            </Text>
+          </TouchableOpacity>
 
+          {/* Progress */}
+          {/* <Text style={styles.label}>Progress</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0 - 100"
+            placeholderTextColor={SUB}
+            value={progress}
+            onChangeText={(t) => setProgress(t.replace(/[^\d]/g, '').slice(0, 3))}
+            keyboardType="number-pad"
+            maxLength={3}
+          /> */}
+
+          {/* Start Date/Time */}
+          <Text style={styles.label}>Start Date/Time</Text>
+          <TouchableOpacity style={styles.select} onPress={() => setShowStartDate(true)}>
+            <Text style={styles.selectText}>{startDate || 'Select start date & time'}</Text>
+          </TouchableOpacity>
+
+          {/* End Date/Time */}
+          <Text style={styles.label}>End Date/Time</Text>
+          <TouchableOpacity style={styles.select} onPress={() => setShowEndDate(true)}>
+            <Text style={styles.selectText}>{endDate || 'Select end date & time'}</Text>
+          </TouchableOpacity>
+
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.submitBtn, !canSubmit || loading ? styles.btnDisabled : undefined]}
+            onPress={onSubmit}
+            disabled={!canSubmit || loading}
+          >
+            <Text style={styles.submitText}>{loading ? 'Saving...' : (projectId ? 'Save Changes' : 'Create Project')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Client Modal */}
+        <SelectionModal
+          visible={showClientPicker}
+          title="Select Client"
+          items={clientItems}
+          value={selectedClient?.value ?? null}
+          onClose={() => setShowClientPicker(false)}
+          onSelect={(it) => {
+            const found = clients.find(c => c.value === it.value);
+            if (found) setSelectedClient(found);
+          }}
+          showSearch
+          placeholder="Search client"
+        />
+
+        {/* Status Modal */}
+        <SelectionModal
+          visible={showStatusPicker}
+          title="Select Status"
+          items={STATUSES}
+          value={status}
+          onClose={() => setShowStatusPicker(false)}
+          onSelect={(it) => setStatus(it.value as any)}
+          showSearch={false}
+        />
+
+        {/* Priority Modal */}
+        <SelectionModal
+          visible={showPriorityPicker}
+          title="Select Priority"
+          items={PRIORITIES}
+          value={priority}
+          onClose={() => setShowPriorityPicker(false)}
+          onSelect={(it) => setPriority(it.value as any)}
+          showSearch={false}
+        />
+
+        {/* Start: date -> time */}
         <DateTimePickerModal
-          isVisible={datePickerVisible}
-          mode="datetime"
-          onConfirm={handleDateConfirm}
-          onCancel={() => setDatePickerVisible(false)}
+          isVisible={showStartDate}
+          mode="date"
+          onConfirm={onPickStartDate}
+          onCancel={() => setShowStartDate(false)}
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+        />
+        <DateTimePickerModal
+          isVisible={showStartTime}
+          mode="time"
+          is24Hour
+          onConfirm={onPickStartTime}
+          onCancel={() => setShowStartTime(false)}
+        />
+
+        {/* End: date -> time */}
+        <DateTimePickerModal
+          isVisible={showEndDate}
+          mode="date"
+          onConfirm={onPickEndDate}
+          onCancel={() => setShowEndDate(false)}
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+        />
+        <DateTimePickerModal
+          isVisible={showEndTime}
+          mode="time"
+          is24Hour
+          onConfirm={onPickEndTime}
+          onCancel={() => setShowEndTime(false)}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -199,116 +396,27 @@ const CreateProjectScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#EAEAEA',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0066A0',
-    marginBottom: 20,
-    alignSelf: 'center',
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 6,
-    color: '#333',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  wrap: { padding: 16, paddingBottom: 32 },
+  header: { fontSize: 22, fontWeight: '700', color: TEXT, marginBottom: 12 },
+  label: { fontSize: 14, color: SUB, marginTop: 12, marginBottom: 6 },
   input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    color: '#555',
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 12, color: TEXT,
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
+  multiline: { height: 110, textAlignVertical: 'top' },
+  select: {
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 14,
   },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
+  selectText: { color: TEXT, fontSize: 16 },
+  submitBtn: {
+    marginTop: 22, backgroundColor: BLUE, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, elevation: 2,
   },
-  column: {
-    flex: 1,
-  },
-  dropdown: {
-    borderColor: '#0072B5',
-    borderWidth: 1,
-    borderRadius: 6,
-    marginBottom: 15,
-  },
-  dropdownContainer: {
-    borderColor: '#0072B5',
-  },
-  bottomWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#EAEAEA',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  saveButton: {
-    backgroundColor: '#0072B5',
-    paddingVertical: 14,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
-  saveText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
-  },
-  modalContent: {
-    backgroundColor: '#2D71B7',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 30,
-    alignItems: 'center',
-  },
-  checkmark: {
-    fontSize: 48,
-    color: '#fff',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  modalSub: {
-    fontSize: 14,
-    color: '#fff',
-    marginTop: 5,
-    marginBottom: 20,
-  },
-  modalButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-    borderRadius: 25,
-  },
-  modalButtonText: {
-    color: '#2D71B7',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  btnDisabled: { opacity: 0.6 },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
 
 export default CreateProjectScreen;

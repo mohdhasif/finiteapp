@@ -84,12 +84,12 @@ const AboutUs = () => {
                     <Image source={item.background.star2} style={styles.slide2Star2} />
                     <Image source={item.background.star3} style={styles.slide2Star3} />
 
-                    {/* TEXT ATAS CARD */}
+                    {/* TEXT ABOVE CARD */}
                     <View style={styles.slide2TextWrap}>
                         <Text style={styles.slide2Text}>Build Your{'\n'}Future,{'\n'}Build Your{'\n'}Dream</Text>
                     </View>
 
-                    {/* Button bawah */}
+                    {/* Button below */}
                     <View style={styles.overlaySlide2}>
                         {/* <TouchableOpacity style={styles.button}>
                             <Text style={styles.buttonText}>{item.button}</Text>
@@ -143,11 +143,11 @@ const AboutUs = () => {
 
             {/* Button condition */}
             {activeIndex === slides.length - 1 ? (
-                <TouchableOpacity style={styles.button} onPress={() => console.log('Start')}>
+                <TouchableOpacity style={styles.button} onPress={() => ('Start')}>
                     <Text style={styles.buttonText}>Get Started</Text>
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity style={styles.button} onPress={() => console.log('Back')}>
+                <TouchableOpacity style={styles.button} onPress={() => ('Back')}>
                     <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
             )}

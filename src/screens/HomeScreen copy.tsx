@@ -33,7 +33,7 @@ const HomeScreen = () => {
                 <Text style={styles.brand}>FINITE</Text>
             </ImageBackground>
 
-            {/* Logo dengan glow */}
+            {/* Logo with glow */}
             <View style={styles.centered}>
                 <View style={styles.ringContainer}>
                     <Image source={require('../assets/ring.png')} style={styles.ring} />
@@ -43,7 +43,7 @@ const HomeScreen = () => {
 
             {/* About & Services */}
             <View style={styles.bottomCards}>
-                <TouchableOpacity onPress={() => console.log('About Us Pressed')}>
+                <TouchableOpacity onPress={() => ('About Us Pressed')}>
                     <ImageBackground
                         source={require('../assets/card-bottom-left.png')}
                         style={styles.subCard}

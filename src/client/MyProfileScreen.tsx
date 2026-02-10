@@ -1,85 +1,316 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    StyleSheet,
-    Image,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-    SafeAreaView,
+    View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
+    ScrollView, Dimensions, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { getUserDetails, type UserDetails } from '../services/authService';
+import { updateMyProfileForm } from '../services/adminService';
+import { BASE_URL, API_ENDPOINTS } from '../constants/apiConfig';
+import { performanceMonitor } from '../utils/performance';
 
 const { width } = Dimensions.get('window');
 
 const MyProfileScreen = () => {
-    const [isModalVisible, setModalVisible] = useState(false);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [token, setToken] = useState<string>('');
 
+    const [profile, setProfile] = useState<UserDetails | null>(null);
+    const [name, setName] = useState('');
+    const [dob, setDob] = useState('');      // YYYY-MM-DD
+    const [gender, setGender] = useState<'male' | 'female' | ''>('');
+    const [phone, setPhone] = useState('');
+    const [avatarUriLocal, setAvatarUriLocal] = useState<{ uri: string; fileName?: string; type?: string } | string | null>(null);
+    const [myId, setMyId] = useState<number | null>(null);
+    const [me, setMe] = useState<UserDetails | null>(null);
 
-    const handleSave = () => {
-        setModalVisible(true);
-    };
+    // Performance optimized data loading
+    const loadUserData = useCallback(async () => {
+        try {
+            performanceMonitor.startTimer('loadUserData');
+            
+            const tk = (await AsyncStorage.getItem('userToken')) || '';
+            setToken(tk);
+            if (!tk) {
+                Alert.alert('Error', 'Token is missing. Please log in again.');
+                setLoading(false);
+                return;
+            }
 
-    const handleNext = () => {
+            // Try to fetch user details from API first
+            try {
+                const userDetails = await getUserDetails(tk);
+                
+                setMe(userDetails);
+                setMyId(userDetails.id);
+                setProfile(userDetails);
+                setName(userDetails.name || '');
+                setDob(userDetails.dob || '');
+                setGender(userDetails.gender || '');
+                setPhone(userDetails.phone || '');
+                setAvatarUriLocal(userDetails.avatar_url
+                    ? (userDetails.avatar_url.startsWith('http')
+                        ? userDetails.avatar_url
+                        : `${BASE_URL}${userDetails.avatar_url}`)
+                    : null
+                );
+            } catch (apiError) {
+                // Fallback to AsyncStorage
+                const userInfoRaw = await AsyncStorage.getItem('userInfo');
+                const userInfo = userInfoRaw ? JSON.parse(userInfoRaw) : null;
+
+                if (userInfo) {
+                    setMe(userInfo);
+                    setMyId(userInfo?.id ?? null);
+                    setProfile(userInfo);
+                    setName(userInfo?.name || '');
+                    setDob(userInfo?.dob || '');
+                    setGender((userInfo?.gender as any) || '');
+                    setPhone(userInfo?.phone || '');
+                    setAvatarUriLocal(userInfo?.avatar_url || null);
+                } else {
+                    // Set default values if no user info found
+                    setMe(null);
+                    setMyId(null);
+                    setProfile(null);
+                    setName('');
+                    setDob('');
+                    setGender('');
+                    setPhone('');
+                    setAvatarUriLocal(null);
+                }
+            }
+        } catch (e: any) {
+            Alert.alert('Failed', e?.message || 'Failed to load profile');
+        } finally {
+            setLoading(false);
+            performanceMonitor.endTimer('loadUserData');
+        }
+    }, []);
+
+    useEffect(() => {
+        loadUserData();
+    }, [loadUserData]);
+
+    const handleSave = useCallback(async () => {
+        if (!token) {
+            Alert.alert('Error', 'Token is missing. Please log in again.');
+            return;
+        }
+
+        // Basic validation
+        if (!name.trim()) {
+            Alert.alert('Error', 'Name is required.');
+            return;
+        }
+
+        try {
+            performanceMonitor.startTimer('saveProfile');
+            setSaving(true);
+
+            // Create FormData for multipart upload
+            const formData = new FormData();
+
+            formData.append('name', name);
+            formData.append('dob', dob);
+            formData.append('gender', gender);
+            formData.append('phone', phone);
+
+            // Handle avatar upload - similar to FreelancerApprovalScreen
+            if (avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri) {
+                const fileName = avatarUriLocal.fileName || `avatar_${myId || 'user'}.jpg`;
+                const fileType = avatarUriLocal.type || 'image/jpeg';
+
+                formData.append('avatar', {
+                    uri: avatarUriLocal.uri,
+                    name: fileName,
+                    type: fileType,
+                } as any); // TypeScript workaround
+            } else if (typeof avatarUriLocal === 'string' && avatarUriLocal) {
+                // If using existing avatar URL
+                formData.append('avatar_url', avatarUriLocal);
+            }
+
+            console.log('FormData being sent:', {
+                name,
+                dob,
+                gender,
+                phone,
+                avatar: avatarUriLocal,
+            });
+
+            // Use multipart form data API
+            try {
+                const result = await updateMyProfileForm(token, formData);
+                console.log('API response:', result);
+
+                if (result.success) {
+                    // Refresh user details from API
+                    const updatedUserDetails = await getUserDetails(token);
+
+                    // Update local storage with latest data
+                    await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserDetails));
+
+                    setMe(updatedUserDetails);
+                    setProfile(updatedUserDetails);
+                    setModalVisible(true);
+                } else {
+                    throw new Error(result.message || 'Update failed');
+                }
+            } catch (apiError: any) {
+                console.log('API update failed:', apiError);
+
+                // Fallback to AsyncStorage
+                const updateData = {
+                    name,
+                    dob,
+                    gender,
+                    phone,
+                    avatar_url: typeof avatarUriLocal === 'string'
+                        ? (avatarUriLocal.startsWith('http')
+                            ? avatarUriLocal.replace(BASE_URL, '')
+                            : avatarUriLocal)
+                        : avatarUriLocal?.uri || null
+                };
+
+                const updatedUserInfo = {
+                    ...me,
+                    ...updateData,
+                    id: me?.id || 0 // Ensure id is always a number
+                };
+
+                await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+                setMe(updatedUserInfo as UserDetails);
+                setProfile(updatedUserInfo as UserDetails);
+                setModalVisible(true);
+            }
+        } catch (e: any) {
+            console.error('Save profile error:', e);
+            Alert.alert('Failed', e?.message || 'Failed to save profile.');
+        } finally {
+            setSaving(false);
+            performanceMonitor.endTimer('saveProfile');
+        }
+    }, [token, name, dob, gender, phone, avatarUriLocal, myId, me]);
+
+    const handleNext = useCallback(() => {
         setModalVisible(false);
-        navigation.navigate('ProfileScreen'); // Navigate to the next screen
-    };
+        navigation.navigate('ProfileScreen');
+    }, [navigation]);
+
+    const pickAvatar = useCallback(() => {
+        launchImageLibrary({ 
+            mediaType: 'photo',
+            includeBase64: false,
+            quality: 0.8,
+        }, (response) => {
+            if (response.assets && response.assets.length > 0) {
+                const selected = response.assets[0];
+                if (selected.uri) {
+                    setAvatarUriLocal({
+                        uri: selected.uri,
+                        fileName: selected.fileName || `avatar_${myId || 'user'}.jpg`,
+                        type: selected.type || 'image/jpeg',
+                    });
+                    console.log('Selected avatar:', {
+                        uri: selected.uri,
+                        fileName: selected.fileName,
+                        type: selected.type,
+                    });
+                }
+            }
+        });
+    }, [myId]);
+
+    // Memoized values for better performance
+    const avatarSource = useMemo(() => {
+        if (avatarUriLocal) {
+            return typeof avatarUriLocal === 'string'
+                ? { uri: avatarUriLocal }
+                : avatarUriLocal;
+        }
+        return require('../assets/user.png');
+    }, [avatarUriLocal]);
+
+    // Debug logging for avatar state
+    useEffect(() => {
+        console.log('Avatar state changed:', {
+            avatarUriLocal,
+            type: typeof avatarUriLocal,
+            isObject: typeof avatarUriLocal === 'object',
+            hasUri: avatarUriLocal && typeof avatarUriLocal === 'object' && avatarUriLocal.uri,
+        });
+    }, [avatarUriLocal]);
+
+    const isFormValid = useMemo(() => {
+        return name.trim().length > 0 && !loading;
+    }, [name, loading]);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+            style={styles.container} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+            <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.header}>My Profile</Text>
 
                 <View style={styles.avatarContainer}>
-                    <Image source={require('../assets/user.png')} style={styles.avatar} />
-                    <TouchableOpacity style={styles.editCircle} />
+                    <View style={styles.avatarWrapper}>
+                        <Image
+                            source={avatarSource}
+                            style={styles.avatar}
+                            resizeMode="contain"
+                        />
+                        
+                        <TouchableOpacity style={styles.editCircle} onPress={pickAvatar}>
+                            <Icon name="add" size={16} color="#0072B5" />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.smallHint}>Tap the plus icon to choose avatar</Text>
                 </View>
 
                 {/* Basic Details */}
                 <Text style={styles.sectionTitle}>Basic Details</Text>
 
                 <Text style={styles.label}>Full Name</Text>
-                <TextInput style={styles.input} value="Jane Smith" editable={false} />
-
-                <Text style={styles.label}>Date of Birth</Text>
-                <TextInput style={styles.input} value="23 July 2025" editable={false} />
-
-                <Text style={styles.label}>Gender</Text>
-                <View style={styles.genderRow}>
-                    <View style={[styles.genderButton, styles.disabledGender]}>
-                        <Text style={styles.disabledText}>Male</Text>
-                    </View>
-                    <View style={[styles.genderButton, styles.activeGender]}>
-                        <Text style={styles.activeText}>Female</Text>
-                    </View>
-                </View>
+                <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Full name"
+                    editable={!loading}
+                />
 
                 {/* Contact Details */}
                 <Text style={styles.sectionTitle}>Contact Details</Text>
 
-                <Text style={styles.label}>Mobile Number</Text>
-                <TextInput style={styles.input} value="+60 11234 5678" editable={false} />
-
                 <Text style={styles.label}>Email</Text>
                 <TextInput
-                    style={styles.input}
-                    value="janesmith@gmail.com"
+                    style={[styles.input, { backgroundColor: '#EEE' }]}
+                    value={profile?.email || ''}
                     editable={false}
                 />
             </ScrollView>
 
-            {/* Static Save Button */}
+            {/* Save Button */}
             <View style={styles.bottomWrapper}>
                 <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={handleSave}>
-                    <Text style={styles.saveText}>Save</Text>
+                    style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                >
+                    <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save'}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -101,7 +332,8 @@ const MyProfileScreen = () => {
                     </TouchableOpacity>
                 </View>
             </Modal>
-        </SafeAreaView>
+            </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -121,23 +353,45 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         alignSelf: 'center',
     },
-    avatarContainer: {
-        alignItems: 'center',
+    avatarContainer: { 
+        alignItems: 'center', 
         marginBottom: 25,
+        position: 'relative',
     },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+    avatarWrapper: {
+        position: 'relative',
+        alignItems: 'center',
+    },
+    avatar: { 
+        width: 100, 
+        height: 100, 
+        borderRadius: 50, 
+        backgroundColor: '#DDD' 
     },
     editCircle: {
-        width: 20,
-        height: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        position: 'absolute',
-        bottom: 5,
-        right: width / 2 - 105,
+        width: 32, 
+        height: 32, 
+        backgroundColor: '#fff', 
+        borderRadius: 16,
+        position: 'absolute', 
+        bottom: 0, 
+        right: -8, 
+        borderWidth: 2, 
+        borderColor: '#0072B5',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    smallHint: { 
+        marginTop: 12, 
+        fontSize: 12, 
+        color: '#666',
+        textAlign: 'center',
+        paddingHorizontal: 20,
     },
     sectionTitle: {
         fontSize: 16,

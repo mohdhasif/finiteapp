@@ -2,11 +2,9 @@ export type RootStackParamList = {
   Splash: undefined;
   HomeScreen: undefined;
   ServiceScreen: undefined;
-  ProjectTaskListScreen: { project: string }; // ✅ betul di sini
-  ProjectListScreen: undefined;
   NotificationsScreen: undefined;
   DiscoveryForm: { selectedServices: string[] }; // ✅ betul di sini
-  TaskDetailsScreen: { task: string }; // ✅ betul di sini
+  TaskDetailsScreen: { task_title: string, task_id: number }; // ✅ betul di sini
   ProfileScreen: undefined; // ✅ betul di sini
   LoginScreen: undefined; // ✅ betul di sini
   FabMenu: undefined; // ✅ betul di sini
@@ -18,16 +16,56 @@ export type RootStackParamList = {
   LoadingScreen: { role: string }; // ✅ betul di sini
   AdminHomeScreen: undefined;
   AdminProjectListScreen: undefined;
-  AdminProjectTaskListScreen: { project: string }; // ✅ betul di sini
-  AdminTaskDetailsScreen: { task: string }; // ✅ betul di sini
+  AdminProjectTaskListScreen: { project_title: string, project_id: number }; // ✅ betul di sini
+  AdminTaskDetailsScreen: { task_title: string, task_id: number }; // ✅ betul di sini
 
 
 
-  AdminProfileScreen:  undefined;
-  AdminChangePasswordScreen:  undefined;
-  AdminMyProfileScreen:  undefined;
-  AdminFAQScreen:  undefined;
+  AdminProfileScreen: undefined;
+  AdminChangePasswordScreen: undefined;
+  AdminMyProfileScreen: undefined;
+  AdminFAQScreen: undefined;
 
-  AdminCreateProjectScreen: undefined;
+  AdminCreateProjectScreen: { project_id?: number } | undefined;
   AdminCreateTaskScreen: undefined;
+
+
+  ProjectListScreen: undefined;
+  ProjectTaskListScreen: {
+    projectId: number;
+    projectTitle: string;
+  };
+  ProjectDetailsScreen: { projectId: number };
+
+
+  ClientListScreen: undefined;
+
+  ClientApprovalScreen: { client: any }; // change `any` to actual type if available
+
+  FreelancerListScreen: undefined;
+
+
+
+  FreelancerApprovalScreen: { freelancer: any }; // change `any` to actual type if available
+
+
+  AddTaskScreen: { task_id?: number } | undefined;
+
+  AdminNotificationsScreen: undefined;
+
+  AdminCalendarScreen: undefined;
+  
+  // Freelancer screens
+  FreelancersHomeScreen: undefined;
+  FreelancerProjectListScreen: undefined;
+  FreelancerProjectTaskListScreen: {
+    projectId: number;
+    projectTitle: string;
+  };
+  FreelancerTaskDetailsScreen: { task_title: string, task_id: number };
+  FreelancerNotificationsScreen: undefined;
+  FreelancerProfileScreen: undefined;
+  FreelancerMyProfileScreen: undefined;
+  FreelancerChangePasswordScreen: undefined;
+  FreelancerFAQScreen: undefined;
 };
